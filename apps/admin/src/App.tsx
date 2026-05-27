@@ -1,23 +1,16 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { RouterProvider } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
-import AdminLayout from './layouts/AdminLayout';
-
-const DashboardPage: React.FC = () => {
-  return <div>Admin Dashboard</div>;
-};
+import { router } from './router';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const App: React.FC = () => {
   return (
-    <ConfigProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<AdminLayout />}>
-            <Route index element={<DashboardPage />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </ConfigProvider>
+    <ErrorBoundary>
+      <ConfigProvider>
+        <RouterProvider router={router} />
+      </ConfigProvider>
+    </ErrorBoundary>
   );
 };
 

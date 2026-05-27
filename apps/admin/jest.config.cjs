@@ -10,7 +10,15 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
-  setupFilesAfterEnv: ['<rootDir>/__tests__/setup.ts'],
+  globals: {
+    'ts-jest': {
+      tsconfig: '<rootDir>/tsconfig.json',
+    },
+    'import.meta.env': {
+      VITE_API_BASE_URL: 'http://localhost:3000/api/v1',
+    },
+  },
+  setupFilesAfterEnv: ['<rootDir>/__tests__/setup.cjs'],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',

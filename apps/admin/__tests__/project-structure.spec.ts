@@ -191,8 +191,8 @@ describe('Module 0.4 — Admin Dashboard Project Structure', () => {
       content = readFileSync(resolve(baseDir, 'src/App.tsx'), 'utf-8');
     });
 
-    it('should import BrowserRouter', () => {
-      expect(content).toMatch(/BrowserRouter/);
+    it('should import RouterProvider', () => {
+      expect(content).toMatch(/RouterProvider/);
     });
 
     it('should import ConfigProvider from antd', () => {

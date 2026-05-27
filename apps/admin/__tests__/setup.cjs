@@ -1,4 +1,4 @@
-import '@testing-library/jest-dom';
+require('@testing-library/jest-dom');
 
 // Polyfill TextEncoder/TextDecoder for react-router-dom in jsdom
 if (typeof global.TextEncoder === 'undefined') {

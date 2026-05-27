@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 
 const baseURL =
   (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) ||
@@ -11,7 +11,7 @@ export const apiClient = axios.create({
   },
 });
 
-export function authInterceptor(config: any) {
+export function authInterceptor(config: InternalAxiosRequestConfig) {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

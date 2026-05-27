@@ -1,3 +1,4 @@
+import { InternalAxiosRequestConfig } from 'axios';
 import { apiClient, authInterceptor } from './client';
 
 describe('API Client', () => {
@@ -26,13 +27,13 @@ describe('authInterceptor', () => {
 
   it('should inject token when present in localStorage', () => {
     localStorage.setItem('token', 'test-token-123');
-    const config = { headers: {} } as any;
+    const config = { headers: {} } as unknown as InternalAxiosRequestConfig;
     const result = authInterceptor(config);
     expect(result.headers.Authorization).toBe('Bearer test-token-123');
   });
 
   it('should not inject token when localStorage is empty', () => {
-    const config = { headers: {} } as any;
+    const config = { headers: {} } as unknown as InternalAxiosRequestConfig;
     const result = authInterceptor(config);
     expect(result.headers.Authorization).toBeUndefined();
   });
