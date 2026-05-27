@@ -1,6 +1,6 @@
 # 篮球匹配平台 — 分模块开发计划
 
-> 版本：v1.0
+> 版本：v1.1
 > 日期：2026-05-26
 > 策略：按依赖顺序逐个模块实现，每次只分配单一模块任务，先写测试再写代码，TDD完整覆盖（目标80%+），用户逐步审查
 
@@ -19,6 +19,9 @@
 3. **Git版本控制**：每个模块完成后独立commit，commit message说明模块名和测试通过状态
 4. **技术栈锁定**：NestJS + TypeScript + TypeORM + PostgreSQL + Redis + Jest（后端）；React Native Expo + Zustand（移动端）；React + Ant Design（管理后台）
 5. **目录结构**：严格遵循 blueprint 中的 `apps/mobile/`、`apps/admin/`、`server/`、`shared/` 结构
+6. **数据库管理**：全程使用 TypeORM Migrations 管理 schema 变更，禁止在生产环境使用 `synchronize: true`
+7. **API 文档**：所有 Controller 必须同步维护 Swagger/OpenAPI 注解，接口层完成后自动生成文档
+8. **契约测试**：前后端通过 `shared/types` 共享 DTO 契约，前端 Mock 数据与后端接口 Schema 保持一致
 
 ---
 
@@ -39,7 +42,7 @@
 - **目标**：初始化 NestJS 项目，配置 TypeORM + PostgreSQL 连接，配置 Redis 连接，配置 Jest 测试环境，确保能编译启动
 - **依赖顺序**：Module 0.1 完成后
 - **交付物**：
-  - `server/package.json`（NestJS + TypeORM + pg + ioredis + class-validator + class-transformer + @nestjs/config + bcrypt + jsonwebtoken + jest + supertest + @types/*）
+  - `server/package.json`（NestJS + TypeORM + pg + ioredis + class-validator + class-transformer + @nestjs/config + bcrypt + jsonwebtoken + jest + supertest + @types/* + @nestjs/swagger）
   - `server/tsconfig.json`
   - `server/src/main.ts`（可启动的 NestJS 应用入口）
   - `server/src/app.module.ts`（根模块，注册 ConfigModule、TypeOrmModule、Redis 连接）
@@ -103,13 +106,29 @@
   - 类型能被 server/mobile/admin 正确引用
 - **关键路径**：`shared/types/*.ts`
 
+#### Module 0.6 — 开发环境 Docker Compose 配置
+- **目标**：提供统一的本地开发环境（PostgreSQL + Redis），避免开发者本地数据库版本不一致问题
+- **依赖顺序**：Module 0.2 完成后
+- **交付物**：
+  - `docker-compose.dev.yml`（PostgreSQL 15 + Redis 7，带数据卷持久化）
+  - `server/.env.development`（开发环境数据库连接配置，指向 docker-compose 服务）
+  - `scripts/init-db.sh`（初始化数据库和用户的脚本）
+- **测试**：
+  - `docker-compose -f docker-compose.dev.yml up -d` 成功启动
+  - `docker-compose ps` 显示 postgres 和 redis 正常运行
+  - NestJS 后端能连接到 docker-compose 启动的数据库和 Redis
+  - 数据卷重启后数据不丢失
+- **关键路径**：`docker-compose.dev.yml`
+
 ---
 
-### Phase 1：数据层与核心实体（数据表设计 → 实体定义）
+### Phase 1：数据层与核心实体（数据表设计 → 实体定义 + Migrations）
+
+> **Phase 1 全局要求**：所有实体模块必须使用 TypeORM Migrations 管理 schema 变更。每个模块完成后生成对应的 Migration 文件，通过 `npm run migration:run` 执行。测试环境使用独立的测试数据库，通过 `npm run migration:run` 后再运行测试。
 
 #### Module 1.1 — 用户与认证实体（users + venue_managers + players + player_positions）
 - **目标**：定义 TypeORM 实体，建立数据库表结构，实现加密存储（phone、real_name、id_card AES加密）
-- **依赖顺序**：Module 0.2 完成后
+- **依赖顺序**：Module 0.2 + Module 0.6 完成后
 - **交付物**：
   - `server/src/modules/users/entities/user.entity.ts`
   - `server/src/modules/users/entities/venue-manager.entity.ts`
@@ -117,10 +136,11 @@
   - `server/src/modules/players/entities/player-position.entity.ts`
   - `server/src/common/transformers/encrypt.transformer.ts`（AES-256-GCM 加解密 Transformer）
   - `server/src/common/utils/encrypt.util.ts`（加密工具函数 + 测试）
+  - `server/src/migrations/1716740000001-CreateUserAndPlayerTables.ts`（Migration 文件）
 - **测试**（先写测试）：
   - 加密/解密工具函数单元测试（各种输入、边界值、异常）
   - 实体创建测试（验证字段约束、关系映射）
-  - TypeORM 同步建表测试（`synchronize: true` 在测试环境验证表结构正确）
+  - Migration 执行测试（`migration:run` 成功，表结构正确）
   - 敏感字段入库后查询验证为密文
 - **关键路径**：`server/src/modules/users/entities/user.entity.ts`、`server/src/common/transformers/encrypt.transformer.ts`
 
@@ -130,10 +150,11 @@
 - **交付物**：
   - `server/src/modules/venues/entities/venue.entity.ts`
   - `server/src/modules/venues/entities/venue-time-slot.entity.ts`
+  - `server/src/migrations/1716740000002-CreateVenueTables.ts`
 - **测试**：
   - 实体字段约束测试（price_per_hour > 0、court_count >= 1 等）
   - 关系映射测试（venue → time_slots 一对多）
-  - 建表结构验证
+  - Migration 执行测试（表结构正确、索引存在）
 - **关键路径**：`server/src/modules/venues/entities/venue.entity.ts`
 
 #### Module 1.3 — 赛制实体（formats）
@@ -142,9 +163,12 @@
 - **交付物**：
   - `server/src/modules/formats/entities/format.entity.ts`
   - `server/src/modules/formats/seeds/formats.seed.ts`（初始数据：3v3短赛、4v4短赛、5v5短赛）
+  - `server/src/migrations/1716740000003-CreateFormatTable.ts`
+  - `server/src/migrations/1716740000004-SeedFormats.ts`（种子数据 Migration）
 - **测试**：
   - 实体约束测试（team_size、team_count_min/max 关系）
   - 种子数据插入测试
+  - Migration 可回滚测试（`migration:revert` 正常）
 - **关键路径**：`server/src/modules/formats/entities/format.entity.ts`
 
 #### Module 1.4 — 比赛意向实体（intentions + intention_venues + intention_formats）
@@ -154,10 +178,12 @@
   - `server/src/modules/intentions/entities/intention.entity.ts`
   - `server/src/modules/intentions/entities/intention-venue.entity.ts`
   - `server/src/modules/intentions/entities/intention-format.entity.ts`
+  - `server/src/migrations/1716740000005-CreateIntentionTables.ts`
 - **测试**：
   - 实体约束测试（duration_minutes 120-360、status 枚举）
   - end_time 生成列验证
   - 关系映射测试（intention → intention_venues → venues）
+  - Migration 执行测试
 - **关键路径**：`server/src/modules/intentions/entities/intention.entity.ts`
 
 #### Module 1.5 — 比赛与群聊实体（matches + match_players + match_teams + match_messages）
@@ -168,10 +194,12 @@
   - `server/src/modules/matches/entities/match-player.entity.ts`
   - `server/src/modules/matches/entities/match-team.entity.ts`
   - `server/src/modules/messages/entities/match-message.entity.ts`
+  - `server/src/migrations/1716740000006-CreateMatchTables.ts`
 - **测试**：
   - 实体约束测试（status 枚举、confirmed_players <= total_players）
   - 关系映射测试（match → match_players → players、match → match_teams）
   - 唯一约束测试（match_id + player_id）
+  - Migration 执行测试
 - **关键路径**：`server/src/modules/matches/entities/match.entity.ts`
 
 #### Module 1.6 — 反馈与系统参数实体（feedbacks + feedback_player_ratings + system_params + notifications）
@@ -183,10 +211,13 @@
   - `server/src/modules/system/entities/system-param.entity.ts`
   - `server/src/modules/notifications/entities/notification.entity.ts`
   - `server/src/modules/system/seeds/system-params.seed.ts`（初始系统参数数据）
+  - `server/src/migrations/1716740000007-CreateFeedbackAndSystemTables.ts`
+  - `server/src/migrations/1716740000008-SeedSystemParams.ts`
 - **测试**：
   - 实体约束测试（overall_rating 1-5、枚举字段）
   - 系统参数种子数据插入测试
   - 通知实体字段验证
+  - Migration 执行测试
 - **关键路径**：`server/src/modules/feedbacks/entities/feedback.entity.ts`、`server/src/modules/system/entities/system-param.entity.ts`
 
 ---
@@ -272,13 +303,20 @@
 - **关键路径**：`server/src/modules/intentions/services/intention.service.ts`
 
 #### Module 2.6 — 匹配引擎核心服务（MatchingEngineService）
-- **目标**：实现每5分钟触发的匹配算法（时间重叠、场地/赛制重叠、动态阈值、蛇形分队）
+- **目标**：实现每5分钟触发的匹配算法（时间重叠、场地/赛制重叠、动态阈值、蛇形分队）。本模块需产出独立架构设计文档。
 - **依赖顺序**：Module 2.5 + Module 1.3 完成后
 - **交付物**：
   - `server/src/modules/matching/services/matching-engine.service.ts`
   - `server/src/modules/matching/services/team-balancer.service.ts`（蛇形选秀分队）
   - `server/src/modules/matching/matching.module.ts`
   - `server/src/modules/matching/matching.processor.ts`（Bull 队列处理器）
+  - `docs/design/matching-engine-architecture.md`（匹配引擎架构与算法设计文档）
+- **架构设计文档要求**：
+  - **调度策略**：使用 Bull Queue + Cron 每5分钟触发。若单次匹配耗时超过5分钟，设置 `job.lockDuration` 防止重复执行，同时记录耗时告警日志
+  - **背压策略**：当队列中已有匹配任务在执行时，新任务进入等待；若连续3次超时，触发降级（缩小匹配范围、提高阈值）
+  - **并发控制**：按 `region_code` 分片，每个地区独立队列，避免全表扫描
+  - **性能监控**：记录每次匹配的意向扫描数、分组数、匹配成功数、执行耗时
+  - **公平性保证**：相同能力值球员优先满足等待时间更长的意向
 - **测试**（先写测试）：
   - 时间重叠检测测试（完全重叠、部分重叠、不重叠）
   - 动态阈值计算测试（意向数量与阈值反比关系）
@@ -287,22 +325,34 @@
   - 蛇形分队测试（队伍能力值均衡性验证）
   - 匹配失败处理测试（3小时提醒、半小时自动取消）
   - 异常隔离测试（某分组异常不影响其他分组）
-- **关键路径**：`server/src/modules/matching/services/matching-engine.service.ts`
+  - **负载测试**：模拟100/500/1000个并发意向，验证匹配执行耗时 < 30秒，内存占用稳定
+  - **公平性测试**：相同条件的多组意向，验证等待时间长的优先匹配
+- **关键路径**：`server/src/modules/matching/services/matching-engine.service.ts`、`docs/design/matching-engine-architecture.md`
 
 #### Module 2.7 — 比赛确认服务（MatchConfirmationService）
-- **目标**：实现匹配成功后的确认流程、保证金模拟支付、系统确认比赛逻辑
+- **目标**：实现匹配成功后的确认流程、保证金模拟支付、系统确认比赛逻辑。模拟支付流程需贴近真实第三方支付交互模型。
 - **依赖顺序**：Module 2.6 + Module 1.5 完成后
 - **交付物**：
   - `server/src/modules/matches/services/match-confirmation.service.ts`
-  - `server/src/modules/payments/services/mock-payment.service.ts`（模拟支付）
+  - `server/src/modules/payments/interfaces/payment-provider.interface.ts`（支付 provider 抽象接口）
+  - `server/src/modules/payments/services/mock-payment.service.ts`（模拟支付实现）
+  - `server/src/modules/payments/dto/create-payment-order.dto.ts`
+  - `server/src/modules/payments/dto/payment-callback.dto.ts`
   - `server/src/modules/payments/payments.module.ts`
+- **模拟支付设计（贴近真实第三方）**：
+  - 流程：创建订单（生成唯一订单号、金额、过期时间）→ 调用支付（模拟用户确认）→ 异步回调（模拟第三方支付回调）→ 状态更新（根据回调结果更新 deposit_paid）
+  - 接口设计预留：MockPaymentService 实现 PaymentProviderInterface，后续接入微信/支付宝只需新增实现类并替换注入
+  - 幂等性：订单号唯一，重复回调不重复扣款/退款
+  - 超时处理：订单15分钟未支付自动关闭
 - **测试**（先写测试）：
   - 球员确认参赛测试（截止时间前可确认、截止后不可确认）
-  - 模拟支付测试（支付成功标记、支付失败处理）
+  - 模拟支付全流程测试（创建订单 → 支付成功回调 → 状态更新）
+  - 支付回调幂等性测试（重复回调不重复处理）
+  - 支付超时测试（15分钟后订单自动关闭）
   - 系统确认比赛测试（人数足够→confirmed、人数不够→failed）
   - 场地自动预订测试（确认后时段标记为已预订）
   - 群聊创建测试（confirmed 后生成 group_chat_id）
-- **关键路径**：`server/src/modules/matches/services/match-confirmation.service.ts`
+- **关键路径**：`server/src/modules/payments/interfaces/payment-provider.interface.ts`、`server/src/modules/matches/services/match-confirmation.service.ts`
 
 #### Module 2.8 — 赛后反馈与调节值服务（FeedbackService）
 - **目标**：实现反馈提交、能力匹配调节值计算
@@ -350,7 +400,7 @@
 
 ---
 
-### Phase 3：接口层（Controller + API 测试）
+### Phase 3：接口层（Controller + API 测试 + Swagger 文档）
 
 #### Module 3.1 — 认证接口（AuthController）
 - **目标**：实现注册、登录、刷新Token、发送短信验证码接口
@@ -443,23 +493,56 @@
   - 非管理员访问拒绝测试
 - **关键路径**：`server/src/modules/admin/controllers/admin.controller.ts`
 
+#### Module 3.8 — 核心业务流程端到端集成测试
+- **目标**：验证完整业务闭环：提交意向 → 触发匹配 → 确认参赛 → 完成比赛 → 提交反馈
+- **依赖顺序**：Phase 2 + Phase 3（Module 3.1~3.7）全部完成后
+- **交付物**：
+  - `server/test/e2e/full-match-lifecycle.e2e-spec.ts`
+  - `server/test/e2e/match-failure-lifecycle.e2e-spec.ts`（匹配失败流程）
+- **测试场景**：
+  - **成功流程**：球员A/B/C注册 → 录入属性 → 提交同场地同时段意向 → 触发匹配 → 生成比赛 → 三人确认参赛+支付 → 系统确认比赛 → 比赛完成 → 互相反馈 → 调节值更新
+  - **失败流程**：球员A提交意向 → 到期前3小时提醒 → 到期前半小时自动取消 → 状态变为 expired
+  - **人数不足流程**：匹配成功 → 仅2人确认 → 截止时间后比赛 failed → 通知重新发送意向
+  - **边界测试**：比赛开始前1小时截止确认、保证金15分钟支付超时
+- **关键路径**：`server/test/e2e/full-match-lifecycle.e2e-spec.ts`
+
+#### Module 3.9 — Swagger/OpenAPI API 文档
+- **目标**：为所有已实现的接口生成并维护 Swagger 文档，确保前后端契约一致
+- **依赖顺序**：Module 3.1~3.7 完成后
+- **交付物**：
+  - `server/src/main.ts`（更新：注册 Swagger 文档端点 `/api/docs`）
+  - 所有 Controller 补充 `@ApiTags`、`@ApiOperation`、`@ApiResponse` 等 Swagger 注解
+  - 所有 DTO 补充 `@ApiProperty` 注解
+  - `shared/types` 中的类型与 Swagger Schema 保持一致
+- **测试**：
+  - 访问 `/api/docs` 能正确加载 Swagger UI
+  - 所有接口参数、响应类型在文档中正确展示
+  - 前端可通过 Swagger JSON 生成 Mock 数据
+- **关键路径**：`server/src/main.ts`
+
 ---
 
 ### Phase 4：WebSocket 实时层
 
 #### Module 4.1 — WebSocket 网关与群聊实时推送
-- **目标**：实现 Socket.io 网关，支持群聊实时消息推送和比赛状态事件
+- **目标**：实现 Socket.io 网关，支持群聊实时消息推送和比赛状态事件。需规划水平扩展方案。
 - **依赖顺序**：Module 3.5 + Module 2.10 完成后
 - **交付物**：
   - `server/src/modules/messages/gateways/chat.gateway.ts`
   - `server/src/modules/matches/gateways/match-events.gateway.ts`
   - `server/src/common/gateways/base.gateway.ts`（基础网关抽象）
+  - `server/src/common/adapters/redis-io.adapter.ts`（Redis Adapter 适配器）
+- **水平扩展设计**：
+  - 使用 `@socket.io/redis-adapter` 实现多实例间的消息广播同步
+  - 当部署多个 NestJS 实例时，同一房间（match_id）的用户连接可能分布在不同实例上，Redis Adapter 确保消息能跨实例推送
+  - 连接状态存储在 Redis（用户在线状态、房间成员列表）
 - **测试**（先写测试）：
   - 客户端连接测试（JWT认证后连接成功、无token拒绝）
   - 群聊消息实时推送测试（发送后所有在线成员收到）
   - 比赛事件推送测试（match:invited、match:success、match:failed）
   - 房间隔离测试（不同比赛群聊消息不互通）
-- **关键路径**：`server/src/modules/messages/gateways/chat.gateway.ts`
+  - Redis Adapter 测试（模拟多实例，验证消息跨实例广播）
+- **关键路径**：`server/src/modules/messages/gateways/chat.gateway.ts`、`server/src/common/adapters/redis-io.adapter.ts`
 
 ---
 
@@ -564,29 +647,74 @@
 
 ### Phase 6：部署与运维配置
 
-#### Module 6.1 — Docker Compose 部署配置
-- **目标**：配置后端、数据库、Redis 的 Docker 化部署
+#### Module 6.1 — Docker Compose 生产部署配置
+- **目标**：配置后端、数据库、Redis 的 Docker 化生产部署
 - **依赖顺序**：所有后端模块完成后
 - **交付物**：
-  - `server/Dockerfile`
-  - `docker-compose.yml`（PostgreSQL + Redis + NestJS App）
+  - `server/Dockerfile`（多阶段构建，生产镜像最小化）
+  - `docker-compose.yml`（PostgreSQL + Redis + NestJS App + Nginx）
   - `.dockerignore`
+  - `nginx/nginx.conf`（反向代理配置）
 - **测试**：
   - `docker-compose build` 成功
   - `docker-compose up` 所有服务正常启动
   - API 健康检查通过
-- **关键路径**：`docker-compose.yml`
+  - Nginx 反向代理正常工作
+- **关键路径**：`docker-compose.yml`、`server/Dockerfile`
 
 #### Module 6.2 — CI/CD 配置
 - **目标**：配置 GitHub Actions 自动化测试和构建
 - **依赖顺序**：Module 6.1 完成后
 - **交付物**：
-  - `.github/workflows/backend-ci.yml`（后端测试 + 构建）
+  - `.github/workflows/backend-ci.yml`（后端测试 + 构建 + Migration 验证）
   - `.github/workflows/mobile-ci.yml`（移动端类型检查 + 构建）
   - `.github/workflows/admin-ci.yml`（管理后台类型检查 + 构建）
 - **测试**：
   - GitHub Actions 工作流能成功运行（本地用 `act` 验证或推送后观察）
 - **关键路径**：`.github/workflows/backend-ci.yml`
+
+---
+
+### Phase 7：可观测性（日志、监控、指标）
+
+#### Module 7.1 — 结构化日志与 APM 接入
+- **目标**：实现结构化日志记录，预留 APM 接入点
+- **依赖顺序**：Module 6.2 完成后（或可与 Phase 6 并行）
+- **交付物**：
+  - `server/src/common/logger/pino.logger.ts`（Pino 结构化日志实例）
+  - `server/src/common/interceptors/logging.interceptor.ts`（请求/响应日志拦截器）
+  - `server/src/common/middleware/request-id.middleware.ts`（请求追踪 ID）
+  - `server/src/config/apm.config.ts`（APM 配置预留，如 Elastic APM / Sentry）
+- **日志规范**：
+  - 所有日志输出 JSON 格式，包含 `timestamp`、`level`、`traceId`、`module`、`message`、`context`
+  - 关键业务节点必须记录日志：匹配成功/失败、支付回调、用户注册/登录、异常错误
+  - 敏感字段（手机号、身份证号）在日志中脱敏
+- **测试**：
+  - 日志输出格式测试（验证 JSON 结构正确）
+  - 请求追踪 ID 测试（同一请求的所有日志包含相同 traceId）
+  - 敏感字段脱敏测试
+  - 错误日志测试（异常时自动记录堆栈）
+- **关键路径**：`server/src/common/logger/pino.logger.ts`
+
+#### Module 7.2 — 业务指标埋点与上报
+- **目标**：实现关键业务指标的收集与上报
+- **依赖顺序**：Module 7.1 完成后
+- **交付物**：
+  - `server/src/common/metrics/metrics.service.ts`（指标收集服务）
+  - `server/src/common/metrics/metrics.controller.ts`（Prometheus `/metrics` 端点）
+  - `server/src/common/metrics/metrics.module.ts`
+- **关键业务指标**：
+  - `match_success_rate`：每日匹配成功率（成功匹配数 / 总意向数）
+  - `match_confirmation_rate`：用户确认参赛率（确认人数 / 邀请人数）
+  - `payment_success_rate`：模拟支付成功率
+  - `intention_submission_count`：每日意向提交数（按地区维度）
+  - `average_match_duration_seconds`：匹配算法平均执行耗时
+  - `active_users_daily`：日活跃用户
+- **测试**：
+  - 指标计数器测试（事件发生后指标值正确增加）
+  - `/metrics` 端点测试（Prometheus 格式输出正确）
+  - 指标标签测试（地区维度正确区分）
+- **关键路径**：`server/src/common/metrics/metrics.service.ts`
 
 ---
 
@@ -599,8 +727,9 @@ Phase 0（基础设施）
   0.3 移动端 Expo 初始化
   0.4 管理后台 React 初始化
   0.5 共享类型包初始化
+  0.6 开发环境 Docker Compose
 
-Phase 1（数据层）
+Phase 1（数据层 + Migrations）
   1.1 用户与认证实体
   1.2 场地实体
   1.3 赛制实体
@@ -614,13 +743,13 @@ Phase 2（核心逻辑）
   2.3 球员服务
   2.4 场地服务
   2.5 意向服务
-  2.6 匹配引擎服务
-  2.7 比赛确认服务
+  2.6 匹配引擎服务（+ 架构文档 + 负载测试）
+  2.7 比赛确认服务（+ 支付接口抽象）
   2.8 反馈与调节值服务
   2.9 通知服务
   2.10 群聊消息服务
 
-Phase 3（接口层）
+Phase 3（接口层 + Swagger + E2E）
   3.1 认证接口
   3.2 球员接口
   3.3 场地接口
@@ -628,9 +757,11 @@ Phase 3（接口层）
   3.5 比赛接口
   3.6 反馈接口
   3.7 管理后台接口
+  3.8 核心业务流程端到端集成测试
+  3.9 Swagger/OpenAPI 文档
 
 Phase 4（WebSocket）
-  4.1 WebSocket 网关与群聊推送
+  4.1 WebSocket 网关与群聊推送（+ Redis Adapter）
 
 Phase 5（前端）
   5.1 移动端登录注册
@@ -642,8 +773,12 @@ Phase 5（前端）
   5.7 管理后台页面
 
 Phase 6（部署）
-  6.1 Docker Compose
+  6.1 Docker Compose 生产部署
   6.2 CI/CD
+
+Phase 7（可观测性）
+  7.1 结构化日志与 APM
+  7.2 业务指标埋点与上报
 ```
 
 ---
@@ -653,5 +788,6 @@ Phase 6（部署）
 1. **测试通过**：`npm test` 或 `npm run test:cov` 覆盖率 >= 80%
 2. **编译通过**：`npm run build` 无 TypeScript 编译错误
 3. **Lint通过**：`npm run lint` 无 ESLint 错误（如有配置）
-4. **Git提交**：每个模块独立 commit，message 格式：`module(X.X): <模块名> - tests passing`
-5. **用户审查**：模块完成后暂停，等待用户审查确认再继续
+4. **Migration通过**：`npm run migration:run` 成功（数据层模块）
+5. **Git提交**：每个模块独立 commit，message 格式：`module(X.X): <模块名> - tests passing`
+6. **用户审查**：模块完成后暂停，等待用户审查确认再继续
