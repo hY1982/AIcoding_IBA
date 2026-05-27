@@ -48,6 +48,9 @@ export interface TokenPair {
 }
 
 // 通用时间戳接口
+// ⚠️ 设计决策：shared/ 中的 Timestamps 使用 string（ISO 8601 格式），
+// 因为该类型包服务于 API 契约层，前后端通过 JSON 传输时日期已序列化为字符串。
+// 服务端 TypeORM 实体应使用 Date 类型，可在实现接口时通过类型断言或单独定义实体类型处理。
 export interface Timestamps {
   createdAt: string;
   updatedAt: string;

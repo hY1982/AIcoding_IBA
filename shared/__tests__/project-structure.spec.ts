@@ -41,9 +41,11 @@ describe('shared package structure', () => {
       expect(pkg.types).toBe('./types/index.ts');
     });
 
-    test('must have exports field for subpath imports', () => {
+    test('must have exports field for subpath imports with explicit root entry', () => {
       const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
       expect(pkg.exports).toBeDefined();
+      expect(pkg.exports['.']).toBeDefined();
+      expect(pkg.exports['.'].types).toBe('./types/index.ts');
       expect(pkg.exports['./*']).toBe('./types/*.ts');
     });
 
@@ -67,10 +69,11 @@ describe('shared package structure', () => {
       expect(tsconfig.compilerOptions?.emitDeclarationOnly).toBe(true);
     });
 
-    test('must have baseUrl and paths for @shared/*', () => {
+    test('must have baseUrl and paths for @shared/* with rootDir aligned to include', () => {
       const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf-8'));
       expect(tsconfig.compilerOptions?.baseUrl).toBe('.');
       expect(tsconfig.compilerOptions?.paths?.['@shared/*']).toEqual(['types/*']);
+      expect(tsconfig.compilerOptions?.rootDir).toBe('./types');
     });
   });
 
@@ -88,10 +91,25 @@ describe('shared package structure', () => {
 
     test('auth.ts must export RegisterDto, LoginDto, AuthUser, AuthResponse', () => {
       const content = fs.readFileSync(path.join(sharedDir, 'types/auth.ts'), 'utf-8');
-      expect(content).toContain('export interface RegisterDto');
+      expect(content).toContain('export type RegisterDto');
       expect(content).toContain('export interface LoginDto');
       expect(content).toContain('export interface AuthUser');
       expect(content).toContain('export interface AuthResponse');
+    });
+
+    test('auth.ts must use Gender and BasketballPosition from player.ts (single source)', () => {
+      const content = fs.readFileSync(path.join(sharedDir, 'types/auth.ts'), 'utf-8');
+      expect(content).toContain("import { Gender, BasketballPosition } from './player'");
+      expect(content).not.toContain("gender?: 'male' | 'female'");
+      expect(content).not.toContain("positions?: ('PG' | 'SG' | 'SF' | 'PF' | 'C')[]");
+    });
+
+    test('auth.ts must use discriminated union for RegisterDto', () => {
+      const content = fs.readFileSync(path.join(sharedDir, 'types/auth.ts'), 'utf-8');
+      expect(content).toContain('export interface PlayerRegisterDto');
+      expect(content).toContain('export interface VenueManagerRegisterDto');
+      expect(content).toContain("userType: 'player'");
+      expect(content).toContain("userType: 'venue_manager'");
     });
 
     test('player.ts must export PlayerAttributes, PlayerProfile, PlayerAbility, ShootingRecord', () => {
@@ -102,6 +120,15 @@ describe('shared package structure', () => {
       expect(content).toContain('export interface ShootingRecord');
       expect(content).toContain('export const BASKETBALL_POSITIONS');
       expect(content).toContain('export const GENDERS');
+    });
+
+    test('player.ts must separate computed totalAbilityScore into PlayerAbilityInput', () => {
+      const content = fs.readFileSync(path.join(sharedDir, 'types/player.ts'), 'utf-8');
+      expect(content).toContain('export interface PlayerAbilityInput');
+      expect(content).toContain('baseAbilityScore: number');
+      expect(content).toContain('matchAdjustValue: number');
+      expect(content).toContain('totalAbilityScore: number');
+      expect(content).toContain('// 计算列');
     });
 
     test('venue.ts must export Venue, VenueDetail, VenueTimeSlot, VenueListItem', () => {

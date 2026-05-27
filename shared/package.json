@@ -5,6 +5,9 @@
   "description": "Shared types and constants for basketball match platform",
   "types": "./types/index.ts",
   "exports": {
+    ".": {
+      "types": "./types/index.ts"
+    },
     "./*": "./types/*.ts"
   },
   "scripts": {

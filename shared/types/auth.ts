@@ -1,27 +1,35 @@
 import { ApiResponse, TokenPair, UserType, UserStatus } from './common';
+import { Gender, BasketballPosition } from './player';
 
-// 注册请求
-export interface RegisterDto {
+// 注册请求 — 可辨识联合类型：根据 userType 区分必填字段
+interface BaseRegisterDto {
   phone: string;
   password: string;
   nickname: string;
-  userType: UserType;
-  // 球员专属（场地方可选）
-  age?: number;
-  basketballAge?: number;
-  gender?: 'male' | 'female';
-  height?: number;
+  regionCode?: string;
+}
+
+export interface PlayerRegisterDto extends BaseRegisterDto {
+  userType: 'player';
+  age: number;
+  basketballAge: number;
+  gender: Gender;
+  height: number;
   weight?: number;
   wingspan?: number;
   standingReach?: number;
   jumpingReach?: number;
-  positions?: ('PG' | 'SG' | 'SF' | 'PF' | 'C')[];
-  regionCode?: string;
-  // 场地方专属（球员可选）
-  companyName?: string;
-  contactName?: string;
-  contactPhone?: string;
+  positions?: BasketballPosition[];
 }
+
+export interface VenueManagerRegisterDto extends BaseRegisterDto {
+  userType: 'venue_manager';
+  companyName: string;
+  contactName: string;
+  contactPhone: string;
+}
+
+export type RegisterDto = PlayerRegisterDto | VenueManagerRegisterDto;
 
 // 登录请求
 export interface LoginDto {

@@ -39,11 +39,15 @@ export interface PlayerAttributes {
   regionCode?: string;
 }
 
-// 能力值（计算得出）
-export interface PlayerAbility {
+// 可写能力值（用于更新/录入）
+export interface PlayerAbilityInput {
   baseAbilityScore: number;
   matchAdjustValue: number;
-  totalAbilityScore: number;
+}
+
+// 完整能力值（含计算字段，仅用于查询响应）
+export interface PlayerAbility extends PlayerAbilityInput {
+  totalAbilityScore: number; // 计算列：baseAbilityScore + matchAdjustValue
 }
 
 // 球员完整资料

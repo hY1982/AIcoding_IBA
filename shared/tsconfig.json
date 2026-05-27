@@ -15,7 +15,7 @@
       "@shared/*": ["types/*"]
     },
     "outDir": "./dist",
-    "rootDir": "."
+    "rootDir": "./types"
   },
   "include": ["types/**/*"],
   "exclude": ["node_modules", "dist", "__tests__"]
