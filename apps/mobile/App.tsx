@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { RootStackParamList } from './src/navigation/types';
 
 function HomeScreen() {
   return (
@@ -12,7 +13,7 @@ function HomeScreen() {
   );
 }
 
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (

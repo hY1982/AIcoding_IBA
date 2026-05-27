@@ -5,10 +5,16 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    "skipLibCheck": true
   },
   "include": [
     "src/**/*",
     "App.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
   ]
 }

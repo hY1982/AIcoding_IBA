@@ -9,7 +9,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "jest",
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint \"src/**/*.{ts,tsx}\" --fix",
+    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint \"src/**/*.{ts,tsx}\" --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx}\""
   },
   "dependencies": {
@@ -30,10 +30,12 @@
     "@types/react": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.0.0",
     "eslint-plugin-prettier": "^5.0.0",
     "jest": "^30.0.0",
+    "jest-expo": "~52.0.0",
     "prettier": "^3.4.0",
     "ts-jest": "^29.0.0",
     "typescript": "^5.9.3"
