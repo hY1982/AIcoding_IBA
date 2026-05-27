@@ -3,12 +3,16 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { DataSource, DataSourceOptions } from 'typeorm';
 
 function getDatabaseConfig(): TypeOrmModuleOptions {
+  const password = process.env.DB_PASSWORD;
+  if (!password) {
+    throw new Error('DB_PASSWORD environment variable is required');
+  }
   return {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     username: process.env.DB_USERNAME || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
+    password,
     database: process.env.DB_NAME || 'basketball_platform',
     entities: [__dirname + '/../modules/**/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
@@ -26,8 +30,10 @@ export default registerAs(
   (): TypeOrmModuleOptions => getDatabaseConfig(),
 );
 
-export const connectionSource = new DataSource({
-  ...(getDatabaseConfig() as DataSourceOptions),
-  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-  migrationsTableName: 'migrations',
-});
+export function getConnectionSource(): DataSource {
+  return new DataSource({
+    ...(getDatabaseConfig() as DataSourceOptions),
+    migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+    migrationsTableName: 'migrations',
+  });
+}

@@ -13,11 +13,25 @@ describe('databaseConfig', () => {
     process.env = originalEnv;
   });
 
-  it('should return default values when env vars are not set', () => {
+  it('should throw when DB_PASSWORD is not set', () => {
     delete process.env.DB_HOST;
     delete process.env.DB_PORT;
     delete process.env.DB_USERNAME;
     delete process.env.DB_PASSWORD;
+    delete process.env.DB_NAME;
+    delete process.env.DB_SSL;
+    delete process.env.DB_POOL_SIZE;
+
+    expect(() => databaseConfig()).toThrow(
+      'DB_PASSWORD environment variable is required',
+    );
+  });
+
+  it('should return default values for optional fields when env vars are not set', () => {
+    process.env.DB_PASSWORD = 'test_password';
+    delete process.env.DB_HOST;
+    delete process.env.DB_PORT;
+    delete process.env.DB_USERNAME;
     delete process.env.DB_NAME;
     delete process.env.DB_SSL;
     delete process.env.DB_POOL_SIZE;
@@ -28,7 +42,7 @@ describe('databaseConfig', () => {
     expect(config.host).toBe('localhost');
     expect(config.port).toBe(5432);
     expect(config.username).toBe('postgres');
-    expect(config.password).toBe('password');
+    expect(config.password).toBe('test_password');
     expect(config.database).toBe('basketball_platform');
     expect(config.ssl).toBe(false);
     expect(config.entities).toBeDefined();

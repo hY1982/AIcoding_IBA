@@ -4,6 +4,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
 import { CommonModule } from './common/common.module';
+import { UsersModule } from './modules/users/users.module';
+import { PlayersModule } from './modules/players/players.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -50,6 +52,8 @@ import { AppService } from './app.service';
       inject: [ConfigService],
     }),
     CommonModule,
+    UsersModule,
+    PlayersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
