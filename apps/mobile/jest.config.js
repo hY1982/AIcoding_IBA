@@ -8,6 +8,7 @@ module.exports = {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
+    '^@shared/(.*)$': '<rootDir>/../../shared/types/$1',
   },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',

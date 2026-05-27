@@ -13,10 +13,7 @@ function getDatabaseConfig(): TypeOrmModuleOptions {
     entities: [__dirname + '/../modules/**/*.entity{.ts,.js}'],
     synchronize: process.env.NODE_ENV !== 'production',
     logging: process.env.NODE_ENV === 'development',
-    ssl:
-      process.env.DB_SSL === 'true'
-        ? { rejectUnauthorized: false }
-        : false,
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     extra: {
       poolSize: parseInt(process.env.DB_POOL_SIZE || '10', 10),
       connectionTimeoutMillis: 5000,
@@ -24,12 +21,13 @@ function getDatabaseConfig(): TypeOrmModuleOptions {
   };
 }
 
-export default registerAs('database', (): TypeOrmModuleOptions =>
-  getDatabaseConfig(),
+export default registerAs(
+  'database',
+  (): TypeOrmModuleOptions => getDatabaseConfig(),
 );
 
 export const connectionSource = new DataSource({
   ...(getDatabaseConfig() as DataSourceOptions),
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   migrationsTableName: 'migrations',
-} as DataSourceOptions);
+});

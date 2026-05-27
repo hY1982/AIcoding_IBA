@@ -1,7 +1,15 @@
 import { LoginDto, AuthResponse } from '@shared/auth';
 import { PlayerProfile, PlayerAbility } from '@shared/player';
 import { Venue, VenueDetail, VenueTimeSlot } from '@shared/venue';
-import { ApiResponse, PaginatedResponse, TokenPair, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, USER_STATUSES, USER_TYPES } from '@shared/common';
+import {
+  ApiResponse,
+  PaginatedResponse,
+  TokenPair,
+  DEFAULT_PAGE_SIZE,
+  MAX_PAGE_SIZE,
+  USER_STATUSES,
+  USER_TYPES,
+} from '@shared/common';
 
 // 类型验证：确保关键接口可解析（编译时检查）
 export type VerifyLoginDto = LoginDto;

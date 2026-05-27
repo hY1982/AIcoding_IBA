@@ -16,9 +16,37 @@ import { AppService } from './app.service';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        ...configService.get('database'),
-      }),
+      useFactory: (configService: ConfigService) => {
+        const dbConfig = configService.get<{
+          type: string;
+          host: string;
+          port: number;
+          username: string;
+          password: string;
+          database: string;
+          entities: string[];
+          synchronize: boolean;
+          logging: boolean;
+          ssl: boolean | { rejectUnauthorized: boolean };
+          extra: Record<string, unknown>;
+        }>('database');
+        if (!dbConfig) {
+          throw new Error('Database configuration is missing');
+        }
+        return {
+          type: dbConfig.type as 'postgres',
+          host: dbConfig.host,
+          port: dbConfig.port,
+          username: dbConfig.username,
+          password: dbConfig.password,
+          database: dbConfig.database,
+          entities: dbConfig.entities,
+          synchronize: dbConfig.synchronize,
+          logging: dbConfig.logging,
+          ssl: dbConfig.ssl,
+          extra: dbConfig.extra,
+        };
+      },
       inject: [ConfigService],
     }),
     CommonModule,

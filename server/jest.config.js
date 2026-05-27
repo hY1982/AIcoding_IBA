@@ -28,5 +28,6 @@ module.exports = {
     '^@config/(.*)$': '<rootDir>/config/$1',
     '^@common/(.*)$': '<rootDir>/common/$1',
     '^@modules/(.*)$': '<rootDir>/modules/$1',
+    '^@shared/(.*)$': '<rootDir>/../../shared/types/$1',
   },
 };

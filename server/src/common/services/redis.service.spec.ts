@@ -15,6 +15,16 @@ jest.mock('ioredis', () => {
   }));
 });
 
+interface MockRedisClient {
+  on: jest.Mock;
+  get: jest.Mock;
+  set: jest.Mock;
+  setex: jest.Mock;
+  del: jest.Mock;
+  ping: jest.Mock;
+  disconnect: jest.Mock;
+}
+
 describe('RedisService', () => {
   let service: RedisService;
   let configService: ConfigService;
@@ -47,8 +57,8 @@ describe('RedisService', () => {
     configService = module.get<ConfigService>(ConfigService);
   });
 
-  afterEach(async () => {
-    await service.onModuleDestroy();
+  afterEach(() => {
+    service.onModuleDestroy();
     jest.clearAllMocks();
   });
 
@@ -58,18 +68,21 @@ describe('RedisService', () => {
 
   it('should throw error when redis config is missing', () => {
     jest.spyOn(configService, 'get').mockReturnValueOnce(undefined);
-    expect(() => service.onModuleInit()).toThrow('Redis configuration is missing');
+    expect(() => service.onModuleInit()).toThrow(
+      'Redis configuration is missing',
+    );
   });
 
   it('should initialize redis client on module init', () => {
     service.onModuleInit();
-    expect(configService.get).toHaveBeenCalledWith('redis');
+    const getSpy = jest.spyOn(configService, 'get');
+    expect(getSpy).toHaveBeenCalledWith('redis');
   });
 
-  it('should disconnect redis client on module destroy', async () => {
+  it('should disconnect redis client on module destroy', () => {
     service.onModuleInit();
-    await service.onModuleDestroy();
-    const client = service.getClient();
+    service.onModuleDestroy();
+    const client = service.getClient() as unknown as MockRedisClient;
     expect(client.disconnect).toHaveBeenCalled();
   });
 
@@ -85,14 +98,14 @@ describe('RedisService', () => {
     it('should set value without ttl', async () => {
       service.onModuleInit();
       await service.set('test-key', 'test-value');
-      const client = service.getClient();
+      const client = service.getClient() as unknown as MockRedisClient;
       expect(client.set).toHaveBeenCalledWith('test-key', 'test-value');
     });
 
     it('should set value with ttl', async () => {
       service.onModuleInit();
       await service.set('test-key', 'test-value', 3600);
-      const client = service.getClient();
+      const client = service.getClient() as unknown as MockRedisClient;
       expect(client.setex).toHaveBeenCalledWith('test-key', 3600, 'test-value');
     });
   });
@@ -101,7 +114,7 @@ describe('RedisService', () => {
     it('should delete key from redis', async () => {
       service.onModuleInit();
       await service.del('test-key');
-      const client = service.getClient();
+      const client = service.getClient() as unknown as MockRedisClient;
       expect(client.del).toHaveBeenCalledWith('test-key');
     });
   });
