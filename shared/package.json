@@ -1,0 +1,16 @@
+{
+  "name": "@basketball-match/shared",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared types and constants for basketball match platform",
+  "types": "./types/index.ts",
+  "exports": {
+    "./*": "./types/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
