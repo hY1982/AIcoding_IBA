@@ -4,6 +4,11 @@ import { Venue } from './venue.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { User } from '@modules/users/entities/user.entity';
 import { VenueTimeSlot } from './venue-time-slot.entity';
+import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
+import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
+import { Intention } from '@modules/intentions/entities/intention.entity';
+import { Player } from '@modules/players/entities/player.entity';
+import { Format } from '@modules/formats/entities/format.entity';
 import { hashForQuery } from '@common/utils/encrypt.util';
 
 /**
@@ -50,7 +55,17 @@ describe('Venue Entity', () => {
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || '',
       database: 'basketball_platform_test',
-      entities: [User, VenueManager, Venue, VenueTimeSlot],
+      entities: [
+        User,
+        VenueManager,
+        Player,
+        Venue,
+        VenueTimeSlot,
+        Format,
+        Intention,
+        IntentionVenue,
+        IntentionFormat,
+      ],
       synchronize: true,
     });
     await dataSource.initialize();
@@ -189,7 +204,7 @@ describe('Venue Entity', () => {
       expect(regionIndex).toBeDefined();
     });
 
-    it('should document GIST spatial index strategy', async () => {
+    it('should document GIST spatial index strategy', () => {
       // GIST index on point(longitude, latitude) is created via raw SQL
       // in the migration file, not through TypeORM synchronize.
       // This test documents the expected index definition for migration verification.
@@ -210,7 +225,11 @@ describe('Venue Entity', () => {
         userRepo,
         vmRepo,
         '15000150000',
-        { companyName: 'Test Sports Co.', contactName: '李四', contactPhone: '15000150001' },
+        {
+          companyName: 'Test Sports Co.',
+          contactName: '李四',
+          contactPhone: '15000150001',
+        },
       );
 
       const venue = venueRepo.create({

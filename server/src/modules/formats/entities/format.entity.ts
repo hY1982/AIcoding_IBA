@@ -4,7 +4,9 @@ import {
   Column,
   CreateDateColumn,
   Check,
+  OneToMany,
 } from 'typeorm';
+import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
 import { FormatType, FORMAT_TYPES } from '@shared/format';
 
 /**
@@ -77,4 +79,7 @@ export class Format {
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
+
+  @OneToMany(() => IntentionFormat, (intf) => intf.format, { lazy: true })
+  intentionFormats!: Promise<IntentionFormat[]>;
 }

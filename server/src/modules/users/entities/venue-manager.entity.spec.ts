@@ -4,6 +4,11 @@ import { VenueManager } from './venue-manager.entity';
 import { User } from './user.entity';
 import { Venue } from '@modules/venues/entities/venue.entity';
 import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
+import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
+import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
+import { Intention } from '@modules/intentions/entities/intention.entity';
+import { Player } from '@modules/players/entities/player.entity';
+import { Format } from '@modules/formats/entities/format.entity';
 import { hashForQuery } from '@common/utils/encrypt.util';
 
 describe('VenueManager Entity', () => {
@@ -20,7 +25,17 @@ describe('VenueManager Entity', () => {
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || '',
       database: 'basketball_platform_test',
-      entities: [User, VenueManager, Venue, VenueTimeSlot],
+      entities: [
+        User,
+        VenueManager,
+        Player,
+        Venue,
+        VenueTimeSlot,
+        Format,
+        Intention,
+        IntentionVenue,
+        IntentionFormat,
+      ],
       synchronize: true,
     });
     await dataSource.initialize();

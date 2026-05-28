@@ -8,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { PlayersModule } from './modules/players/players.module';
 import { VenuesModule } from './modules/venues/venues.module';
 import { FormatsModule } from './modules/formats/formats.module';
+import { IntentionsModule } from './modules/intentions/intentions.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -58,6 +59,7 @@ import { AppService } from './app.service';
     PlayersModule,
     VenuesModule,
     FormatsModule,
+    IntentionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

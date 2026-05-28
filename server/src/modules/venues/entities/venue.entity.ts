@@ -11,6 +11,7 @@ import {
 } from 'typeorm';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { VenueTimeSlot } from './venue-time-slot.entity';
+import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
 import {
   FloorMaterial,
   FLOOR_MATERIALS,
@@ -196,4 +197,7 @@ export class Venue {
     cascade: true,
   })
   timeSlots!: VenueTimeSlot[];
+
+  @OneToMany(() => IntentionVenue, (iv) => iv.venue, { lazy: true })
+  intentionVenues!: Promise<IntentionVenue[]>;
 }

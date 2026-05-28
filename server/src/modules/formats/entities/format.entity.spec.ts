@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
-import { DataSource, Repository } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { Format } from './format.entity';
+import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
+import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
+import { Intention } from '@modules/intentions/entities/intention.entity';
+import { Player } from '@modules/players/entities/player.entity';
+import { User } from '@modules/users/entities/user.entity';
+import { Venue } from '@modules/venues/entities/venue.entity';
+import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
+import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 
 describe('Format Entity', () => {
   let dataSource: DataSource;
@@ -13,7 +21,17 @@ describe('Format Entity', () => {
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || '',
       database: 'basketball_platform_test',
-      entities: [Format],
+      entities: [
+        User,
+        VenueManager,
+        Player,
+        Venue,
+        VenueTimeSlot,
+        Format,
+        Intention,
+        IntentionVenue,
+        IntentionFormat,
+      ],
       synchronize: true,
     });
     await dataSource.initialize();
