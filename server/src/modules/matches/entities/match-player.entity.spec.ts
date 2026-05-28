@@ -85,11 +85,12 @@ describe('MatchPlayer Entity', () => {
       expect(columnNames).toContain('match_id');
       expect(columnNames).toContain('player_id');
       expect(columnNames).toContain('team_number');
-      expect(columnNames).toContain('is_confirmed');
       expect(columnNames).toContain('is_reserve');
       expect(columnNames).toContain('confirmed_at');
       expect(columnNames).toContain('deposit_paid');
       expect(columnNames).toContain('status');
+      // is_confirmed is a derived getter, not a DB column
+      expect(columnNames).not.toContain('is_confirmed');
     });
 
     it('should have match_id and player_id as non-nullable bigint', async () => {
@@ -116,18 +117,7 @@ describe('MatchPlayer Entity', () => {
       expect(columns[0].is_nullable).toBe('YES');
     });
 
-    it('should have is_confirmed as boolean default false', async () => {
-      const columns = await dataSource.query(
-        `SELECT column_name, data_type, is_nullable, column_default
-         FROM information_schema.columns
-         WHERE table_name = 'match_players' AND column_name = 'is_confirmed'`,
-      );
-      expect(columns.length).toBe(1);
-      expect(columns[0].data_type).toBe('boolean');
-      expect(columns[0].column_default).toContain('false');
-    });
-
-    it('should have is_reserve as boolean default false', async () => {
+    it('should have is_reserve as boolean not null default false', async () => {
       const columns = await dataSource.query(
         `SELECT column_name, data_type, is_nullable, column_default
          FROM information_schema.columns
@@ -135,10 +125,11 @@ describe('MatchPlayer Entity', () => {
       );
       expect(columns.length).toBe(1);
       expect(columns[0].data_type).toBe('boolean');
+      expect(columns[0].is_nullable).toBe('NO');
       expect(columns[0].column_default).toContain('false');
     });
 
-    it('should have deposit_paid as boolean default false', async () => {
+    it('should have deposit_paid as boolean not null default false', async () => {
       const columns = await dataSource.query(
         `SELECT column_name, data_type, is_nullable, column_default
          FROM information_schema.columns
@@ -146,6 +137,7 @@ describe('MatchPlayer Entity', () => {
       );
       expect(columns.length).toBe(1);
       expect(columns[0].data_type).toBe('boolean');
+      expect(columns[0].is_nullable).toBe('NO');
       expect(columns[0].column_default).toContain('false');
     });
 
@@ -205,7 +197,7 @@ describe('MatchPlayer Entity', () => {
 
       const mp = await createTestMatchPlayer(dataSource, match.id, player.id, {
         teamNumber: 1,
-        isConfirmed: true,
+        status: 'confirmed',
         depositPaid: true,
       });
 
@@ -213,10 +205,10 @@ describe('MatchPlayer Entity', () => {
       expect(mp.matchId).toBe(match.id);
       expect(mp.playerId).toBe(player.id);
       expect(mp.teamNumber).toBe(1);
-      expect(mp.isConfirmed).toBe(true);
+      expect(mp.isConfirmed).toBe(true); // derived from status
       expect(mp.isReserve).toBe(false);
       expect(mp.depositPaid).toBe(true);
-      expect(mp.status).toBe('invited');
+      expect(mp.status).toBe('confirmed');
     });
 
     it('should reject duplicate match_id + player_id', async () => {

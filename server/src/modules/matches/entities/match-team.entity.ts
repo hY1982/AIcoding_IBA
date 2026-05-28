@@ -13,6 +13,13 @@ import { Match } from './match.entity';
  *
  * Stores team assignments including team number, optional name,
  * and average ability score for balance tracking.
+ *
+ * avgAbility maintenance strategy:
+ * - Recalculated whenever a MatchPlayer's teamNumber is assigned or changed.
+ * - Can be implemented via database trigger for strong consistency,
+ *   or via TeamAssignmentService.updateTeamAbility() in application layer.
+ * - Formula: AVG(match_players.player.baseAbilityScore) for players
+ *   where match_players.teamNumber = this.teamNumber.
  */
 @Entity('match_teams')
 @Unique(['matchId', 'teamNumber'])

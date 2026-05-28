@@ -44,6 +44,42 @@ export const MATCH_STATUS_TRANSITIONS: Record<MatchStatus, MatchStatus[]> = {
 };
 
 /**
+ * 校验比赛状态流转是否合法。
+ * @param from 当前状态
+ * @param to 目标状态
+ * @returns 是否允许流转
+ */
+export function canTransitionMatchStatus(
+  from: MatchStatus,
+  to: MatchStatus,
+): boolean {
+  return MATCH_STATUS_TRANSITIONS[from].includes(to);
+}
+
+/**
+ * 球员参赛状态机 — 定义合法的状态流转路径。
+ */
+export const MATCH_PLAYER_STATUS_TRANSITIONS: Record<MatchPlayerStatus, MatchPlayerStatus[]> = {
+  invited: ['confirmed', 'declined'],
+  confirmed: ['no_show'],
+  declined: [],
+  no_show: [],
+};
+
+/**
+ * 校验球员参赛状态流转是否合法。
+ * @param from 当前状态
+ * @param to 目标状态
+ * @returns 是否允许流转
+ */
+export function canTransitionMatchPlayerStatus(
+  from: MatchPlayerStatus,
+  to: MatchPlayerStatus,
+): boolean {
+  return MATCH_PLAYER_STATUS_TRANSITIONS[from].includes(to);
+}
+
+/**
  * 比赛状态标签
  */
 export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {

@@ -33,7 +33,13 @@ export class CreateMatchTables1716740000006 implements MigrationInterface {
         "region_code" character varying(20),
         "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
-        CONSTRAINT "PK_matches" PRIMARY KEY ("id")
+        "version" integer NOT NULL DEFAULT 1,
+        CONSTRAINT "PK_matches" PRIMARY KEY ("id"),
+        CONSTRAINT "CHK_matches_positive_team_count" CHECK ("team_count" > 0),
+        CONSTRAINT "CHK_matches_positive_players_per_team" CHECK ("players_per_team" > 0),
+        CONSTRAINT "CHK_matches_total_players" CHECK ("total_players" = "team_count" * "players_per_team"),
+        CONSTRAINT "CHK_matches_confirmed_players" CHECK ("confirmed_players" <= "total_players"),
+        CONSTRAINT "CHK_matches_time_order" CHECK ("start_time" < "end_time")
       )`,
     );
 
@@ -44,10 +50,10 @@ export class CreateMatchTables1716740000006 implements MigrationInterface {
         "match_id" bigint NOT NULL,
         "player_id" bigint NOT NULL,
         "team_number" integer,
-        "is_confirmed" boolean DEFAULT false,
-        "is_reserve" boolean DEFAULT false,
+        "is_confirmed" boolean NOT NULL DEFAULT false,
+        "is_reserve" boolean NOT NULL DEFAULT false,
         "confirmed_at" TIMESTAMPTZ,
-        "deposit_paid" boolean DEFAULT false,
+        "deposit_paid" boolean NOT NULL DEFAULT false,
         "status" "public"."match_players_status_enum" NOT NULL DEFAULT 'invited',
         CONSTRAINT "PK_match_players" PRIMARY KEY ("id"),
         CONSTRAINT "UQ_match_players_match_player" UNIQUE ("match_id", "player_id")

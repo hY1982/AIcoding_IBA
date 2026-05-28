@@ -10,17 +10,14 @@ import { MatchTeam } from '@modules/matches/entities/match-team.entity';
 import { MatchMessage } from '@modules/messages/entities/match-message.entity';
 import { hashForQuery } from '@common/utils/encrypt.util';
 
-let userCounter = 0;
-let venueCounter = 0;
-
 function nextPhone(): string {
-  userCounter += 1;
-  return `1380000${String(userCounter).padStart(4, '0')}`;
+  const ts = Date.now();
+  const rand = Math.floor(Math.random() * 10000);
+  return `138${String(ts % 100000000).padStart(8, '0')}${String(rand).padStart(4, '0')}`.slice(0, 11);
 }
 
 function nextVenueName(): string {
-  venueCounter += 1;
-  return `Test Court ${venueCounter}`;
+  return `Test Court ${Date.now()}_${Math.floor(Math.random() * 1000)}`;
 }
 
 /**
@@ -170,7 +167,7 @@ export async function createTestMatch(
     teamCount: overrides.teamCount ?? 3,
     playersPerTeam: overrides.playersPerTeam ?? 3,
     totalPlayers: overrides.totalPlayers ?? 9,
-    depositAmount: overrides.depositAmount ?? 50.0,
+    depositAmount: overrides.depositAmount ?? '50.00',
     regionCode: overrides.regionCode ?? 'shenzhen_futian',
     ...overrides,
   });
@@ -195,7 +192,6 @@ export async function createTestMatchPlayer(
     matchId,
     playerId,
     teamNumber: overrides.teamNumber ?? null,
-    isConfirmed: overrides.isConfirmed ?? false,
     isReserve: overrides.isReserve ?? false,
     depositPaid: overrides.depositPaid ?? false,
     status: overrides.status ?? 'invited',

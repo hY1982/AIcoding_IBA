@@ -54,21 +54,21 @@ export class MatchPlayer {
   })
   teamNumber!: number | null;
 
-  @Column({
-    name: 'is_confirmed',
-    type: 'boolean',
-    nullable: true,
-    default: false,
-  })
-  isConfirmed!: boolean | null;
+  /**
+   * Derived from status — true when status is 'confirmed'.
+   * Not stored in DB; use status for persistence.
+   */
+  get isConfirmed(): boolean {
+    return this.status === 'confirmed';
+  }
 
   @Column({
     name: 'is_reserve',
     type: 'boolean',
-    nullable: true,
+    nullable: false,
     default: false,
   })
-  isReserve!: boolean | null;
+  isReserve!: boolean;
 
   @Column({
     name: 'confirmed_at',
@@ -80,10 +80,10 @@ export class MatchPlayer {
   @Column({
     name: 'deposit_paid',
     type: 'boolean',
-    nullable: true,
+    nullable: false,
     default: false,
   })
-  depositPaid!: boolean | null;
+  depositPaid!: boolean;
 
   @Column({
     type: 'enum',

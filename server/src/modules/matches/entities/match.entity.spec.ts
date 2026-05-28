@@ -277,7 +277,7 @@ describe('Match Entity', () => {
         teamCount: 3,
         playersPerTeam: 3,
         totalPlayers: 9,
-        depositAmount: 50.0,
+        depositAmount: '50.00',
         groupChatId: 'room_123',
         regionCode: 'shenzhen_futian',
       });
@@ -292,7 +292,7 @@ describe('Match Entity', () => {
       expect(match.playersPerTeam).toBe(3);
       expect(match.totalPlayers).toBe(9);
       expect(match.confirmedPlayers).toBe(0);
-      expect(match.depositAmount).toBe(50.0);
+      expect(match.depositAmount).toBe('50.00');
       expect(match.groupChatId).toBe('room_123');
       expect(match.regionCode).toBe('shenzhen_futian');
       expect(match.createdAt).toBeInstanceOf(Date);
@@ -321,7 +321,7 @@ describe('Match Entity', () => {
         teamCount: 3,
         playersPerTeam: 3,
         totalPlayers: 9,
-        depositAmount: 50,
+        depositAmount: '50.00',
         status: 'invalid_status' as 'pending_confirmation',
       });
 
