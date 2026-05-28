@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["src/*"],
+      "@config/*": ["src/config/*"],
+      "@common/*": ["src/common/*"],
+      "@modules/*": ["src/modules/*"],
+      "@shared/*": ["/shared/types/*"],
+      "@basketball-match/shared": ["/shared/types/index.ts"],
+      "@basketball-match/shared/*": ["/shared/types/*"]
+    }
+  }
+}

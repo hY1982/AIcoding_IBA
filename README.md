@@ -25,26 +25,81 @@ basketball-match-platform/
 
 > **技术栈锁定声明**：MVP 阶段技术栈不做变更。如需变更须经技术评审。
 
-## 快速启动
+## 快速启动（推荐：Docker 全容器化）
+
+> **重要提示**：自 Module 0.6 起，本项目采用全容器化开发环境。所有开发命令（启动、构建、测试、迁移）**必须通过**本项目提供的 Docker Compose 脚本或 `server/package.json` 中的 `dc:*` 命令执行。直接在宿主机运行 `npm start` 或 `npm test` 将因数据库/Redis 连接失败而无法工作。
 
 ### 环境要求
 
 - Node.js >= 20
-- PostgreSQL >= 15
-- Redis >= 7
+- Docker Desktop >= 4.x（或 Docker Engine + Compose Plugin）
 
-### 1. 后端启动
+### 1. 启动全部开发环境服务
 
 ```bash
-cd server
-cp .env.example .env
-# 编辑 .env 配置数据库和 Redis 连接信息
-npm install
-npm run start:dev
+# 启动 PostgreSQL + Redis + NestJS Backend
+docker-compose -f docker-compose.dev.yml up -d
+
+# 运行数据库迁移（在容器内执行）
+./scripts/dev-migrate.sh
+
+# 运行测试（在容器内执行）
+./scripts/dev-test.sh
 ```
 
 - API 地址：`http://localhost:3000/api/v1`
 - Swagger 文档：`http://localhost:3000/api/docs`
+
+### 容器内常用命令
+
+#### 方式一：Shell 脚本（推荐 Git Bash / WSL / MSYS2）
+
+| 脚本 | 功能 |
+|------|------|
+| `./scripts/init-db.sh` | 仅启动 PostgreSQL 和 Redis |
+| `./scripts/dev-migrate.sh` | 在 backend 容器内运行迁移 |
+| `./scripts/dev-test.sh` | 在 backend 容器内运行测试 |
+| `./scripts/dev-test-cov.sh` | 在 backend 容器内运行测试+覆盖率 |
+| `./scripts/dev-shell.sh` | 进入 backend 容器 shell |
+| `./scripts/migrate-local-data.sh` | 将旧本地数据库数据迁移到 Docker（可选） |
+
+#### 方式二：npm 脚本（跨平台，推荐 Windows PowerShell 用户）
+
+在 `server/` 目录下执行：
+
+```bash
+cd server
+npm run dc:up         # 启动 Docker Compose 服务
+npm run dc:migrate    # 运行数据库迁移
+npm run dc:test       # 运行单元测试
+npm run dc:test:cov   # 运行测试+覆盖率
+npm run dc:shell      # 进入 backend 容器 shell
+npm run dc:down       # 停止所有服务
+```
+
+#### Windows 用户特别说明
+
+`.sh` 脚本在 PowerShell/CMD 中无法直接执行。推荐以下方式：
+
+- **推荐**：使用 **Git Bash**、**WSL 终端** 或 **MSYS2** 执行 `./scripts/xxx.sh`
+- **推荐**：使用 `cd server && npm run dc:*` 命令，跨平台统一
+- **替代**：在 PowerShell 中直接运行等效的 `docker-compose` 命令，例如：
+  ```powershell
+  docker-compose -f docker-compose.dev.yml run --rm backend npm test
+  docker-compose -f docker-compose.dev.yml run --rm backend npm run migration:run
+  ```
+
+### 非容器化 Fallback（宿主机运行）
+
+如需在宿主机直接运行后端（需自行安装 PostgreSQL >= 15 和 Redis >= 7）：
+
+```bash
+cd server
+cp .env.example .env
+# 编辑 .env 配置 localhost 数据库和 Redis 连接信息
+npm install
+npm run start:dev
+```
 
 ### 2. 管理后台启动
 
@@ -78,7 +133,16 @@ npm run test         # 单元测试
 npm run test:e2e     # E2E 测试
 npm run test:cov     # 测试覆盖率
 npm run lint         # ESLint 检查
-npm run typeorm      # TypeORM CLI
+npm run typeorm          # TypeORM CLI
+npm run migration:run    # 运行迁移
+npm run migration:revert # 回滚迁移
+npm run migration:show   # 查看迁移状态
+npm run dc:up            # 启动 Docker Compose 服务
+npm run dc:migrate       # 容器内运行迁移
+npm run dc:test          # 容器内运行测试
+npm run dc:test:cov      # 容器内运行测试+覆盖率
+npm run dc:shell         # 进入 backend 容器 shell
+npm run dc:down          # 停止所有服务
 ```
 
 ### Admin

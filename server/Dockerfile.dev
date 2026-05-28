@@ -1,0 +1,12 @@
+FROM node:20-alpine
+WORKDIR /app
+
+# 1. Copy dependency definitions first — leverage layer caching
+COPY package*.json ./
+RUN npm ci
+
+# 2. Copy source code — changes here reuse the cached dependency layer above
+COPY . .
+
+EXPOSE 3000
+CMD ["npm", "run", "start:dev"]
