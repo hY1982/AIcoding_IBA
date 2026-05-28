@@ -9,6 +9,8 @@ import { PlayersModule } from './modules/players/players.module';
 import { VenuesModule } from './modules/venues/venues.module';
 import { FormatsModule } from './modules/formats/formats.module';
 import { IntentionsModule } from './modules/intentions/intentions.module';
+import { MatchesModule } from './modules/matches/matches.module';
+import { MessagesModule } from './modules/messages/messages.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -60,6 +62,8 @@ import { AppService } from './app.service';
     VenuesModule,
     FormatsModule,
     IntentionsModule,
+    MatchesModule,
+    MessagesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
