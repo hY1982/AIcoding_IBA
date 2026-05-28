@@ -6,6 +6,7 @@ import redisConfig from './config/redis.config';
 import { CommonModule } from './common/common.module';
 import { UsersModule } from './modules/users/users.module';
 import { PlayersModule } from './modules/players/players.module';
+import { VenuesModule } from './modules/venues/venues.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -54,6 +55,7 @@ import { AppService } from './app.service';
     CommonModule,
     UsersModule,
     PlayersModule,
+    VenuesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

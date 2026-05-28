@@ -244,7 +244,8 @@ CREATE TABLE venues (
     locker_room     BOOLEAN DEFAULT FALSE,
     video_record    BOOLEAN DEFAULT FALSE,
     -- 评分
-    rating_avg      DECIMAL(3,2) DEFAULT 5.00,
+    -- CHANGELOG: rating_avg 默认值由 5.00 改为 NULL，避免无评分时误导性展示五星
+    rating_avg      DECIMAL(3,2) DEFAULT NULL,
     rating_count    INT DEFAULT 0,
     status          VARCHAR(20) DEFAULT 'active',
     region_code     VARCHAR(20),                -- 地区编码，与分区键一致

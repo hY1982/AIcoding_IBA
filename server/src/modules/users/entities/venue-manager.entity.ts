@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { Venue } from '@modules/venues/entities/venue.entity';
 
 @Entity('venue_managers')
 export class VenueManager {
@@ -51,6 +53,9 @@ export class VenueManager {
     nullable: true,
   })
   contactPhone!: string | null;
+
+  @OneToMany(() => Venue, (venue) => venue.manager, { cascade: true })
+  venues!: Venue[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

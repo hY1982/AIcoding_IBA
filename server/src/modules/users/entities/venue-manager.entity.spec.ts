@@ -2,6 +2,8 @@
 import { DataSource } from 'typeorm';
 import { VenueManager } from './venue-manager.entity';
 import { User } from './user.entity';
+import { Venue } from '@modules/venues/entities/venue.entity';
+import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
 import { hashForQuery } from '@common/utils/encrypt.util';
 
 describe('VenueManager Entity', () => {
@@ -18,13 +20,15 @@ describe('VenueManager Entity', () => {
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || '',
       database: 'basketball_platform_test',
-      entities: [User, VenueManager],
+      entities: [User, VenueManager, Venue, VenueTimeSlot],
       synchronize: true,
     });
     await dataSource.initialize();
   });
 
   afterEach(async () => {
+    await dataSource.query('TRUNCATE TABLE venue_time_slots CASCADE');
+    await dataSource.query('TRUNCATE TABLE venues CASCADE');
     await dataSource.query('TRUNCATE TABLE venue_managers CASCADE');
     await dataSource.query('TRUNCATE TABLE users CASCADE');
   });
