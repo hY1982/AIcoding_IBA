@@ -7,6 +7,7 @@ import { CommonModule } from './common/common.module';
 import { UsersModule } from './modules/users/users.module';
 import { PlayersModule } from './modules/players/players.module';
 import { VenuesModule } from './modules/venues/venues.module';
+import { FormatsModule } from './modules/formats/formats.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -56,6 +57,7 @@ import { AppService } from './app.service';
     UsersModule,
     PlayersModule,
     VenuesModule,
+    FormatsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

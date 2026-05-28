@@ -4,15 +4,15 @@ export class CreateVenueTables1716740000002 implements MigrationInterface {
   name = 'CreateVenueTables1716740000002';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. Create ENUM types
+    // 1. Create ENUM types (idempotent: skip if already exists from synchronize)
     await queryRunner.query(
-      `CREATE TYPE "public"."venues_floor_material_enum" AS ENUM('wood','pu','silicone','cement','other')`,
+      `DO $$ BEGIN CREATE TYPE "public"."venues_floor_material_enum" AS ENUM('wood','pu','silicone','cement','other'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
     await queryRunner.query(
-      `CREATE TYPE "public"."venues_court_type_enum" AS ENUM('indoor','outdoor','semi')`,
+      `DO $$ BEGIN CREATE TYPE "public"."venues_court_type_enum" AS ENUM('indoor','outdoor','semi'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
     await queryRunner.query(
-      `CREATE TYPE "public"."venues_status_enum" AS ENUM('active','inactive')`,
+      `DO $$ BEGIN CREATE TYPE "public"."venues_status_enum" AS ENUM('active','inactive'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
 
     // 2. Create venues table

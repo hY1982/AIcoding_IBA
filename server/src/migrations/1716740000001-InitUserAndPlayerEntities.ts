@@ -1,14 +1,14 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class InitUserAndPlayerEntities1779874031321 implements MigrationInterface {
-  name = 'InitUserAndPlayerEntities1779874031321';
+export class InitUserAndPlayerEntities1716740000001 implements MigrationInterface {
+  name = 'InitUserAndPlayerEntities1716740000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `CREATE TYPE "public"."users_user_type_enum" AS ENUM('player', 'venue_manager')`,
+      `DO $$ BEGIN CREATE TYPE "public"."users_user_type_enum" AS ENUM('player', 'venue_manager'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
     await queryRunner.query(
-      `CREATE TYPE "public"."users_status_enum" AS ENUM('active', 'inactive', 'banned')`,
+      `DO $$ BEGIN CREATE TYPE "public"."users_status_enum" AS ENUM('active', 'inactive', 'banned'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
     await queryRunner.query(
       `CREATE TABLE "users" ("id" BIGSERIAL NOT NULL, "phone" character varying(255) NOT NULL, "phone_hash" character varying(64) NOT NULL, "password_hash" character varying(255) NOT NULL, "nickname" character varying(50) NOT NULL, "real_name" character varying(255), "id_card" character varying(255), "avatar_url" character varying(500), "user_type" "public"."users_user_type_enum" NOT NULL, "status" "public"."users_status_enum" NOT NULL DEFAULT 'active', "region_code" character varying(20), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_0e438a8460e5816e07aeb6b334f" UNIQUE ("phone_hash"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id")); COMMENT ON COLUMN "users"."phone_hash" IS 'HMAC-SHA256 hash of phone for indexed lookup'`,
@@ -29,10 +29,10 @@ export class InitUserAndPlayerEntities1779874031321 implements MigrationInterfac
       `CREATE TABLE "venue_managers" ("id" BIGSERIAL NOT NULL, "user_id" bigint NOT NULL, "company_name" character varying(100), "contact_name" character varying(50), "contact_phone" character varying(20), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "UQ_271744c7712b4f39e5be5d16578" UNIQUE ("user_id"), CONSTRAINT "REL_271744c7712b4f39e5be5d1657" UNIQUE ("user_id"), CONSTRAINT "PK_3818f1089141bafc49da2280061" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TYPE "public"."players_gender_enum" AS ENUM('male', 'female')`,
+      `DO $$ BEGIN CREATE TYPE "public"."players_gender_enum" AS ENUM('male', 'female'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
     await queryRunner.query(
-      `CREATE TYPE "public"."players_team_role_enum" AS ENUM('starter', 'bench')`,
+      `DO $$ BEGIN CREATE TYPE "public"."players_team_role_enum" AS ENUM('starter', 'bench'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
     await queryRunner.query(
       `INSERT INTO "typeorm_metadata"("database", "schema", "table", "type", "name", "value") VALUES ($1, $2, $3, $4, $5, $6)`,
@@ -55,7 +55,7 @@ export class InitUserAndPlayerEntities1779874031321 implements MigrationInterfac
       `CREATE INDEX "IDX_50344bfd219fd4f7e0ae2f0090" ON "players" ("total_ability_score") `,
     );
     await queryRunner.query(
-      `CREATE TYPE "public"."player_positions_position_enum" AS ENUM('PG', 'SG', 'SF', 'PF', 'C')`,
+      `DO $$ BEGIN CREATE TYPE "public"."player_positions_position_enum" AS ENUM('PG', 'SG', 'SF', 'PF', 'C'); EXCEPTION WHEN duplicate_object THEN null; END $$;`,
     );
     await queryRunner.query(
       `CREATE TABLE "player_positions" ("id" BIGSERIAL NOT NULL, "player_id" bigint NOT NULL, "position" "public"."player_positions_position_enum" NOT NULL, "priority" integer NOT NULL DEFAULT '1', CONSTRAINT "PK_5b358a4a43b26bbb727bc235d00" PRIMARY KEY ("id"))`,

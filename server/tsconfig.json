@@ -27,6 +27,6 @@
       "@basketball-match/shared/*": ["../shared/types/*"]
     }
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["src/**/*", "test/**/*", "../shared/types/**/*"],
   "exclude": ["node_modules", "dist", "coverage"]
 }
