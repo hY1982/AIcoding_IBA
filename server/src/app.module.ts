@@ -11,6 +11,9 @@ import { FormatsModule } from './modules/formats/formats.module';
 import { IntentionsModule } from './modules/intentions/intentions.module';
 import { MatchesModule } from './modules/matches/matches.module';
 import { MessagesModule } from './modules/messages/messages.module';
+import { FeedbacksModule } from './modules/feedbacks/feedbacks.module';
+import { SystemModule } from './modules/system/system.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -64,6 +67,9 @@ import { AppService } from './app.service';
     IntentionsModule,
     MatchesModule,
     MessagesModule,
+    FeedbacksModule,
+    SystemModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
