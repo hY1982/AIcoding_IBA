@@ -83,10 +83,10 @@ describe('AbilityCalculationService', () => {
 
   describe('calculateBaseAbility - 权重求和', () => {
     it('should return 100 when all metrics exceed dataset maximum', () => {
-      // 超出最大值返回 100（使用26岁巅峰年龄以获得满分）
+      // 超出最大值返回 100（使用26岁巅峰年龄和8年球龄以获得满分）
       const player = {
         age: 26,
-        basketballAge: 20,
+        basketballAge: 8,
         gender: 'male' as Gender,
         height: 250,
         weight: 120,
@@ -97,7 +97,8 @@ describe('AbilityCalculationService', () => {
       };
 
       const score = service.calculateBaseAbility(player);
-      expect(score).toBe(100);
+      // 8年球龄=95%，26岁年龄=100%，其他=100%，加权后应为99.25
+      expect(score).toBeGreaterThanOrEqual(99);
     });
 
     it('should return 0 when all metrics are below dataset minimum', () => {
@@ -310,8 +311,8 @@ describe('AbilityCalculationService', () => {
       };
 
       const score = service.calculateBaseAbility(player);
-      // 所有指标超出最大值 → 各指标百分位为 100（年龄边界返回40岁的35%）
-      expect(score).toBeGreaterThanOrEqual(95);
+      // 所有指标超出最大值 → 各指标百分位为 100（年龄边界返回40岁的35%，球龄边界返回15年的90%）
+      expect(score).toBeGreaterThanOrEqual(90);
     });
 
     it('should handle negative input gracefully', () => {
@@ -331,6 +332,73 @@ describe('AbilityCalculationService', () => {
       expect(score).toBeDefined();
       expect(score).toBeGreaterThanOrEqual(0);
       expect(score).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('getBasketballAgePercentile - S型饱和曲线', () => {
+    const maleBasketballAgeData = [
+      { value: 0, percentile: 5 },
+      { value: 2, percentile: 45 },
+      { value: 5, percentile: 85 },
+      { value: 8, percentile: 95 },
+      { value: 15, percentile: 90 },
+    ];
+
+    it('should return low percentile for beginner (0 years)', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      expect(getBasketballAgePercentile(0, maleBasketballAgeData)).toBe(5);
+    });
+
+    it('should return peak at 8 years', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      expect(getBasketballAgePercentile(8, maleBasketballAgeData)).toBe(95);
+    });
+
+    it('should return lower percentile for very senior (15 years)', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      expect(getBasketballAgePercentile(15, maleBasketballAgeData)).toBe(90);
+    });
+
+    it('should return higher percentile for 5 years than 2 years', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      const p5 = getBasketballAgePercentile(5, maleBasketballAgeData);
+      const p2 = getBasketballAgePercentile(2, maleBasketballAgeData);
+      expect(p5).toBeGreaterThan(p2);
+    });
+
+    it('should return lower percentile for 15 years than 8 years (diminishing returns)', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      const p15 = getBasketballAgePercentile(15, maleBasketballAgeData);
+      const p8 = getBasketballAgePercentile(8, maleBasketballAgeData);
+      expect(p15).toBeLessThan(p8);
+    });
+
+    it('should interpolate between 0 and 2 years', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      // 1 is halfway between 0(5%) and 2(45%)
+      expect(getBasketballAgePercentile(1, maleBasketballAgeData)).toBe(25);
+    });
+
+    it('should interpolate between 5 and 8 years', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      // 6.5 is halfway between 5(85%) and 8(95%)
+      expect(getBasketballAgePercentile(6.5, maleBasketballAgeData)).toBe(90);
+    });
+
+    it('should interpolate between 8 and 15 years (declining)', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      // 11.5 is halfway between 8(95%) and 15(90%)
+      expect(getBasketballAgePercentile(11.5, maleBasketballAgeData)).toBe(92.5);
+    });
+
+    it('should return boundary percentile for negative years', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      expect(getBasketballAgePercentile(-5, maleBasketballAgeData)).toBe(5);
+    });
+
+    it('should return boundary percentile for years above 15', () => {
+      const getBasketballAgePercentile = (service as any).getBasketballAgePercentile.bind(service);
+      expect(getBasketballAgePercentile(25, maleBasketballAgeData)).toBe(90);
     });
   });
 

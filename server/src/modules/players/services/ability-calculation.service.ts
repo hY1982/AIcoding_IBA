@@ -84,7 +84,7 @@ export class AbilityCalculationService {
         player.jumpingReach ?? this.getMedianValue(dataset.jumpingReach),
         dataset.jumpingReach,
       ),
-      basketballAge: this.getPercentile(
+      basketballAge: this.getBasketballAgePercentile(
         player.basketballAge,
         dataset.basketballAge,
       ),
@@ -199,6 +199,57 @@ export class AbilityCalculationService {
     }
 
     const ratio = (age - lower.value) / (upper.value - lower.value);
+    return lower.percentile + ratio * (upper.percentile - lower.percentile);
+  }
+
+  /**
+   * 球龄百分位查询（S型饱和曲线）
+   *
+   * 篮球技能学习呈S型曲线：前2年快速入门，2-5年稳步成长，
+   * 5-8年接近饱和，8年后边际收益递减。
+   * 不依赖数据点的单调性，直接查找距离目标值最近的两个点做插值。
+   */
+  private getBasketballAgePercentile(
+    basketballAge: number,
+    dataPoints: PercentileDataPoint[],
+  ): number {
+    if (dataPoints.length === 0) {
+      return 50;
+    }
+
+    const minYears = dataPoints[0].value;
+    const maxYears = dataPoints[dataPoints.length - 1].value;
+
+    // 边界：小于最小值返回最小值的百分位
+    if (basketballAge <= minYears) {
+      return dataPoints[0].percentile;
+    }
+
+    // 边界：大于最大值返回最大值的百分位
+    if (basketballAge >= maxYears) {
+      return dataPoints[dataPoints.length - 1].percentile;
+    }
+
+    // 查找距离目标球龄最近的两个数据点
+    let lower = dataPoints[0];
+    let upper = dataPoints[dataPoints.length - 1];
+
+    for (let i = 0; i < dataPoints.length - 1; i++) {
+      const current = dataPoints[i];
+      const next = dataPoints[i + 1];
+      if (basketballAge >= current.value && basketballAge <= next.value) {
+        lower = current;
+        upper = next;
+        break;
+      }
+    }
+
+    if (upper.value === lower.value) {
+      return lower.percentile;
+    }
+
+    const ratio =
+      (basketballAge - lower.value) / (upper.value - lower.value);
     return lower.percentile + ratio * (upper.percentile - lower.percentile);
   }
 

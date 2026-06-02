@@ -81,10 +81,10 @@ export const MALE_PERCENTILE_DATASET: PercentileDataset = {
   ],
   basketballAge: [
     { value: 0, percentile: 5 },
-    { value: 1, percentile: 25 },
-    { value: 3, percentile: 50 },
-    { value: 6, percentile: 75 },
-    { value: 12, percentile: 95 },
+    { value: 2, percentile: 45 },
+    { value: 5, percentile: 85 },
+    { value: 8, percentile: 95 },
+    { value: 15, percentile: 90 },
   ],
   age: [
     { value: 16, percentile: 30 },
@@ -134,10 +134,10 @@ export const FEMALE_PERCENTILE_DATASET: PercentileDataset = {
   ],
   basketballAge: [
     { value: 0, percentile: 5 },
-    { value: 1, percentile: 25 },
-    { value: 2, percentile: 50 },
-    { value: 4, percentile: 75 },
-    { value: 8, percentile: 95 },
+    { value: 2, percentile: 45 },
+    { value: 4, percentile: 85 },
+    { value: 7, percentile: 95 },
+    { value: 12, percentile: 90 },
   ],
   age: [
     { value: 16, percentile: 30 },
