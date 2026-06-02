@@ -83,9 +83,9 @@ describe('AbilityCalculationService', () => {
 
   describe('calculateBaseAbility - 权重求和', () => {
     it('should return 100 when all metrics exceed dataset maximum', () => {
-      // 超出最大值返回 100
+      // 超出最大值返回 100（使用26岁巅峰年龄以获得满分）
       const player = {
-        age: 50,
+        age: 26,
         basketballAge: 20,
         gender: 'male' as Gender,
         height: 250,
@@ -101,7 +101,7 @@ describe('AbilityCalculationService', () => {
     });
 
     it('should return 0 when all metrics are below dataset minimum', () => {
-      // 低于最小值返回 0
+      // 低于最小值返回 0（年龄边界返回16岁的30%）
       const player = {
         age: 10,
         basketballAge: -5,
@@ -115,7 +115,7 @@ describe('AbilityCalculationService', () => {
       };
 
       const score = service.calculateBaseAbility(player);
-      expect(score).toBe(0);
+      expect(score).toBeLessThanOrEqual(5);
     });
 
     it('should return approximately 50 for all metrics at median', () => {
@@ -132,7 +132,9 @@ describe('AbilityCalculationService', () => {
       };
 
       const score = service.calculateBaseAbility(player);
-      expect(score).toBeCloseTo(50, 0);
+      // 26岁是年龄巅峰(100%)，其他属性为中位数(~50%)，加权后略高于50
+      expect(score).toBeGreaterThanOrEqual(48);
+      expect(score).toBeLessThanOrEqual(58);
     });
   });
 
@@ -308,8 +310,8 @@ describe('AbilityCalculationService', () => {
       };
 
       const score = service.calculateBaseAbility(player);
-      // 所有指标超出最大值 → 各指标百分位为 100
-      expect(score).toBe(100);
+      // 所有指标超出最大值 → 各指标百分位为 100（年龄边界返回40岁的35%）
+      expect(score).toBeGreaterThanOrEqual(95);
     });
 
     it('should handle negative input gracefully', () => {
@@ -329,6 +331,68 @@ describe('AbilityCalculationService', () => {
       expect(score).toBeDefined();
       expect(score).toBeGreaterThanOrEqual(0);
       expect(score).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe('getAgePercentile - 倒U型曲线', () => {
+    const maleAgeData = [
+      { value: 16, percentile: 30 },
+      { value: 22, percentile: 80 },
+      { value: 26, percentile: 100 },
+      { value: 32, percentile: 70 },
+      { value: 40, percentile: 35 },
+    ];
+
+    it('should return peak at 26 years old', () => {
+      // 使用反射调用私有方法
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      expect(getAgePercentile(26, maleAgeData)).toBe(100);
+    });
+
+    it('should return lower percentile for teenager (16)', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      expect(getAgePercentile(16, maleAgeData)).toBe(30);
+    });
+
+    it('should return lower percentile for senior (40)', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      expect(getAgePercentile(40, maleAgeData)).toBe(35);
+    });
+
+    it('should return higher percentile for 22 than 16', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      const p22 = getAgePercentile(22, maleAgeData);
+      const p16 = getAgePercentile(16, maleAgeData);
+      expect(p22).toBeGreaterThan(p16);
+    });
+
+    it('should return higher percentile for 26 than 32', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      const p26 = getAgePercentile(26, maleAgeData);
+      const p32 = getAgePercentile(32, maleAgeData);
+      expect(p26).toBeGreaterThan(p32);
+    });
+
+    it('should interpolate between 22 and 26', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      // 24 is halfway between 22(80%) and 26(100%)
+      expect(getAgePercentile(24, maleAgeData)).toBe(90);
+    });
+
+    it('should interpolate between 26 and 32', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      // 29 is 3/6 between 26(100%) and 32(70%)
+      expect(getAgePercentile(29, maleAgeData)).toBe(85);
+    });
+
+    it('should return boundary percentile for age below 16', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      expect(getAgePercentile(10, maleAgeData)).toBe(30);
+    });
+
+    it('should return boundary percentile for age above 40', () => {
+      const getAgePercentile = (service as any).getAgePercentile.bind(service);
+      expect(getAgePercentile(50, maleAgeData)).toBe(35);
     });
   });
 

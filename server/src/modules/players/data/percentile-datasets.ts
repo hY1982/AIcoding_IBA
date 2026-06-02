@@ -87,11 +87,11 @@ export const MALE_PERCENTILE_DATASET: PercentileDataset = {
     { value: 12, percentile: 95 },
   ],
   age: [
-    { value: 16, percentile: 5 },
-    { value: 20, percentile: 25 },
-    { value: 26, percentile: 50 },
-    { value: 32, percentile: 75 },
-    { value: 40, percentile: 95 },
+    { value: 16, percentile: 30 },
+    { value: 22, percentile: 80 },
+    { value: 26, percentile: 100 },
+    { value: 32, percentile: 70 },
+    { value: 40, percentile: 35 },
   ],
 };
 
@@ -140,11 +140,11 @@ export const FEMALE_PERCENTILE_DATASET: PercentileDataset = {
     { value: 8, percentile: 95 },
   ],
   age: [
-    { value: 16, percentile: 5 },
-    { value: 20, percentile: 25 },
-    { value: 25, percentile: 50 },
-    { value: 30, percentile: 75 },
-    { value: 38, percentile: 95 },
+    { value: 16, percentile: 30 },
+    { value: 21, percentile: 80 },
+    { value: 25, percentile: 100 },
+    { value: 30, percentile: 70 },
+    { value: 38, percentile: 35 },
   ],
 };
 

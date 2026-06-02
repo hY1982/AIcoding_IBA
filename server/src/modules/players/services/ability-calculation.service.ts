@@ -88,7 +88,7 @@ export class AbilityCalculationService {
         player.basketballAge,
         dataset.basketballAge,
       ),
-      age: this.getPercentile(player.age, dataset.age),
+      age: this.getAgePercentile(player.age, dataset.age),
     };
 
     let total = 0;
@@ -154,6 +154,52 @@ export class AbilityCalculationService {
     }
 
     return 50;
+  }
+
+  /**
+   * 年龄百分位查询（倒U型曲线）
+   *
+   * 篮球运动员表现呈倒U型：青少年期上升，26-28岁巅峰，之后下降。
+   * 不依赖数据点的单调性，直接查找距离目标值最近的两个点做插值。
+   */
+  private getAgePercentile(age: number, dataPoints: PercentileDataPoint[]): number {
+    if (dataPoints.length === 0) {
+      return 50;
+    }
+
+    const minAge = dataPoints[0].value;
+    const maxAge = dataPoints[dataPoints.length - 1].value;
+
+    // 边界：小于最小年龄返回最小年龄的百分位
+    if (age <= minAge) {
+      return dataPoints[0].percentile;
+    }
+
+    // 边界：大于最大年龄返回最大年龄的百分位
+    if (age >= maxAge) {
+      return dataPoints[dataPoints.length - 1].percentile;
+    }
+
+    // 查找距离目标年龄最近的两个数据点
+    let lower = dataPoints[0];
+    let upper = dataPoints[dataPoints.length - 1];
+
+    for (let i = 0; i < dataPoints.length - 1; i++) {
+      const current = dataPoints[i];
+      const next = dataPoints[i + 1];
+      if (age >= current.value && age <= next.value) {
+        lower = current;
+        upper = next;
+        break;
+      }
+    }
+
+    if (upper.value === lower.value) {
+      return lower.percentile;
+    }
+
+    const ratio = (age - lower.value) / (upper.value - lower.value);
+    return lower.percentile + ratio * (upper.percentile - lower.percentile);
   }
 
   /**

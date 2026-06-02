@@ -5,6 +5,7 @@ import AdminLayout from '@/layouts/AdminLayout';
 const DashboardPage = () => <div>Admin Dashboard</div>;
 const TestDashboardPage = React.lazy(() => import('@/pages/TestDashboardPage'));
 const AcceptanceDemoPage = React.lazy(() => import('@/pages/AcceptanceDemoPage'));
+const AbilityVerifierPage = React.lazy(() => import('@/pages/AbilityVerifierPage'));
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,14 @@ export const router = createBrowserRouter([
         element: (
           <React.Suspense fallback={<div>加载中...</div>}>
             <AcceptanceDemoPage />
+          </React.Suspense>
+        ),
+      },
+      {
+        path: 'ability-verifier',
+        element: (
+          <React.Suspense fallback={<div>加载中...</div>}>
+            <AbilityVerifierPage />
           </React.Suspense>
         ),
       },

@@ -5,6 +5,7 @@ import {
   DashboardOutlined,
   ExperimentOutlined,
   CheckCircleOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 
 const { Sider, Header, Content } = Layout;
@@ -28,6 +29,11 @@ const AdminLayout: React.FC = () => {
       key: '/acceptance-demo',
       icon: <CheckCircleOutlined />,
       label: '验收演示',
+    },
+    {
+      key: '/ability-verifier',
+      icon: <BarChartOutlined />,
+      label: '能力值验证',
     },
   ];
 
