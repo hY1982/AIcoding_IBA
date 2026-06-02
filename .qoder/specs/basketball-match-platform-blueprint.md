@@ -54,6 +54,7 @@
 | **球队经验** | 高中校队、大学校队、村BA、CUBA、CBA、NBA，主力/替补 |
 | **投篮命中率** | 罚球线、三分线，录入格式（投T中Z），滚动累计最近半年数据 |
 | **能力等级** | 突破能力、传球能力、防守能力（0-4级），含各级说明 |
+| **位置权重系统** | 不同位置(PG/SG/SF/PF/C)对身体属性采用差异化权重；多位置球员按各位置权重分别计算能力值；匹配时基于具体位置进行匹配 |
 | **匹配优化** | 考虑年龄、身高、体重、球品等具体属性参与匹配计算 |
 | **预备机制** | 每队多匹配1人作为预备，先到先得确认 |
 
@@ -527,18 +528,17 @@ INSERT INTO system_params (param_key, param_value, description) VALUES
     "intention_count_factor": 0.5
 }', '匹配能力值差距动态阈值参数');
 
--- 初始数据：基础能力值计算权重
+-- 初始数据：基础能力值计算权重（MVP：不含位置适配，P1引入位置权重系统）
 INSERT INTO system_params (param_key, param_value, description) VALUES
 ('base_ability_weights', '{
-    "height": 0.15,
-    "weight": 0.05,
-    "wingspan": 0.10,
-    "standing_reach": 0.10,
-    "jumping_reach": 0.15,
-    "basketball_age": 0.20,
-    "age": 0.05,
-    "position_fit": 0.20
-}', '基础能力值计算权重');
+    "height": 0.20,
+    "weight": 0.10,
+    "wingspan": 0.15,
+    "standing_reach": 0.15,
+    "jumping_reach": 0.20,
+    "basketball_age": 0.15,
+    "age": 0.05
+}', '基础能力值计算权重（MVP版本，不含位置适配）');
 ```
 
 #### `notifications` — 通知记录
@@ -733,17 +733,16 @@ function getPercentile(value: number, gender: 'male' | 'female', metric: string)
   // 返回 0-100 的百分位得分
 }
 
-// 基础能力值计算
+// 基础能力值计算（MVP版本：不含位置适配，P1引入位置权重系统）
 function calculateBaseAbility(player: PlayerAttributes): number {
   const weights = {
-    height: 0.15,
-    weight: 0.05,
-    wingspan: 0.10,
-    standingReach: 0.10,
-    jumpingReach: 0.15,
-    basketballAge: 0.20,
+    height: 0.20,
+    weight: 0.10,
+    wingspan: 0.15,
+    standingReach: 0.15,
+    jumpingReach: 0.20,
+    basketballAge: 0.15,
     age: 0.05,
-    positionFit: 0.20,
   };
 
   const g = player.gender;
@@ -755,7 +754,6 @@ function calculateBaseAbility(player: PlayerAttributes): number {
     jumpingReach: getPercentile(player.jumpingReach, g, 'jumpingReach'),
     basketballAge: getPercentile(player.basketballAge, g, 'basketballAge'),
     age: getPercentile(player.age, g, 'age'),
-    positionFit: calculatePositionFit(player.positions),
   };
 
   let total = 0;
@@ -764,6 +762,16 @@ function calculateBaseAbility(player: PlayerAttributes): number {
   }
   return Math.round(total * 100) / 100;
 }
+
+// P1位置权重系统（预留扩展）
+// interface PositionWeights {
+//   PG: { height: number; jumpingReach: number; basketballAge: number; ... };
+//   SG: { height: number; jumpingReach: number; basketballAge: number; ... };
+//   SF: { height: number; jumpingReach: number; basketballAge: number; ... };
+//   PF: { height: number; jumpingReach: number; basketballAge: number; ... };
+//   C:  { height: number; jumpingReach: number; basketballAge: number; ... };
+// }
+// function calculatePositionAbility(player: PlayerAttributes, position: string): number { ... }
 ```
 
 ### 5.2 匹配算法流程

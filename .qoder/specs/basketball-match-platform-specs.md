@@ -235,8 +235,9 @@
   - 各属性百分位打分测试（边界值：最小值、最大值、中位数）
   - 权重求和计算测试（验证公式正确性）
   - 不同性别数据集切换测试
-  - 位置适配度计算测试
   - 综合得分范围验证（0-100）
+  - 可空字段默认值测试（缺失属性使用50分默认值）
+  - 边界值测试（height=0不崩溃；超出范围返回0或100）
 - **关键路径**：`server/src/modules/players/services/ability-calculation.service.ts`
 
 #### Module 2.2 — 认证服务（AuthService + JWT Strategy）
@@ -304,6 +305,7 @@
 
 #### Module 2.6 — 匹配引擎核心服务（MatchingEngineService）
 - **目标**：实现每5分钟触发的匹配算法（时间重叠、场地/赛制重叠、动态阈值、蛇形分队）。本模块需产出独立架构设计文档。
+- **MVP匹配逻辑**：基于球员综合能力值（baseAbilityScore + matchAdjustValue）进行分组匹配，不考虑具体位置差异。位置匹配在P1位置权重系统引入后扩展。
 - **依赖顺序**：Module 2.5 + Module 1.3 完成后
 - **交付物**：
   - `server/src/modules/matching/services/matching-engine.service.ts`
@@ -779,6 +781,14 @@ Phase 6（部署）
 Phase 7（可观测性）
   7.1 结构化日志与 APM
   7.2 业务指标埋点与上报
+
+Phase 8（P1延伸功能）
+  8.1 位置权重系统（不同位置差异化权重配置、多位置能力值计算、位置匹配）
+  8.2 场地评分体系
+  8.3 球员属性拓展（卧推、跑步成绩等）
+  8.4 投篮命中率统计
+  8.5 能力等级（突破/传球/防守）
+  8.6 预备机制
 ```
 
 ---

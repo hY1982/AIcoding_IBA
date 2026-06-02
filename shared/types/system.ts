@@ -41,7 +41,6 @@ export interface BaseAbilityWeights {
   jumping_reach: number;
   basketball_age: number;
   age: number;
-  position_fit: number;
 }
 
 /**
@@ -126,8 +125,7 @@ export function isBaseAbilityWeights(value: unknown): value is BaseAbilityWeight
     typeof v.standing_reach === 'number' &&
     typeof v.jumping_reach === 'number' &&
     typeof v.basketball_age === 'number' &&
-    typeof v.age === 'number' &&
-    typeof v.position_fit === 'number'
+    typeof v.age === 'number'
   );
 }
 

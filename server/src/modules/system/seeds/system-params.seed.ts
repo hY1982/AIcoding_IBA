@@ -39,15 +39,14 @@ export const DEFAULT_SYSTEM_PARAMS: {
   {
     paramKey: 'base_ability_weights',
     paramValue: {
-      height: 0.15,
-      weight: 0.05,
-      wingspan: 0.10,
-      standing_reach: 0.10,
-      jumping_reach: 0.15,
-      basketball_age: 0.20,
+      height: 0.20,
+      weight: 0.10,
+      wingspan: 0.15,
+      standing_reach: 0.15,
+      jumping_reach: 0.20,
+      basketball_age: 0.15,
       age: 0.05,
-      position_fit: 0.20,
     },
-    description: '基础能力值计算权重',
+    description: '基础能力值计算权重（MVP版本，不含位置适配）',
   },
 ];
