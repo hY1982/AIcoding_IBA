@@ -7,6 +7,7 @@ import {
   OneToOne,
   JoinColumn,
   Index,
+  VersionColumn,
 } from 'typeorm';
 import { User } from '@modules/users/entities/user.entity';
 import { Gender, GENDERS, TEAM_ROLES, TeamRole } from '@shared/player';
@@ -220,6 +221,9 @@ export class Player {
     nullable: true,
   })
   regionCode!: string | null;
+
+  @VersionColumn({ name: 'version', default: 0 })
+  version!: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;

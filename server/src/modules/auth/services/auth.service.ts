@@ -14,6 +14,7 @@ import { Player } from '@modules/players/entities/player.entity';
 import { PlayerPosition } from '@modules/players/entities/player-position.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { hashForQuery } from '@common/utils/encrypt.util';
+import { maskPhone } from '@common/utils/privacy.util';
 import { RedisService } from '@common/services/redis.service';
 import {
   PlayerRegisterDto,
@@ -34,14 +35,6 @@ const TOKEN_TYPE_REFRESH = 'refresh';
  * Redis key 前缀
  */
 const REDIS_KEY_REFRESH_TOKEN = 'refresh';
-
-/**
- * 手机号脱敏：13812345678 → 138****5678
- */
-function maskPhone(phone: string | null | undefined): string {
-  if (!phone || phone.length !== 11) return phone || '';
-  return phone.slice(0, 3) + '****' + phone.slice(7);
-}
 
 @Injectable()
 export class AuthService {

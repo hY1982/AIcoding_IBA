@@ -50,10 +50,20 @@ export interface PlayerAbility extends PlayerAbilityInput {
   totalAbilityScore: number; // 计算列：baseAbilityScore + matchAdjustValue
 }
 
-// 球员完整资料
+/**
+ * 球员完整资料（API 响应）
+ *
+ * 包含球员属性、能力值、用户信息（脱敏后）和时间戳。
+ * 用于 PlayerService 查询响应，所有敏感字段已脱敏。
+ */
 export interface PlayerProfile extends PlayerAttributes, PlayerAbility, Timestamps {
   id: number;
   userId: number;
+  // 用户信息（已脱敏）
+  phone: string;        // 脱敏手机号，如 "138****5678"
+  nickname: string;
+  realName: string;     // 脱敏真实姓名，如 "张**"
+  avatarUrl?: string;
 }
 
 // 球队角色
