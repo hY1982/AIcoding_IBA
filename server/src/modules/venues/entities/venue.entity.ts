@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  VersionColumn,
   ManyToOne,
   JoinColumn,
   OneToMany,
@@ -192,6 +193,9 @@ export class Venue {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
+
+  @VersionColumn({ name: 'version', default: 0 })
+  version!: number;
 
   @OneToMany(() => VenueTimeSlot, (slot) => slot.venue, {
     cascade: true,

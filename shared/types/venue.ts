@@ -44,7 +44,7 @@ export interface Venue {
   updatedAt: string;
 }
 
-// 场地详情（含 P1 扩展字段）
+// 场地详情（含 P1 扩展字段 + 时段列表）
 export interface VenueDetail extends Venue {
   floorMaterial?: FloorMaterial;
   lighting?: string;
@@ -58,6 +58,7 @@ export interface VenueDetail extends Venue {
   shower?: boolean;
   lockerRoom?: boolean;
   videoRecord?: boolean;
+  timeSlots?: VenueTimeSlot[];
 }
 
 // 场地可预订时段
@@ -78,6 +79,6 @@ export interface VenueListItem {
   address: string;
   pricePerHour: number;
   courtCount: number;
-  ratingAvg: number;
-  ratingCount: number;
+  ratingAvg?: number;
+  ratingCount?: number;
 }
