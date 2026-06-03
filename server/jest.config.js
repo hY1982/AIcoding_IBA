@@ -2,6 +2,7 @@ module.exports = {
   moduleFileExtensions: ['js', 'json', 'ts'],
   rootDir: 'src',
   testRegex: '.*\\.spec\\.ts$',
+  setupFiles: ['<rootDir>/../test/jest-setup.ts'],
   transform: {
     '^.+\\.(t|j)s$': 'ts-jest',
   },
@@ -12,6 +13,10 @@ module.exports = {
     '!**/config/**',
     '!**/migrations/**',
     '!**/seeds/**',
+  ],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/test/',
   ],
   coverageDirectory: '../coverage',
   coverageThreshold: {

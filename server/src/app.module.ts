@@ -14,6 +14,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { FeedbacksModule } from './modules/feedbacks/feedbacks.module';
 import { SystemModule } from './modules/system/system.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -70,6 +71,7 @@ import { AppService } from './app.service';
     FeedbacksModule,
     SystemModule,
     NotificationsModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
