@@ -15,12 +15,18 @@ import { VenueManager } from '@modules/users/entities/venue-manager.entity';
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || '',
-        signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '2h') as `${number}h`,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) {
+          throw new Error('JWT_SECRET environment variable is required');
+        }
+        return {
+          secret,
+          signOptions: {
+            expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '2h') as `${number}h`,
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     TypeOrmModule.forFeature([User, Player, PlayerPosition, VenueManager]),

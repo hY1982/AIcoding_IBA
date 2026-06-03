@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import * as bcryptjs from 'bcryptjs';
-import { createHash } from 'crypto';
+import { createHmac } from 'crypto';
 import { User } from '@modules/users/entities/user.entity';
 import { Player } from '@modules/players/entities/player.entity';
 import { PlayerPosition } from '@modules/players/entities/player-position.entity';
@@ -38,8 +38,8 @@ const REDIS_KEY_REFRESH_TOKEN = 'refresh';
 /**
  * 手机号脱敏：13812345678 → 138****5678
  */
-function maskPhone(phone: string): string {
-  if (phone.length !== 11) return phone;
+function maskPhone(phone: string | null | undefined): string {
+  if (!phone || phone.length !== 11) return phone || '';
   return phone.slice(0, 3) + '****' + phone.slice(7);
 }
 
@@ -152,7 +152,8 @@ export class AuthService {
     const redisKey = `${REDIS_KEY_REFRESH_TOKEN}:${tokenHash}`;
 
     const redisClient = this.redisService.getClient();
-    const storedData = await redisClient.get(redisKey);
+    // Use getdel (Redis 6.2+) for atomic get-and-delete, preventing race conditions
+    const storedData = await redisClient.getdel(redisKey);
 
     if (!storedData) {
       throw new UnauthorizedException('Refresh token 无效或已过期');
@@ -188,10 +189,7 @@ export class AuthService {
       throw new UnauthorizedException('用户不存在或已被封禁');
     }
 
-    // Delete old refresh token (rotation)
-    await redisClient.del(redisKey);
-
-    // Generate new token pair
+    // Generate new token pair (old token already deleted atomically by GETDEL)
     const tokens = await this.generateTokenPair(user);
 
     return this.buildAuthResponse(user, tokens);
@@ -202,13 +200,14 @@ export class AuthService {
    */
   async logout(userId: number): Promise<void> {
     const redisClient = this.redisService.getClient();
-    const keys = await redisClient.keys(`${REDIS_KEY_REFRESH_TOKEN}:*`);
-    // Filter keys belonging to this user (would need to scan and check values in production)
-    // For now, we delete all refresh tokens for simplicity
-    // In production, use a user-specific index: `user_refresh:{userId}` storing token hashes
-    if (keys.length > 0) {
+    // Use user-specific index to avoid global KEYS scan
+    const userIndexKey = `user_refresh:${userId}`;
+    const tokenHashes = await redisClient.smembers(userIndexKey);
+    if (tokenHashes.length > 0) {
+      const keys = tokenHashes.map((h: string) => `${REDIS_KEY_REFRESH_TOKEN}:${h}`);
       await redisClient.del(...keys);
     }
+    await redisClient.del(userIndexKey);
   }
 
   /**
@@ -262,6 +261,8 @@ export class AuthService {
       'EX',
       ttlSeconds,
     );
+    // Maintain user-specific index for efficient logout
+    await redisClient.sadd(`user_refresh:${user.id}`, tokenHash);
 
     return { accessToken, refreshToken };
   }
@@ -338,10 +339,15 @@ export class AuthService {
   }
 
   /**
-   * 计算 Token 的 SHA-256 哈希（用于 Redis 存储）
+   * 计算 Token 的 HMAC-SHA256 哈希（用于 Redis 存储）
+   * 使用 REFRESH_TOKEN_HASH_SECRET 环境变量作为密钥，防止彩虹表攻击
    */
-  hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
+  private hashToken(token: string): string {
+    const secret = this.configService.get<string>('REFRESH_TOKEN_HASH_SECRET');
+    if (!secret) {
+      throw new Error('REFRESH_TOKEN_HASH_SECRET environment variable is required');
+    }
+    return createHmac('sha256', secret).update(token).digest('hex');
   }
 
   /**
@@ -352,6 +358,10 @@ export class AuthService {
     if (!match) return 7 * 24 * 60 * 60; // default 7 days
 
     const value = parseInt(match[1], 10);
+    if (!Number.isFinite(value) || value < 0 || value > 365) {
+      return 7 * 24 * 60 * 60; // guard against overflow and invalid values
+    }
+
     const unit = match[2];
 
     switch (unit) {

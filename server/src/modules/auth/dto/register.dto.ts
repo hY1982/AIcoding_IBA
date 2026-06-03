@@ -10,9 +10,9 @@ import {
   Max,
   IsNumber,
   ArrayMaxSize,
-  ValidateNested,
+
   Matches,
-  ValidateIf,
+
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { USER_TYPES, UserType } from '@shared/common';
@@ -136,6 +136,7 @@ export class VenueManagerRegisterDto extends BaseRegisterDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
+  @Matches(PHONE_REGEX, { message: PHONE_REGEX_MESSAGE })
   contactPhone!: string;
 }
 

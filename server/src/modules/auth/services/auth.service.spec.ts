@@ -36,7 +36,7 @@ describe('AuthService', () => {
   let configService: jest.Mocked<ConfigService>;
   let dataSource: jest.Mocked<DataSource>;
   let redisService: jest.Mocked<RedisService>;
-  let redisClient: { get: jest.Mock; set: jest.Mock; del: jest.Mock; keys: jest.Mock };
+  let redisClient: { get: jest.Mock; getdel: jest.Mock; set: jest.Mock; del: jest.Mock; keys: jest.Mock; sadd: jest.Mock; smembers: jest.Mock };
   let entityManager: jest.Mocked<EntityManager>;
 
   beforeEach(async () => {
@@ -72,15 +72,19 @@ describe('AuthService', () => {
         if (key === 'JWT_SECRET') return 'test-secret';
         if (key === 'JWT_EXPIRES_IN') return '2h';
         if (key === 'JWT_REFRESH_EXPIRES_IN') return '7d';
+        if (key === 'REFRESH_TOKEN_HASH_SECRET') return 'test-refresh-hash-secret';
         return undefined;
       }),
     } as unknown as jest.Mocked<ConfigService>;
 
     redisClient = {
       get: jest.fn(),
+      getdel: jest.fn(),
       set: jest.fn(),
       del: jest.fn(),
       keys: jest.fn(),
+      sadd: jest.fn(),
+      smembers: jest.fn(),
     };
 
     redisService = {
@@ -307,28 +311,29 @@ describe('AuthService', () => {
     it('should refresh token with valid refresh token', async () => {
       const mockUser = createMockUser();
       const refreshToken = 'valid-refresh-token';
-      const tokenHash = authService.hashToken(refreshToken);
+      const tokenHash = (authService as any).hashToken(refreshToken);
 
-      redisClient.get.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
+      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
       jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'refresh' });
       userRepository.findOne.mockResolvedValue(mockUser);
       redisClient.set.mockResolvedValue('OK');
+      redisClient.sadd.mockResolvedValue(1);
 
       const result = await authService.refresh({ refreshToken });
 
       expect(result.tokens.accessToken).toBeDefined();
       expect(result.tokens.refreshToken).toBeDefined();
-      expect(redisClient.del).toHaveBeenCalledWith(`refresh:${tokenHash}`);
+      expect(redisClient.getdel).toHaveBeenCalledWith(`refresh:${tokenHash}`);
       expect(redisClient.set).toHaveBeenCalled();
     });
 
     it('should reject refresh with reused old refresh token', async () => {
       const refreshToken = 'old-refresh-token';
 
-      // First call: token exists
-      redisClient.get.mockResolvedValueOnce(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
-      // Second call: token no longer exists (after rotation)
-      redisClient.get.mockResolvedValueOnce(null);
+      // First call: token exists (getdel atomically deletes it)
+      redisClient.getdel.mockResolvedValueOnce(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
+      // Second call: token no longer exists
+      redisClient.getdel.mockResolvedValueOnce(null);
 
       jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'refresh' });
 
@@ -336,6 +341,7 @@ describe('AuthService', () => {
       const mockUser = createMockUser();
       userRepository.findOne.mockResolvedValue(mockUser);
       redisClient.set.mockResolvedValue('OK');
+      redisClient.sadd.mockResolvedValue(1);
       await authService.refresh({ refreshToken });
 
       // Second refresh with same token should fail
@@ -343,25 +349,25 @@ describe('AuthService', () => {
     });
 
     it('should reject refresh with invalid refresh token', async () => {
-      redisClient.get.mockResolvedValue(null);
+      redisClient.getdel.mockResolvedValue(null);
 
       await expect(authService.refresh({ refreshToken: 'invalid-token' })).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh with expired refresh token', async () => {
-      redisClient.get.mockResolvedValue(null);
+      redisClient.getdel.mockResolvedValue(null);
 
       await expect(authService.refresh({ refreshToken: 'expired-token' })).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh with corrupted redis data', async () => {
-      redisClient.get.mockResolvedValue('not-valid-json');
+      redisClient.getdel.mockResolvedValue('not-valid-json');
 
       await expect(authService.refresh({ refreshToken: 'corrupted-token' })).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh with invalid jwt signature', async () => {
-      redisClient.get.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
+      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
       jwtService.verify.mockImplementation(() => {
         throw new Error('invalid signature');
       });
@@ -370,7 +376,7 @@ describe('AuthService', () => {
     });
 
     it('should reject refresh with wrong token type', async () => {
-      redisClient.get.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
+      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
       jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'access' });
 
       await expect(authService.refresh({ refreshToken: 'access-type-token' })).rejects.toThrow(UnauthorizedException);
@@ -378,7 +384,7 @@ describe('AuthService', () => {
 
     it('should reject refresh for banned user', async () => {
       const mockUser = createMockUser({ status: 'banned' });
-      redisClient.get.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
+      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
       jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'refresh' });
       userRepository.findOne.mockResolvedValue(mockUser);
 
@@ -386,7 +392,7 @@ describe('AuthService', () => {
     });
 
     it('should reject refresh for non-existent user', async () => {
-      redisClient.get.mockResolvedValue(JSON.stringify({ userId: 999, issuedAt: Date.now() }));
+      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 999, issuedAt: Date.now() }));
       jwtService.verify.mockReturnValue({ sub: 999, phone: '13800999999', userType: 'player', type: 'refresh' });
       userRepository.findOne.mockResolvedValue(null);
 
@@ -395,23 +401,24 @@ describe('AuthService', () => {
   });
 
   describe('logout', () => {
-    it('should delete all refresh tokens on logout', async () => {
-      redisClient.keys.mockResolvedValue(['refresh:hash1', 'refresh:hash2']);
+    it('should delete user refresh tokens via index on logout', async () => {
+      redisClient.smembers.mockResolvedValue(['hash1', 'hash2']);
       redisClient.del.mockResolvedValue(2);
 
       await authService.logout(1);
 
-      expect(redisClient.keys).toHaveBeenCalledWith('refresh:*');
+      expect(redisClient.smembers).toHaveBeenCalledWith('user_refresh:1');
       expect(redisClient.del).toHaveBeenCalledWith('refresh:hash1', 'refresh:hash2');
+      expect(redisClient.del).toHaveBeenCalledWith('user_refresh:1');
     });
 
     it('should handle logout when no refresh tokens exist', async () => {
-      redisClient.keys.mockResolvedValue([]);
+      redisClient.smembers.mockResolvedValue([]);
 
       await authService.logout(1);
 
-      expect(redisClient.keys).toHaveBeenCalledWith('refresh:*');
-      expect(redisClient.del).not.toHaveBeenCalled();
+      expect(redisClient.smembers).toHaveBeenCalledWith('user_refresh:1');
+      expect(redisClient.del).toHaveBeenCalledWith('user_refresh:1');
     });
   });
 
@@ -459,6 +466,32 @@ describe('AuthService', () => {
     it('should return default for invalid format', () => {
       const result = (authService as any).parseExpiresInToSeconds('invalid');
       expect(result).toBe(7 * 24 * 60 * 60);
+    });
+
+    it('should return default for overflow value', () => {
+      const result = (authService as any).parseExpiresInToSeconds('999999d');
+      expect(result).toBe(7 * 24 * 60 * 60);
+    });
+
+    it('should return default for negative value', () => {
+      const result = (authService as any).parseExpiresInToSeconds('-1h');
+      expect(result).toBe(7 * 24 * 60 * 60);
+    });
+  });
+
+  describe('hashToken', () => {
+    it('should throw error when REFRESH_TOKEN_HASH_SECRET is not set', () => {
+      const originalGet = configService.get.bind(configService);
+      jest.spyOn(configService, 'get').mockImplementation((key: string) => {
+        if (key === 'REFRESH_TOKEN_HASH_SECRET') return undefined;
+        return originalGet(key);
+      });
+
+      expect(() => (authService as any).hashToken('test-token')).toThrow(
+        'REFRESH_TOKEN_HASH_SECRET environment variable is required',
+      );
+
+      jest.restoreAllMocks();
     });
   });
 
