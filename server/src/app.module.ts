@@ -15,6 +15,7 @@ import { FeedbacksModule } from './modules/feedbacks/feedbacks.module';
 import { SystemModule } from './modules/system/system.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { MatchingModule } from './modules/matching/matching.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -72,6 +73,7 @@ import { AppService } from './app.service';
     SystemModule,
     NotificationsModule,
     AuthModule,
+    MatchingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
