@@ -3,13 +3,23 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Intention } from './entities/intention.entity';
 import { IntentionVenue } from './entities/intention-venue.entity';
 import { IntentionFormat } from './entities/intention-format.entity';
-import { IntentionsService } from './services/intentions.service';
+import { Player } from '@modules/players/entities/player.entity';
+import { Venue } from '@modules/venues/entities/venue.entity';
+import { Format } from '@modules/formats/entities/format.entity';
+import { IntentionService } from './services/intention.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Intention, IntentionVenue, IntentionFormat]),
+    TypeOrmModule.forFeature([
+      Intention,
+      IntentionVenue,
+      IntentionFormat,
+      Player,
+      Venue,
+      Format,
+    ]),
   ],
-  providers: [IntentionsService],
-  exports: [TypeOrmModule, IntentionsService],
+  providers: [IntentionService],
+  exports: [TypeOrmModule, IntentionService],
 })
 export class IntentionsModule {}

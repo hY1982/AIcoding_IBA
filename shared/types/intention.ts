@@ -28,7 +28,7 @@ export const INTENTION_STATUS_TRANSITIONS: Record<
 > = {
   pending: ['matched', 'cancelled', 'expired'],
   matched: ['confirmed', 'cancelled', 'failed'],
-  confirmed: ['cancelled'],
+  confirmed: [],
   cancelled: [],
   expired: [],
   failed: [],
