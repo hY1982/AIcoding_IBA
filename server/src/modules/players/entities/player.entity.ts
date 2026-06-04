@@ -97,6 +97,11 @@ export class Player {
     scale: 2,
     nullable: false,
     default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: number | string | null) =>
+        value === null ? 0 : typeof value === 'string' ? parseFloat(value) : value,
+    },
   })
   matchAdjustValue!: number;
 
