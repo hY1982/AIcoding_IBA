@@ -86,6 +86,14 @@ export class MatchPlayer {
   depositPaid!: boolean;
 
   @Column({
+    name: 'order_no',
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+  })
+  orderNo!: string | null;
+
+  @Column({
     type: 'enum',
     enum: MATCH_PLAYER_STATUSES,
     nullable: false,

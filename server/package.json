@@ -32,6 +32,7 @@
     "demo:full": "cross-env TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register -r tsconfig-paths/register scripts/demo-full-flow.ts"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",

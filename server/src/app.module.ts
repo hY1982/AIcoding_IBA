@@ -16,6 +16,7 @@ import { SystemModule } from './modules/system/system.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { MatchingModule } from './modules/matching/matching.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -74,6 +75,7 @@ import { AppService } from './app.service';
     NotificationsModule,
     AuthModule,
     MatchingModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
