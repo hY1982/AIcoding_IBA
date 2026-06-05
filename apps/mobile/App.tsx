@@ -3,6 +3,11 @@ import { View, Text, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './src/navigation/types';
+import { RoleSelectScreen } from './src/screens/auth/RoleSelectScreen';
+import { LoginScreen } from './src/screens/auth/LoginScreen';
+import { RegisterScreen } from './src/screens/auth/RegisterScreen';
+import { PlayerRegisterScreen } from './src/screens/auth/PlayerRegisterScreen';
+import { VenueManagerRegisterScreen } from './src/screens/auth/VenueManagerRegisterScreen';
 
 function HomeScreen() {
   return (
@@ -18,7 +23,32 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export default function App() {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
+      <Stack.Navigator initialRouteName="RoleSelect">
+        <Stack.Screen
+          name="RoleSelect"
+          component={RoleSelectScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ title: '登录' }}
+        />
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+          options={{ title: '注册' }}
+        />
+        <Stack.Screen
+          name="PlayerRegister"
+          component={PlayerRegisterScreen}
+          options={{ title: '球员信息' }}
+        />
+        <Stack.Screen
+          name="VenueManagerRegister"
+          component={VenueManagerRegisterScreen}
+          options={{ title: '场地方信息' }}
+        />
         <Stack.Screen
           name="Home"
           component={HomeScreen}
