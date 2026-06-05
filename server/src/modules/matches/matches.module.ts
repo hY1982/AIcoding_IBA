@@ -8,12 +8,11 @@ import { MockGroupChatService } from './services/mock-group-chat.service';
 import { GROUP_CHAT_PROVIDER } from './interfaces/group-chat-provider.interface';
 import { PaymentsModule } from '@modules/payments/payments.module';
 import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
-import { Notification } from '@modules/notifications/entities/notification.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Match, MatchPlayer, MatchTeam, VenueTimeSlot, Notification, Format]),
+    TypeOrmModule.forFeature([Match, MatchPlayer, MatchTeam, VenueTimeSlot, Format]),
     PaymentsModule,
   ],
   providers: [

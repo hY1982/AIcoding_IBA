@@ -13,7 +13,7 @@ import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
 import { Venue } from '@modules/venues/entities/venue.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { Format } from '@modules/formats/entities/format.entity';
-import { Notification } from '@modules/notifications/entities/notification.entity';
+import { NotificationService } from '@modules/notifications/services/notification.service';
 import { PAYMENT_PROVIDER } from '@modules/payments/interfaces/payment-provider.interface';
 import { GROUP_CHAT_PROVIDER } from '../interfaces/group-chat-provider.interface';
 
@@ -153,7 +153,7 @@ describe('MatchConfirmationService', () => {
   let matchRepo: MockRepository<Match>;
   let matchPlayerRepo: MockRepository<MatchPlayer>;
   let slotRepo: MockRepository<VenueTimeSlot>;
-  let notificationRepo: MockRepository<Notification>;
+  let notificationService: jest.Mocked<NotificationService>;
   let formatRepo: MockRepository<Format>;
   let dataSource: ReturnType<typeof createMockDataSource>;
   let paymentService: jest.Mocked<any>;
@@ -163,7 +163,15 @@ describe('MatchConfirmationService', () => {
     matchRepo = createMockRepository();
     matchPlayerRepo = createMockRepository();
     slotRepo = createMockRepository();
-    notificationRepo = createMockRepository();
+    notificationService = {
+      createNotification: jest.fn(),
+      batchCreateNotifications: jest.fn(),
+      sendNotification: jest.fn(),
+      findByUser: jest.fn(),
+      markAsRead: jest.fn(),
+      markAllAsRead: jest.fn(),
+      getUnreadCount: jest.fn(),
+    } as unknown as jest.Mocked<NotificationService>;
     formatRepo = createMockRepository();
     dataSource = createMockDataSource();
 
@@ -185,7 +193,7 @@ describe('MatchConfirmationService', () => {
         { provide: getRepositoryToken(Match), useValue: matchRepo },
         { provide: getRepositoryToken(MatchPlayer), useValue: matchPlayerRepo },
         { provide: getRepositoryToken(VenueTimeSlot), useValue: slotRepo },
-        { provide: getRepositoryToken(Notification), useValue: notificationRepo },
+        { provide: NotificationService, useValue: notificationService },
         { provide: getRepositoryToken(Format), useValue: formatRepo },
         { provide: PAYMENT_PROVIDER, useValue: paymentService },
         { provide: GROUP_CHAT_PROVIDER, useValue: groupChatService },
@@ -559,6 +567,14 @@ describe('MatchConfirmationService', () => {
       });
 
       groupChatService.createGroupChat.mockResolvedValue('match_1_1234567890_abc123');
+      matchPlayerRepo.find!.mockResolvedValue([
+        createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 103, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 104, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 105, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 106, status: 'confirmed' }),
+      ]);
 
       const result = await service.finalizeMatch(matchId);
 
@@ -605,6 +621,12 @@ describe('MatchConfirmationService', () => {
         };
         return cb(manager);
       });
+
+      matchPlayerRepo.find!.mockResolvedValue([
+        createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 103, status: 'invited' }),
+      ]);
 
       const result = await service.finalizeMatch(matchId);
 
@@ -896,6 +918,262 @@ describe('MatchConfirmationService', () => {
       await expect(service.reconcilePaymentStatus(1, 100)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ==================== NOTIFICATIONS ====================
+
+  describe('notifications', () => {
+    it('should call batchCreateNotifications when match confirmed', async () => {
+      const matchId = 1;
+      const now = new Date();
+      const pastDeadline = new Date(now.getTime() - 30 * 60 * 1000);
+      const mockMatch = createMockMatch({
+        id: matchId,
+        startTime: pastDeadline,
+        confirmedPlayers: 6,
+      });
+      const mockFormat = createMockFormat({ teamCountMin: 2, teamSize: 3 });
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = {
+          createQueryBuilder: jest.fn().mockImplementation((entity: any) => {
+            const qb = createMockQueryBuilder([mockMatch]);
+            if (entity === VenueTimeSlot) {
+              (qb.getOne as jest.Mock).mockResolvedValue({
+                id: 1, venueId: 10, slotDate: '2026-01-01',
+                startTime: '10:00:00', endTime: '12:00:00',
+                isBooked: false, matchId: null,
+              });
+            }
+            return qb;
+          }),
+          findOne: jest.fn().mockImplementation((entity: any) => {
+            if (entity === Format) return Promise.resolve(mockFormat);
+            if (entity === Venue) return Promise.resolve({ managerId: 50 });
+            if (entity === VenueManager) return Promise.resolve({ userId: 200 });
+            return Promise.resolve(null);
+          }),
+          find: jest.fn().mockImplementation((entity: any) => {
+            if (entity === MatchPlayer) {
+              return Promise.resolve([
+                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+                createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
+              ]);
+            }
+            return Promise.resolve([]);
+          }),
+          count: jest.fn().mockResolvedValue(6),
+          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          update: jest.fn().mockResolvedValue({ affected: 1 }),
+        };
+        return cb(manager);
+      });
+
+      groupChatService.createGroupChat.mockResolvedValue('gc_123');
+      matchPlayerRepo.find!.mockResolvedValue([
+        createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
+      ]);
+      notificationService.batchCreateNotifications.mockResolvedValue([]);
+      notificationService.createNotification.mockResolvedValue({} as any);
+
+      // Mock dataSource.manager.findOne for notifyVenueManager (outside transaction)
+      dataSource.manager.findOne
+        .mockResolvedValueOnce({ managerId: 50 })   // Venue
+        .mockResolvedValueOnce({ userId: 200 });     // VenueManager
+
+      await service.finalizeMatch(matchId);
+
+      expect(notificationService.batchCreateNotifications).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userIds: [101, 102],
+          type: 'match_success',
+          title: '比赛已确认',
+        }),
+      );
+      expect(notificationService.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 200,
+          type: 'match_success',
+          title: '新比赛预订确认',
+        }),
+      );
+    });
+
+    it('should call createNotification for each player when match failed', async () => {
+      const matchId = 1;
+      const now = new Date();
+      const pastDeadline = new Date(now.getTime() - 30 * 60 * 1000);
+      const mockMatch = createMockMatch({
+        id: matchId,
+        startTime: pastDeadline,
+        confirmedPlayers: 2,
+      });
+      const mockFormat = createMockFormat({ teamCountMin: 2, teamSize: 3 });
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = {
+          createQueryBuilder: jest.fn().mockReturnValue(
+            createMockQueryBuilder([mockMatch]),
+          ),
+          findOne: jest.fn().mockImplementation((entity: any) => {
+            if (entity === Format) return Promise.resolve(mockFormat);
+            return Promise.resolve(null);
+          }),
+          find: jest.fn().mockImplementation((entity: any) => {
+            if (entity === MatchPlayer) {
+              return Promise.resolve([
+                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+                createMockMatchPlayer({ matchId, playerId: 102, status: 'invited' }),
+              ]);
+            }
+            return Promise.resolve([]);
+          }),
+          count: jest.fn().mockResolvedValue(2),
+          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          update: jest.fn().mockResolvedValue({ affected: 1 }),
+        };
+        return cb(manager);
+      });
+
+      matchPlayerRepo.find!.mockResolvedValue([
+        createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+        createMockMatchPlayer({ matchId, playerId: 102, status: 'invited' }),
+      ]);
+      notificationService.createNotification.mockResolvedValue({} as any);
+
+      await service.finalizeMatch(matchId);
+
+      expect(notificationService.createNotification).toHaveBeenCalledTimes(2);
+      expect(notificationService.createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 101,
+          type: 'match_failed',
+          title: '比赛人数不足，已取消',
+        }),
+      );
+    });
+
+    it('should not notify venue manager when venue not found', async () => {
+      const matchId = 1;
+      const now = new Date();
+      const pastDeadline = new Date(now.getTime() - 30 * 60 * 1000);
+      const mockMatch = createMockMatch({
+        id: matchId,
+        startTime: pastDeadline,
+        confirmedPlayers: 6,
+      });
+      const mockFormat = createMockFormat({ teamCountMin: 2, teamSize: 3 });
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = {
+          createQueryBuilder: jest.fn().mockImplementation((entity: any) => {
+            const qb = createMockQueryBuilder([mockMatch]);
+            if (entity === VenueTimeSlot) {
+              (qb.getOne as jest.Mock).mockResolvedValue({
+                id: 1, venueId: 10, slotDate: '2026-01-01',
+                startTime: '10:00:00', endTime: '12:00:00',
+                isBooked: false, matchId: null,
+              });
+            }
+            return qb;
+          }),
+          findOne: jest.fn().mockImplementation((entity: any) => {
+            if (entity === Format) return Promise.resolve(mockFormat);
+            if (entity === Venue) return Promise.resolve(null); // venue not found
+            return Promise.resolve(null);
+          }),
+          find: jest.fn().mockImplementation((entity: any) => {
+            if (entity === MatchPlayer) {
+              return Promise.resolve([
+                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+              ]);
+            }
+            return Promise.resolve([]);
+          }),
+          count: jest.fn().mockResolvedValue(6),
+          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          update: jest.fn().mockResolvedValue({ affected: 1 }),
+        };
+        return cb(manager);
+      });
+
+      groupChatService.createGroupChat.mockResolvedValue('gc_123');
+      matchPlayerRepo.find!.mockResolvedValue([
+        createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+      ]);
+      notificationService.batchCreateNotifications.mockResolvedValue([]);
+
+      await service.finalizeMatch(matchId);
+
+      expect(notificationService.batchCreateNotifications).toHaveBeenCalled();
+      // venue manager notification should NOT be called because venue not found
+      expect(notificationService.createNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ title: '新比赛预订确认' }),
+      );
+    });
+
+    it('should retry notification on failure', async () => {
+      const matchId = 1;
+      const now = new Date();
+      const pastDeadline = new Date(now.getTime() - 30 * 60 * 1000);
+      const mockMatch = createMockMatch({
+        id: matchId,
+        startTime: pastDeadline,
+        confirmedPlayers: 6,
+      });
+      const mockFormat = createMockFormat({ teamCountMin: 2, teamSize: 3 });
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = {
+          createQueryBuilder: jest.fn().mockImplementation((entity: any) => {
+            const qb = createMockQueryBuilder([mockMatch]);
+            if (entity === VenueTimeSlot) {
+              (qb.getOne as jest.Mock).mockResolvedValue({
+                id: 1, venueId: 10, slotDate: '2026-01-01',
+                startTime: '10:00:00', endTime: '12:00:00',
+                isBooked: false, matchId: null,
+              });
+            }
+            return qb;
+          }),
+          findOne: jest.fn().mockImplementation((entity: any) => {
+            if (entity === Format) return Promise.resolve(mockFormat);
+            if (entity === Venue) return Promise.resolve({ managerId: 50 });
+            if (entity === VenueManager) return Promise.resolve({ userId: 200 });
+            return Promise.resolve(null);
+          }),
+          find: jest.fn().mockImplementation((entity: any) => {
+            if (entity === MatchPlayer) {
+              return Promise.resolve([
+                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+              ]);
+            }
+            return Promise.resolve([]);
+          }),
+          count: jest.fn().mockResolvedValue(6),
+          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          update: jest.fn().mockResolvedValue({ affected: 1 }),
+        };
+        return cb(manager);
+      });
+
+      groupChatService.createGroupChat.mockResolvedValue('gc_123');
+      matchPlayerRepo.find!.mockResolvedValue([
+        createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+      ]);
+
+      // First 2 calls fail, 3rd succeeds
+      notificationService.batchCreateNotifications
+        .mockRejectedValueOnce(new Error('DB error 1'))
+        .mockRejectedValueOnce(new Error('DB error 2'))
+        .mockResolvedValueOnce([]);
+
+      const result = await service.finalizeMatch(matchId);
+
+      expect(result.status).toBe('confirmed');
+      expect(notificationService.batchCreateNotifications).toHaveBeenCalledTimes(3);
     });
   });
 });

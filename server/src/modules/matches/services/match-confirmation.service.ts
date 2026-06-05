@@ -15,7 +15,7 @@ import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
 import { Venue } from '@modules/venues/entities/venue.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { Format } from '@modules/formats/entities/format.entity';
-import { Notification } from '@modules/notifications/entities/notification.entity';
+import { NotificationService } from '@modules/notifications/services/notification.service';
 import {
   PaymentProviderInterface,
   PAYMENT_PROVIDER,
@@ -29,7 +29,6 @@ import {
   MatchStatus,
   MatchPlayerStatus,
 } from '@shared/match';
-import { NotificationType } from '@shared/notification';
 
 export interface ConfirmParticipationResult {
   success: boolean;
@@ -89,8 +88,7 @@ export class MatchConfirmationService {
     private readonly matchPlayerRepo: Repository<MatchPlayer>,
     @InjectRepository(VenueTimeSlot)
     private readonly slotRepo: Repository<VenueTimeSlot>,
-    @InjectRepository(Notification)
-    private readonly notificationRepo: Repository<Notification>,
+    private readonly notificationService: NotificationService,
     @InjectRepository(Format)
     private readonly formatRepo: Repository<Format>,
     @Inject(PAYMENT_PROVIDER)
@@ -451,8 +449,8 @@ export class MatchConfirmationService {
           .where('id = :id', { id: matchId })
           .execute();
 
-        await this.notifyMatchConfirmed(manager, match, confirmedCount);
-        await this.notifyVenueManager(manager, match);
+        await this.notifyMatchConfirmed(match, confirmedCount);
+        await this.notifyVenueManager(match);
 
         this.logger.log(
           `Match confirmed: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${requiredPlayers}`,
@@ -470,7 +468,7 @@ export class MatchConfirmationService {
           .where('id = :id', { id: matchId })
           .execute();
 
-        await this.notifyMatchFailed(manager, match, confirmedCount);
+        await this.notifyMatchFailed(match, confirmedCount);
 
         this.logger.log(
           `Match failed: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${requiredPlayers}`,
@@ -660,8 +658,8 @@ export class MatchConfirmationService {
         .where('id = :id', { id: match.id })
         .execute();
 
-      await this.notifyMatchConfirmed(manager, match, confirmedCount);
-      await this.notifyVenueManager(manager, match);
+      await this.notifyMatchConfirmed(match, confirmedCount);
+      await this.notifyVenueManager(match);
 
       this.logger.log(
         `Match auto-confirmed: matchId=${match.id}, players=${confirmedCount}/${requiredPlayers}`,
@@ -795,35 +793,47 @@ export class MatchConfirmationService {
 
   // ==================== NOTIFICATIONS ====================
 
+  /**
+   * Send notifications to confirmed players with retry.
+   *
+   * Uses NotificationService with synchronous retry (3 attempts, exponential backoff)
+   * to ensure delivery reliability. Notifications are created outside the transaction
+   * as derived data with eventual consistency.
+   */
   private async notifyMatchConfirmed(
-    manager: EntityManager,
     match: Match,
     confirmedCount: number,
   ): Promise<void> {
-    const confirmedPlayers = await manager.find(MatchPlayer, {
+    const confirmedPlayers = await this.matchPlayerRepo.find({
       where: { matchId: match.id, status: 'confirmed' },
       select: ['playerId'],
     });
 
-    for (const player of confirmedPlayers) {
-      await this.createNotification(
-        manager,
-        player.playerId,
-        'match_success',
-        '比赛已确认',
-        `您参与的比赛已确认，共 ${confirmedCount} 人参赛。请准时到场。`,
-        { matchId: match.id },
-        match.regionCode,
-      );
+    const userIds = confirmedPlayers.map((p) => p.playerId);
+    if (userIds.length === 0) {
+      return;
     }
+
+    await this.createNotificationWithRetry(() =>
+      this.notificationService.batchCreateNotifications({
+        userIds,
+        type: 'match_success',
+        title: '比赛已确认',
+        content: `您参与的比赛已确认，共 ${confirmedCount} 人参赛。请准时到场。`,
+        data: { matchId: match.id },
+        regionCode: match.regionCode ?? undefined,
+      }),
+    );
   }
 
+  /**
+   * Send failure notifications to all invited players with retry.
+   */
   private async notifyMatchFailed(
-    manager: EntityManager,
     match: Match,
     confirmedCount: number,
   ): Promise<void> {
-    const allPlayers = await manager.find(MatchPlayer, {
+    const allPlayers = await this.matchPlayerRepo.find({
       where: { matchId: match.id },
       select: ['playerId', 'status'],
     });
@@ -835,23 +845,24 @@ export class MatchConfirmationService {
           ? `您确认参赛的比赛因人数不足已取消，保证金将原路退回。已确认人数: ${confirmedCount}`
           : `您受邀参赛的比赛因人数不足已取消。`;
 
-      await this.createNotification(
-        manager,
-        player.playerId,
-        'match_failed',
-        title,
-        content,
-        { matchId: match.id },
-        match.regionCode,
+      await this.createNotificationWithRetry(() =>
+        this.notificationService.createNotification({
+          userId: player.playerId,
+          type: 'match_failed',
+          title,
+          content,
+          data: { matchId: match.id },
+          regionCode: match.regionCode ?? undefined,
+        }),
       );
     }
   }
 
-  private async notifyVenueManager(
-    manager: EntityManager,
-    match: Match,
-  ): Promise<void> {
-    const venue = await manager.findOne(Venue, {
+  /**
+   * Notify venue manager about confirmed match booking with retry.
+   */
+  private async notifyVenueManager(match: Match): Promise<void> {
+    const venue = await this.dataSource.manager.findOne(Venue, {
       where: { id: match.venueId },
       select: ['managerId'],
     });
@@ -863,7 +874,7 @@ export class MatchConfirmationService {
       return;
     }
 
-    const venueManager = await manager.findOne(VenueManager, {
+    const venueManager = await this.dataSource.manager.findOne(VenueManager, {
       where: { id: venue.managerId },
       select: ['userId'],
     });
@@ -873,36 +884,52 @@ export class MatchConfirmationService {
       return;
     }
 
-    await this.createNotification(
-      manager,
-      venueManager.userId,
-      'match_success',
-      '新比赛预订确认',
-      `您的场地已被预订用于比赛，时间: ${match.startTime.toISOString()}`,
-      { matchId: match.id, venueId: match.venueId },
-      match.regionCode,
+    await this.createNotificationWithRetry(() =>
+      this.notificationService.createNotification({
+        userId: venueManager!.userId,
+        type: 'match_success',
+        title: '新比赛预订确认',
+        content: `您的场地已被预订用于比赛，时间: ${match.startTime.toISOString()}`,
+        data: { matchId: match.id, venueId: match.venueId },
+        regionCode: match.regionCode ?? undefined,
+      }),
     );
   }
 
-  private async createNotification(
-    manager: EntityManager,
-    userId: number,
-    type: NotificationType,
-    title: string,
-    content: string,
-    data: Record<string, unknown>,
-    regionCode: string | null,
-  ): Promise<void> {
-    const notification = manager.create(Notification, {
-      userId,
-      type,
-      title,
-      content,
-      data,
-      regionCode,
-      sendStatus: 'pending',
-    });
+  /**
+   * Create notification with synchronous retry and exponential backoff.
+   *
+   * Retries up to 3 times with delays: 100ms → 200ms → 400ms
+   */
+  private async createNotificationWithRetry<T>(
+    operation: () => Promise<T>,
+  ): Promise<T | undefined> {
+    const maxRetries = 3;
+    const baseDelayMs = 100;
 
-    await manager.save(Notification, notification);
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        if (attempt < maxRetries) {
+          const delay = baseDelayMs * Math.pow(2, attempt - 1);
+          this.logger.warn(
+            `Notification attempt ${attempt} failed, retrying in ${delay}ms: ${message}`,
+          );
+          await this.sleep(delay);
+        } else {
+          this.logger.error(
+            `Notification failed after ${maxRetries} attempts: ${message}`,
+          );
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
