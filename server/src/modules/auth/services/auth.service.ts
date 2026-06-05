@@ -3,6 +3,7 @@ import {
   ConflictException,
   UnauthorizedException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -20,8 +21,21 @@ import {
   PlayerRegisterDto,
   VenueManagerRegisterDto,
   RegisterDto,
+  USER_TYPES,
 } from '../dto/register.dto';
+
+// 类型守卫：判断是否为球员注册 DTO
+function isPlayerRegisterDto(dto: RegisterDto): dto is PlayerRegisterDto {
+  return dto.userType === 'player';
+}
+
+// 类型守卫：判断是否为场地方注册 DTO
+function isVenueManagerRegisterDto(dto: RegisterDto): dto is VenueManagerRegisterDto {
+  return dto.userType === 'venue_manager';
+}
 import { LoginDto } from '../dto/login.dto';
+import { SendSmsCodeDto } from '../dto/send-sms-code.dto';
+import { SmsService, SMS_SERVICE_TOKEN } from '../interfaces/sms-service.interface';
 import { AuthResponse, AuthUser } from '@shared/auth';
 import { TokenPair } from '@shared/common';
 
@@ -43,6 +57,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
+    @Inject(SMS_SERVICE_TOKEN)
+    private readonly smsService: SmsService,
   ) {}
 
   /**
@@ -50,6 +66,31 @@ export class AuthService {
    * 使用数据库事务保证 User + Player/VenueManager 创建的原子性
    */
   async register(dto: RegisterDto): Promise<AuthResponse> {
+    // Runtime validation: ensure userType is valid before proceeding
+    if (!USER_TYPES.includes(dto.userType as 'player' | 'venue_manager')) {
+      throw new BadRequestException(
+        `无效的用户类型: ${dto.userType}，必须是 "player" 或 "venue_manager"`,
+      );
+    }
+
+    // Runtime validation: venue_manager 必须提供 companyName, contactName, contactPhone
+    if (dto.userType === 'venue_manager') {
+      if (!dto.companyName || !dto.contactName || !dto.contactPhone) {
+        throw new BadRequestException(
+          '场地方注册必须提供 companyName, contactName, contactPhone',
+        );
+      }
+    }
+
+    // Runtime validation: player 必须提供 age, basketballAge, gender, height
+    if (dto.userType === 'player') {
+      if (dto.age == null || dto.basketballAge == null || !dto.gender || dto.height == null) {
+        throw new BadRequestException(
+          '球员注册必须提供 age, basketballAge, gender, height',
+        );
+      }
+    }
+
     const phoneHash = hashForQuery(dto.phone);
 
     // Check if phone already exists (early check for better UX)
@@ -78,13 +119,13 @@ export class AuthService {
         const savedUser = await manager.save(User, user);
 
         // 2. Create role-specific record
-        if (dto.userType === 'player') {
+        if (isPlayerRegisterDto(dto)) {
           await this.createPlayerRecord(
             manager,
             savedUser.id,
             dto as PlayerRegisterDto,
           );
-        } else if (dto.userType === 'venue_manager') {
+        } else if (isVenueManagerRegisterDto(dto)) {
           await this.createVenueManagerRecord(
             manager,
             savedUser.id,
@@ -205,6 +246,16 @@ export class AuthService {
   }
 
   /**
+   * 发送短信验证码
+   * MVP 阶段委托给 MockSmsService，返回模拟响应
+   */
+  async sendSmsCode(
+    dto: SendSmsCodeDto,
+  ): Promise<{ success: boolean; requestId: string; expiresIn: number }> {
+    return this.smsService.sendSmsCode(dto.phone, dto.scene);
+  }
+
+  /**
    * 注销用户（使所有 refreshToken 失效）
    */
   async logout(userId: number): Promise<void> {
@@ -246,11 +297,19 @@ export class AuthService {
       phone: user.phone,
       userType: user.userType,
       type: TOKEN_TYPE_REFRESH,
+      jti: this.generateRandomId(), // 唯一标识确保每次生成的 token 不同
     };
     return this.jwtService.sign(payload, {
       expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ||
         '7d') as `${number}d`,
     });
+  }
+
+  /**
+   * 生成随机唯一标识符
+   */
+  private generateRandomId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
 
   /**

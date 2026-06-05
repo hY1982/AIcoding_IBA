@@ -93,7 +93,21 @@ describe('Auth Integration Tests', () => {
     // Override the client for testing
     (redisService as any).client = redisClient;
 
-    authService = new AuthService(dataSource, jwtService, configService, redisService);
+    const mockSmsService = {
+      sendSmsCode: jest.fn().mockResolvedValue({
+        success: true,
+        requestId: 'mock-request-id',
+        expiresIn: 300,
+      }),
+    };
+
+    authService = new AuthService(
+      dataSource,
+      jwtService,
+      configService,
+      redisService,
+      mockSmsService as any,
+    );
   });
 
   afterEach(async () => {

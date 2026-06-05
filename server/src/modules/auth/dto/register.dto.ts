@@ -14,6 +14,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { USER_TYPES, UserType } from '@shared/common';
+export { USER_TYPES };
 import {
   GENDERS,
   Gender,
@@ -143,4 +144,114 @@ export class VenueManagerRegisterDto extends BaseRegisterDto {
   contactPhone!: string;
 }
 
-export type RegisterDto = PlayerRegisterDto | VenueManagerRegisterDto;
+/**
+ * 统一注册请求 DTO（用于控制器接收和 ValidationPipe 验证）
+ *
+ * 合并 Player 和 VenueManager 的所有字段，通过 userType 区分必填字段。
+ * 球员注册时：age, basketballAge, gender, height 必填
+ * 场地方注册时：companyName, contactName, contactPhone 必填
+ */
+export class RegisterDto {
+  @IsString()
+  @IsNotEmpty()
+  @Matches(PHONE_REGEX, { message: PHONE_REGEX_MESSAGE })
+  phone!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  @MaxLength(64)
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_REGEX_MESSAGE })
+  password!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(1)
+  @MaxLength(50)
+  nickname!: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  regionCode?: string;
+
+  @IsEnum(USER_TYPES)
+  @IsNotEmpty()
+  userType!: UserType;
+
+  // Player fields (optional at validation level, checked in service)
+  @IsInt()
+  @Min(1)
+  @Max(120)
+  @Type(() => Number)
+  @IsOptional()
+  age?: number;
+
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  @Type(() => Number)
+  @IsOptional()
+  basketballAge?: number;
+
+  @IsEnum(GENDERS)
+  @IsOptional()
+  gender?: Gender;
+
+  @IsInt()
+  @Min(50)
+  @Max(300)
+  @Type(() => Number)
+  @IsOptional()
+  height?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Min(20)
+  @Max(300)
+  @Type(() => Number)
+  weight?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(50)
+  @Max(300)
+  @Type(() => Number)
+  wingspan?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(400)
+  @Type(() => Number)
+  standingReach?: number;
+
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(500)
+  @Type(() => Number)
+  jumpingReach?: number;
+
+  @IsEnum(BASKETBALL_POSITIONS, { each: true })
+  @IsOptional()
+  @ArrayMaxSize(3)
+  positions?: BasketballPosition[];
+
+  // VenueManager fields (optional at validation level, checked in service)
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  companyName?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  contactName?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(20)
+  @Matches(PHONE_REGEX, { message: PHONE_REGEX_MESSAGE })
+  contactPhone?: string;
+}

@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
   BadRequestException,
 } from '@nestjs/common';
+import { SMS_SERVICE_TOKEN } from '../interfaces/sms-service.interface';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { User } from '@modules/users/entities/user.entity';
@@ -132,6 +133,16 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
         { provide: RedisService, useValue: redisService },
+        {
+          provide: SMS_SERVICE_TOKEN,
+          useValue: {
+            sendSmsCode: jest.fn().mockResolvedValue({
+              success: true,
+              requestId: 'mock-request-id',
+              expiresIn: 300,
+            }),
+          },
+        },
       ],
     }).compile();
 
