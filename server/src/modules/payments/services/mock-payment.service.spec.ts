@@ -44,13 +44,15 @@ describe('MockPaymentService', () => {
     eventEmitter = new EventEmitter();
 
     // Default mock for manager.transaction: pass-through to repo methods
-    (orderRepo as any).manager.transaction.mockImplementation(async (cb: any) => {
-      const manager = {
-        findOne: orderRepo.findOne,
-        save: orderRepo.save,
-      };
-      return cb(manager);
-    });
+    (orderRepo as any).manager.transaction.mockImplementation(
+      async (cb: any) => {
+        const manager = {
+          findOne: orderRepo.findOne,
+          save: orderRepo.save,
+        };
+        return cb(manager);
+      },
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -419,7 +421,11 @@ describe('MockPaymentService', () => {
 
   describe('closeExpiredOrders', () => {
     it('should close expired pending orders', async () => {
-      orderRepo.update!.mockResolvedValue({ affected: 3, raw: [], generatedMaps: [] });
+      orderRepo.update!.mockResolvedValue({
+        affected: 3,
+        raw: [],
+        generatedMaps: [],
+      });
 
       const result = await service.closeExpiredOrders();
 
@@ -431,7 +437,11 @@ describe('MockPaymentService', () => {
     });
 
     it('should return 0 when no expired orders', async () => {
-      orderRepo.update!.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+      orderRepo.update!.mockResolvedValue({
+        affected: 0,
+        raw: [],
+        generatedMaps: [],
+      });
 
       const result = await service.closeExpiredOrders();
 

@@ -1,10 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { BaseAbilityWeights } from '@shared/system';
 import { Gender, PlayerAttributes } from '@shared/player';
-import {
-  getDataset,
-  PercentileDataPoint,
-} from '../data/percentile-datasets';
+import { getDataset, PercentileDataPoint } from '../data/percentile-datasets';
 import {
   AbilityWeightsProvider,
   ABILITY_WEIGHTS_PROVIDER,
@@ -144,11 +141,9 @@ export class AbilityCalculationService {
           return current.percentile;
         }
         // 线性插值
-        const ratio =
-          (value - current.value) / (next.value - current.value);
+        const ratio = (value - current.value) / (next.value - current.value);
         return (
-          current.percentile +
-          ratio * (next.percentile - current.percentile)
+          current.percentile + ratio * (next.percentile - current.percentile)
         );
       }
     }
@@ -162,7 +157,10 @@ export class AbilityCalculationService {
    * 篮球运动员表现呈倒U型：青少年期上升，26-28岁巅峰，之后下降。
    * 不依赖数据点的单调性，直接查找距离目标值最近的两个点做插值。
    */
-  private getAgePercentile(age: number, dataPoints: PercentileDataPoint[]): number {
+  private getAgePercentile(
+    age: number,
+    dataPoints: PercentileDataPoint[],
+  ): number {
     if (dataPoints.length === 0) {
       return 50;
     }
@@ -248,8 +246,7 @@ export class AbilityCalculationService {
       return lower.percentile;
     }
 
-    const ratio =
-      (basketballAge - lower.value) / (upper.value - lower.value);
+    const ratio = (basketballAge - lower.value) / (upper.value - lower.value);
     return lower.percentile + ratio * (upper.percentile - lower.percentile);
   }
 

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -13,7 +12,9 @@ describe('JwtAuthGuard', () => {
     jwtAuthGuard = new JwtAuthGuard(reflector);
   });
 
-  const createMockExecutionContext = (isPublic: boolean = false): ExecutionContext => {
+  const createMockExecutionContext = (
+    isPublic: boolean = false,
+  ): ExecutionContext => {
     return {
       getHandler: jest.fn(),
       getClass: jest.fn(),
@@ -42,11 +43,15 @@ describe('JwtAuthGuard', () => {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(false);
 
       // Mock the parent AuthGuard behavior
-      jest.spyOn(jwtAuthGuard as any, 'canActivate').mockImplementation(async () => {
-        throw new UnauthorizedException();
-      });
+      jest
+        .spyOn(jwtAuthGuard as any, 'canActivate')
+        .mockImplementation(async () => {
+          throw new UnauthorizedException();
+        });
 
-      await expect(jwtAuthGuard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+      await expect(jwtAuthGuard.canActivate(context)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 

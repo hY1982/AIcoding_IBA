@@ -182,21 +182,15 @@ export class CreateMatchTables1716740000006 implements MigrationInterface {
     await queryRunner.query(
       `DROP INDEX IF EXISTS "public"."IDX_messages_match"`,
     );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "public"."IDX_mp_player"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "public"."IDX_mp_match"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_mp_player"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_mp_match"`);
     await queryRunner.query(
       `DROP INDEX IF EXISTS "public"."IDX_matches_region"`,
     );
     await queryRunner.query(
       `DROP INDEX IF EXISTS "public"."IDX_matches_venue_time"`,
     );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "public"."IDX_matches_time"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "public"."IDX_matches_time"`);
     await queryRunner.query(
       `DROP INDEX IF EXISTS "public"."IDX_matches_status"`,
     );

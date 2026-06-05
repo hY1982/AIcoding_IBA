@@ -1,6 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository, SelectQueryBuilder, EntityManager } from 'typeorm';
+import {
+  DataSource,
+  Repository,
+  SelectQueryBuilder,
+  EntityManager,
+} from 'typeorm';
 import {
   NotFoundException,
   BadRequestException,
@@ -105,10 +110,12 @@ function createMockMatch(overrides: Partial<Match> = {}): Match {
     venue: {} as any,
     format: {} as any,
     ...overrides,
-  } as Match;
+  };
 }
 
-function createMockMatchPlayer(overrides: Partial<MatchPlayer> = {}): MatchPlayer {
+function createMockMatchPlayer(
+  overrides: Partial<MatchPlayer> = {},
+): MatchPlayer {
   return {
     id: 1,
     matchId: 1,
@@ -125,7 +132,7 @@ function createMockMatchPlayer(overrides: Partial<MatchPlayer> = {}): MatchPlaye
       return this.status === 'confirmed';
     },
     ...overrides,
-  } as MatchPlayer;
+  };
 }
 
 function createMockFormat(overrides: Partial<Format> = {}): Format {
@@ -143,7 +150,7 @@ function createMockFormat(overrides: Partial<Format> = {}): Format {
     createdAt: new Date(),
     intentionFormats: Promise.resolve([]),
     ...overrides,
-  } as Format;
+  };
 }
 
 // ==================== Test Suite ====================
@@ -226,9 +233,9 @@ describe('MatchConfirmationService', () => {
       dataSource.transaction.mockImplementation(async (cb: any) => {
         transactionCallCount++;
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) return Promise.resolve(mockPlayer);
             if (entity === Format) return Promise.resolve(mockFormat);
@@ -236,7 +243,9 @@ describe('MatchConfirmationService', () => {
           }),
           count: jest.fn().mockResolvedValue(1),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
         };
         return cb(manager);
       });
@@ -272,9 +281,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockResolvedValue(mockPlayer),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
@@ -294,9 +303,9 @@ describe('MatchConfirmationService', () => {
         errorMessage: '余额不足',
       });
 
-      await expect(service.confirmParticipation(matchId, playerId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.confirmParticipation(matchId, playerId),
+      ).rejects.toThrow(BadRequestException);
 
       expect(matchPlayerRepo.update).toHaveBeenCalledWith(
         { matchId, playerId },
@@ -317,9 +326,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) return Promise.resolve(mockPlayer);
             return Promise.resolve(null);
@@ -328,9 +337,9 @@ describe('MatchConfirmationService', () => {
         return cb(manager);
       });
 
-      await expect(service.confirmParticipation(matchId, playerId)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.confirmParticipation(matchId, playerId),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw ConflictException when already confirmed', async () => {
@@ -346,9 +355,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) return Promise.resolve(mockPlayer);
             return Promise.resolve(null);
@@ -357,9 +366,9 @@ describe('MatchConfirmationService', () => {
         return cb(manager);
       });
 
-      await expect(service.confirmParticipation(matchId, playerId)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.confirmParticipation(matchId, playerId),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('should throw ConflictException when already declined', async () => {
@@ -374,9 +383,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) return Promise.resolve(mockPlayer);
             return Promise.resolve(null);
@@ -385,17 +394,17 @@ describe('MatchConfirmationService', () => {
         return cb(manager);
       });
 
-      await expect(service.confirmParticipation(matchId, playerId)).rejects.toThrow(
-        ConflictException,
-      );
+      await expect(
+        service.confirmParticipation(matchId, playerId),
+      ).rejects.toThrow(ConflictException);
     });
 
     it('should throw NotFoundException when match does not exist', async () => {
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([])),
         };
         return cb(manager);
       });
@@ -411,9 +420,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockResolvedValue(null),
         };
         return cb(manager);
@@ -432,13 +441,17 @@ describe('MatchConfirmationService', () => {
       const matchId = 1;
       const playerId = 100;
       const mockMatch = createMockMatch({ id: matchId });
-      const mockPlayer = createMockMatchPlayer({ matchId, playerId, status: 'invited' });
+      const mockPlayer = createMockMatchPlayer({
+        matchId,
+        playerId,
+        status: 'invited',
+      });
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockResolvedValue(mockPlayer),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
@@ -453,13 +466,17 @@ describe('MatchConfirmationService', () => {
     it('should throw ConflictException when match not pending', async () => {
       const matchId = 1;
       const mockMatch = createMockMatch({ id: matchId, status: 'confirmed' });
-      const mockPlayer = createMockMatchPlayer({ matchId, playerId: 100, status: 'invited' });
+      const mockPlayer = createMockMatchPlayer({
+        matchId,
+        playerId: 100,
+        status: 'invited',
+      });
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockResolvedValue(mockPlayer),
         };
         return cb(manager);
@@ -476,9 +493,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockResolvedValue(mockPlayer),
         };
         return cb(manager);
@@ -494,9 +511,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockResolvedValue(null),
         };
         return cb(manager);
@@ -542,31 +559,63 @@ describe('MatchConfirmationService', () => {
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === Format) return Promise.resolve(mockFormat);
             if (entity === Venue) return Promise.resolve({ managerId: 50 });
-            if (entity === VenueManager) return Promise.resolve({ userId: 200 });
+            if (entity === VenueManager)
+              return Promise.resolve({ userId: 200 });
             return Promise.resolve(null);
           }),
           find: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) {
               return Promise.resolve([
-                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 103, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 104, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 105, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 106, status: 'confirmed' }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 101,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 102,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 103,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 104,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 105,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 106,
+                  status: 'confirmed',
+                }),
               ]);
             }
             return Promise.resolve([]);
           }),
           count: jest.fn().mockResolvedValue(6),
-          create: jest.fn().mockImplementation((entity: any, data: any) => ({ id: 1, ...data })),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          create: jest.fn().mockImplementation((entity: any, data: any) => ({
+            id: 1,
+            ...data,
+          })),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
         return cb(manager);
       });
 
-      groupChatService.createGroupChat.mockResolvedValue('match_1_1234567890_abc123');
+      groupChatService.createGroupChat.mockResolvedValue(
+        'match_1_1234567890_abc123',
+      );
       matchPlayerRepo.find!.mockResolvedValue([
         createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
         createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
@@ -597,9 +646,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === Format) return Promise.resolve(mockFormat);
             return Promise.resolve(null);
@@ -607,16 +656,33 @@ describe('MatchConfirmationService', () => {
           find: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) {
               return Promise.resolve([
-                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 103, status: 'invited' }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 101,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 102,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 103,
+                  status: 'invited',
+                }),
               ]);
             }
             return Promise.resolve([]);
           }),
           count: jest.fn().mockResolvedValue(2),
-          create: jest.fn().mockImplementation((entity: any, data: any) => ({ id: 1, ...data })),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          create: jest.fn().mockImplementation((entity: any, data: any) => ({
+            id: 1,
+            ...data,
+          })),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
         return cb(manager);
@@ -638,13 +704,16 @@ describe('MatchConfirmationService', () => {
     it('should throw BadRequestException when deadline not passed', async () => {
       const matchId = 1;
       const futureStart = new Date(Date.now() + 2 * 60 * 60 * 1000);
-      const mockMatch = createMockMatch({ id: matchId, startTime: futureStart });
+      const mockMatch = createMockMatch({
+        id: matchId,
+        startTime: futureStart,
+      });
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
         };
         return cb(manager);
       });
@@ -665,9 +734,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
         };
         return cb(manager);
       });
@@ -680,9 +749,9 @@ describe('MatchConfirmationService', () => {
     it('should throw NotFoundException when match does not exist', async () => {
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([])),
         };
         return cb(manager);
       });
@@ -781,13 +850,18 @@ describe('MatchConfirmationService', () => {
         const manager = {
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) return Promise.resolve(mockPlayer);
-            if (entity === Match) return Promise.resolve(createMockMatch({ id: matchId }));
+            if (entity === Match)
+              return Promise.resolve(createMockMatch({ id: matchId }));
             return Promise.resolve(null);
           }),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
           count: jest.fn().mockResolvedValue(1),
-          createQueryBuilder: jest.fn().mockReturnValue(createMockQueryBuilder()),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder()),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
         };
         return cb(manager);
       });
@@ -941,9 +1015,13 @@ describe('MatchConfirmationService', () => {
             const qb = createMockQueryBuilder([mockMatch]);
             if (entity === VenueTimeSlot) {
               (qb.getOne as jest.Mock).mockResolvedValue({
-                id: 1, venueId: 10, slotDate: '2026-01-01',
-                startTime: '10:00:00', endTime: '12:00:00',
-                isBooked: false, matchId: null,
+                id: 1,
+                venueId: 10,
+                slotDate: '2026-01-01',
+                startTime: '10:00:00',
+                endTime: '12:00:00',
+                isBooked: false,
+                matchId: null,
               });
             }
             return qb;
@@ -951,20 +1029,31 @@ describe('MatchConfirmationService', () => {
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === Format) return Promise.resolve(mockFormat);
             if (entity === Venue) return Promise.resolve({ managerId: 50 });
-            if (entity === VenueManager) return Promise.resolve({ userId: 200 });
+            if (entity === VenueManager)
+              return Promise.resolve({ userId: 200 });
             return Promise.resolve(null);
           }),
           find: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) {
               return Promise.resolve([
-                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 102, status: 'confirmed' }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 101,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 102,
+                  status: 'confirmed',
+                }),
               ]);
             }
             return Promise.resolve([]);
           }),
           count: jest.fn().mockResolvedValue(6),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
         return cb(manager);
@@ -980,8 +1069,8 @@ describe('MatchConfirmationService', () => {
 
       // Mock dataSource.manager.findOne for notifyVenueManager (outside transaction)
       dataSource.manager.findOne
-        .mockResolvedValueOnce({ managerId: 50 })   // Venue
-        .mockResolvedValueOnce({ userId: 200 });     // VenueManager
+        .mockResolvedValueOnce({ managerId: 50 }) // Venue
+        .mockResolvedValueOnce({ userId: 200 }); // VenueManager
 
       await service.finalizeMatch(matchId);
 
@@ -1014,9 +1103,9 @@ describe('MatchConfirmationService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
-          createQueryBuilder: jest.fn().mockReturnValue(
-            createMockQueryBuilder([mockMatch]),
-          ),
+          createQueryBuilder: jest
+            .fn()
+            .mockReturnValue(createMockQueryBuilder([mockMatch])),
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === Format) return Promise.resolve(mockFormat);
             return Promise.resolve(null);
@@ -1024,14 +1113,24 @@ describe('MatchConfirmationService', () => {
           find: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) {
               return Promise.resolve([
-                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
-                createMockMatchPlayer({ matchId, playerId: 102, status: 'invited' }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 101,
+                  status: 'confirmed',
+                }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 102,
+                  status: 'invited',
+                }),
               ]);
             }
             return Promise.resolve([]);
           }),
           count: jest.fn().mockResolvedValue(2),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
         return cb(manager);
@@ -1072,9 +1171,13 @@ describe('MatchConfirmationService', () => {
             const qb = createMockQueryBuilder([mockMatch]);
             if (entity === VenueTimeSlot) {
               (qb.getOne as jest.Mock).mockResolvedValue({
-                id: 1, venueId: 10, slotDate: '2026-01-01',
-                startTime: '10:00:00', endTime: '12:00:00',
-                isBooked: false, matchId: null,
+                id: 1,
+                venueId: 10,
+                slotDate: '2026-01-01',
+                startTime: '10:00:00',
+                endTime: '12:00:00',
+                isBooked: false,
+                matchId: null,
               });
             }
             return qb;
@@ -1087,13 +1190,19 @@ describe('MatchConfirmationService', () => {
           find: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) {
               return Promise.resolve([
-                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 101,
+                  status: 'confirmed',
+                }),
               ]);
             }
             return Promise.resolve([]);
           }),
           count: jest.fn().mockResolvedValue(6),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
         return cb(manager);
@@ -1131,9 +1240,13 @@ describe('MatchConfirmationService', () => {
             const qb = createMockQueryBuilder([mockMatch]);
             if (entity === VenueTimeSlot) {
               (qb.getOne as jest.Mock).mockResolvedValue({
-                id: 1, venueId: 10, slotDate: '2026-01-01',
-                startTime: '10:00:00', endTime: '12:00:00',
-                isBooked: false, matchId: null,
+                id: 1,
+                venueId: 10,
+                slotDate: '2026-01-01',
+                startTime: '10:00:00',
+                endTime: '12:00:00',
+                isBooked: false,
+                matchId: null,
               });
             }
             return qb;
@@ -1141,19 +1254,26 @@ describe('MatchConfirmationService', () => {
           findOne: jest.fn().mockImplementation((entity: any) => {
             if (entity === Format) return Promise.resolve(mockFormat);
             if (entity === Venue) return Promise.resolve({ managerId: 50 });
-            if (entity === VenueManager) return Promise.resolve({ userId: 200 });
+            if (entity === VenueManager)
+              return Promise.resolve({ userId: 200 });
             return Promise.resolve(null);
           }),
           find: jest.fn().mockImplementation((entity: any) => {
             if (entity === MatchPlayer) {
               return Promise.resolve([
-                createMockMatchPlayer({ matchId, playerId: 101, status: 'confirmed' }),
+                createMockMatchPlayer({
+                  matchId,
+                  playerId: 101,
+                  status: 'confirmed',
+                }),
               ]);
             }
             return Promise.resolve([]);
           }),
           count: jest.fn().mockResolvedValue(6),
-          save: jest.fn().mockImplementation((_, entity) => Promise.resolve(entity)),
+          save: jest
+            .fn()
+            .mockImplementation((_, entity) => Promise.resolve(entity)),
           update: jest.fn().mockResolvedValue({ affected: 1 }),
         };
         return cb(manager);
@@ -1173,7 +1293,9 @@ describe('MatchConfirmationService', () => {
       const result = await service.finalizeMatch(matchId);
 
       expect(result.status).toBe('confirmed');
-      expect(notificationService.batchCreateNotifications).toHaveBeenCalledTimes(3);
+      expect(
+        notificationService.batchCreateNotifications,
+      ).toHaveBeenCalledTimes(3);
     });
   });
 });

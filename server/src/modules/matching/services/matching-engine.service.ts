@@ -132,9 +132,7 @@ export class MatchingEngineService {
     }
 
     // 5. 处理匹配失败的意向（过期检查）— 在事务内执行以保证数据一致性
-    expiredCount = await this.processExpiredIntentionsInTransaction(
-      intentions,
-    );
+    expiredCount = await this.processExpiredIntentionsInTransaction(intentions);
 
     const durationMs = Date.now() - startTime;
     this.logger.log(
@@ -239,9 +237,7 @@ export class MatchingEngineService {
   /**
    * 获取首选场地（priority=1）
    */
-  private getPreferredVenue(
-    intention: Intention,
-  ): IntentionVenue | undefined {
+  private getPreferredVenue(intention: Intention): IntentionVenue | undefined {
     const venues = intention.intentionVenues || [];
     return venues.sort((a, b) => a.priority - b.priority)[0];
   }
@@ -297,8 +293,7 @@ export class MatchingEngineService {
     }));
 
     // 【HIGH-004】过滤时间窗口不兼容的球员
-    const timeCompatiblePlayers =
-      this.filterTimeCompatiblePlayers(playerInfos);
+    const timeCompatiblePlayers = this.filterTimeCompatiblePlayers(playerInfos);
 
     // 计算动态阈值
     const threshold = this.calculateDynamicThreshold(
@@ -322,11 +317,7 @@ export class MatchingEngineService {
     }
 
     // 创建比赛（事务内）
-    await this.createMatchInTransaction(
-      group,
-      candidateSet,
-      format,
-    );
+    await this.createMatchInTransaction(group, candidateSet, format);
 
     return { created: true, failed: false };
   }
@@ -440,9 +431,7 @@ export class MatchingEngineService {
   ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       // 确定比赛时间（取所有意向时间的交集）
-      const matchStartTime = this.calculateMatchStartTime(
-        candidateSet.players,
-      );
+      const matchStartTime = this.calculateMatchStartTime(candidateSet.players);
       const matchEndTime = this.calculateMatchEndTime(
         candidateSet.players,
         format,
@@ -541,9 +530,7 @@ export class MatchingEngineService {
   /**
    * 计算比赛开始时间（取所有意向 startTime 的最大值）
    */
-  private calculateMatchStartTime(
-    players: PlayerIntentionInfo[],
-  ): Date {
+  private calculateMatchStartTime(players: PlayerIntentionInfo[]): Date {
     const times = players.map((p) => p.startTime.getTime());
     return new Date(Math.max(...times));
   }

@@ -87,7 +87,7 @@ function createMockPlayer(overrides: Partial<Player> = {}): Player {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
-  } as Player;
+  };
 }
 
 function createMockVenue(overrides: Partial<Venue> = {}): Venue {
@@ -123,7 +123,7 @@ function createMockVenue(overrides: Partial<Venue> = {}): Venue {
     intentionVenues: Promise.resolve([]),
     manager: {} as any,
     ...overrides,
-  } as Venue;
+  };
 }
 
 function createMockFormat(overrides: Partial<Format> = {}): Format {
@@ -152,7 +152,9 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
   const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
   const acceptableWaitMinutes = 30;
   const submittedAt = now;
-  const expiresAt = new Date(submittedAt.getTime() + acceptableWaitMinutes * 60 * 1000);
+  const expiresAt = new Date(
+    submittedAt.getTime() + acceptableWaitMinutes * 60 * 1000,
+  );
 
   return {
     id: 1,
@@ -162,7 +164,7 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
     durationMinutes,
     acceptableWaitMinutes,
     endTime,
-    status: 'pending' as IntentionStatus,
+    status: 'pending',
     matchId: null,
     regionCode: 'shenzhen_futian',
     submittedAt,
@@ -172,7 +174,7 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
     intentionFormats: [],
     computeDerivedTimes: jest.fn(),
     ...overrides,
-  } as Intention;
+  };
 }
 
 function createMockQueryBuilder<T extends object>(
@@ -220,8 +222,14 @@ describe('IntentionService', () => {
       providers: [
         IntentionService,
         { provide: getRepositoryToken(Intention), useValue: intentionRepo },
-        { provide: getRepositoryToken(IntentionVenue), useValue: intentionVenueRepo },
-        { provide: getRepositoryToken(IntentionFormat), useValue: intentionFormatRepo },
+        {
+          provide: getRepositoryToken(IntentionVenue),
+          useValue: intentionVenueRepo,
+        },
+        {
+          provide: getRepositoryToken(IntentionFormat),
+          useValue: intentionFormatRepo,
+        },
         { provide: getRepositoryToken(Player), useValue: playerRepo },
         { provide: getRepositoryToken(Venue), useValue: venueRepo },
         { provide: getRepositoryToken(Format), useValue: formatRepo },
@@ -246,7 +254,9 @@ describe('IntentionService', () => {
     const now = new Date('2026-06-15T10:00:00Z');
     const validStartTime = new Date('2026-06-15T14:00:00Z');
 
-    function buildValidDto(overrides: Partial<CreateIntentionDto> = {}): CreateIntentionDto {
+    function buildValidDto(
+      overrides: Partial<CreateIntentionDto> = {},
+    ): CreateIntentionDto {
       return {
         startTime: validStartTime.toISOString(),
         durationMinutes: 120,
@@ -276,15 +286,17 @@ describe('IntentionService', () => {
       playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
       venueRepo.findBy!.mockResolvedValue([mockVenue]);
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
-        manager.save.mockImplementation((entity: any) => Promise.resolve({ ...entity, id: 1 }));
+        manager.save.mockImplementation((entity: any) =>
+          Promise.resolve({ ...entity, id: 1 }),
+        );
         return cb(manager);
       });
 
@@ -299,7 +311,10 @@ describe('IntentionService', () => {
 
     it('should auto-calculate endTime and expiresAt', async () => {
       const playerId = 1;
-      const dto = buildValidDto({ durationMinutes: 180, acceptableWaitMinutes: 60 });
+      const dto = buildValidDto({
+        durationMinutes: 180,
+        acceptableWaitMinutes: 60,
+      });
       const mockPlayer = createMockPlayer();
       const mockVenue = createMockVenue();
       const mockFormat = createMockFormat();
@@ -310,22 +325,25 @@ describe('IntentionService', () => {
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
 
       let capturedIntention: Partial<Intention> | undefined;
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
         manager.create.mockImplementation((_entity: any, data: any) => {
           const entity = { ...data };
           entity.computeDerivedTimes = jest.fn().mockImplementation(() => {
-            const endTimeMs = entity.startTime.getTime() + entity.durationMinutes * 60 * 1000;
+            const endTimeMs =
+              entity.startTime.getTime() + entity.durationMinutes * 60 * 1000;
             entity.endTime = new Date(endTimeMs);
             const waitMinutes = entity.acceptableWaitMinutes ?? 30;
             const baseTime = new Date();
-            entity.expiresAt = new Date(baseTime.getTime() + waitMinutes * 60 * 1000);
+            entity.expiresAt = new Date(
+              baseTime.getTime() + waitMinutes * 60 * 1000,
+            );
           });
           return entity;
         });
@@ -343,7 +361,9 @@ describe('IntentionService', () => {
 
       expect(capturedIntention).toBeDefined();
       const startTime = new Date(dto.startTime);
-      const expectedEndTime = new Date(startTime.getTime() + dto.durationMinutes * 60 * 1000);
+      const expectedEndTime = new Date(
+        startTime.getTime() + dto.durationMinutes * 60 * 1000,
+      );
       expect(capturedIntention!.endTime).toEqual(expectedEndTime);
     });
 
@@ -359,11 +379,11 @@ describe('IntentionService', () => {
       playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
       venueRepo.findBy!.mockResolvedValue([mockVenue]);
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -395,11 +415,11 @@ describe('IntentionService', () => {
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
 
       let capturedIntention: Partial<Intention> | undefined;
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -409,7 +429,9 @@ describe('IntentionService', () => {
           }
           return { ...data, computeDerivedTimes: jest.fn() };
         });
-        manager.save.mockImplementation((entity: any) => Promise.resolve({ ...entity, id: 1 }));
+        manager.save.mockImplementation((entity: any) =>
+          Promise.resolve({ ...entity, id: 1 }),
+        );
         return cb(dataSource.manager);
       });
 
@@ -431,11 +453,11 @@ describe('IntentionService', () => {
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
 
       let capturedIntention: Partial<Intention> | undefined;
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -445,7 +467,9 @@ describe('IntentionService', () => {
           }
           return { ...data, computeDerivedTimes: jest.fn() };
         });
-        manager.save.mockImplementation((entity: any) => Promise.resolve({ ...entity, id: 1 }));
+        manager.save.mockImplementation((entity: any) =>
+          Promise.resolve({ ...entity, id: 1 }),
+        );
         return cb(dataSource.manager);
       });
 
@@ -467,11 +491,11 @@ describe('IntentionService', () => {
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
 
       let capturedIntention: Partial<Intention> | undefined;
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -481,7 +505,9 @@ describe('IntentionService', () => {
           }
           return { ...data, computeDerivedTimes: jest.fn() };
         });
-        manager.save.mockImplementation((entity: any) => Promise.resolve({ ...entity, id: 1 }));
+        manager.save.mockImplementation((entity: any) =>
+          Promise.resolve({ ...entity, id: 1 }),
+        );
         return cb(dataSource.manager);
       });
 
@@ -495,28 +521,36 @@ describe('IntentionService', () => {
       const tooSoon = new Date(now.getTime() + 30 * 60 * 1000);
       const dto = buildValidDto({ startTime: tooSoon.toISOString() });
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject when durationMinutes is less than 120', async () => {
       const playerId = 1;
       const dto = buildValidDto({ durationMinutes: 60 });
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject when durationMinutes is greater than 360', async () => {
       const playerId = 1;
       const dto = buildValidDto({ durationMinutes: 400 });
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject when venueIds is empty', async () => {
       const playerId = 1;
       const dto = buildValidDto({ venueIds: [] });
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject when venueIds exceeds 3', async () => {
@@ -530,14 +564,18 @@ describe('IntentionService', () => {
         ],
       });
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject when formatIds is empty', async () => {
       const playerId = 1;
       const dto = buildValidDto({ formatIds: [] });
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject when formatIds exceeds 3', async () => {
@@ -551,7 +589,9 @@ describe('IntentionService', () => {
         ],
       });
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw NotFoundException when player does not exist', async () => {
@@ -560,7 +600,9 @@ describe('IntentionService', () => {
 
       playerRepo.findOneBy!.mockResolvedValue(null);
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when venue does not exist', async () => {
@@ -571,7 +613,9 @@ describe('IntentionService', () => {
       playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
       venueRepo.findBy!.mockResolvedValue([]);
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException when format does not exist', async () => {
@@ -584,7 +628,9 @@ describe('IntentionService', () => {
       venueRepo.findBy!.mockResolvedValue([mockVenue]);
       formatRepo.findBy!.mockResolvedValue([]);
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(NotFoundException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw ConflictException when player has overlapping pending intention', async () => {
@@ -601,7 +647,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([], { getCount: 1 }),
       );
 
-      await expect(service.create(playerId, dto)).rejects.toThrow(ConflictException);
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -632,17 +680,16 @@ describe('IntentionService', () => {
         status: 'pending',
       });
 
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([mockIntention]),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([], { getCount: 0 }))
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
-        manager.findOne!.mockResolvedValue(mockIntention);
+        manager.findOne.mockResolvedValue(mockIntention);
         return cb(manager);
       });
 
@@ -665,17 +712,16 @@ describe('IntentionService', () => {
         status: 'pending',
       });
 
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 0 }),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([mockIntention]),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([], { getCount: 0 }))
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
-        manager.findOne!.mockResolvedValue(mockIntention);
+        manager.findOne.mockResolvedValue(mockIntention);
         return cb(manager);
       });
 
@@ -705,7 +751,7 @@ describe('IntentionService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
-        manager.findOne!.mockResolvedValue(mockIntention);
+        manager.findOne.mockResolvedValue(mockIntention);
         return cb(manager);
       });
 
@@ -732,7 +778,7 @@ describe('IntentionService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
-        manager.findOne!.mockResolvedValue(mockIntention);
+        manager.findOne.mockResolvedValue(mockIntention);
         return cb(manager);
       });
 
@@ -746,9 +792,13 @@ describe('IntentionService', () => {
       const playerId = 1;
       const dto: UpdateIntentionDto = { durationMinutes: 180 };
 
-      intentionRepo.createQueryBuilder!.mockReturnValue(createMockQueryBuilder([]));
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([]),
+      );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw ForbiddenException when non-owner tries to update', async () => {
@@ -765,7 +815,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(ForbiddenException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw BadRequestException when intention is matched', async () => {
@@ -782,7 +834,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when updated startTime is less than 1 hour ahead', async () => {
@@ -800,7 +854,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when updated venueIds exceeds 3', async () => {
@@ -824,7 +880,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw ConflictException when updated time overlaps with another intention', async () => {
@@ -840,13 +898,15 @@ describe('IntentionService', () => {
         status: 'pending',
       });
 
-      intentionRepo.createQueryBuilder!.mockReturnValueOnce(
-        createMockQueryBuilder([mockIntention]),
-      ).mockReturnValueOnce(
-        createMockQueryBuilder([], { getCount: 1 }),
-      );
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([mockIntention]),
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([], { getCount: 1 }));
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(ConflictException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should update acceptableWaitMinutes only', async () => {
@@ -867,7 +927,7 @@ describe('IntentionService', () => {
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
-        manager.findOne!.mockResolvedValue(mockIntention);
+        manager.findOne.mockResolvedValue(mockIntention);
         return cb(manager);
       });
 
@@ -892,7 +952,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when updated formatIds is empty', async () => {
@@ -911,7 +973,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when updated formatIds exceeds 3', async () => {
@@ -935,7 +999,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when updated durationMinutes is less than 120', async () => {
@@ -954,7 +1020,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(intentionId, playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -973,7 +1041,10 @@ describe('IntentionService', () => {
       intentionRepo.createQueryBuilder!.mockReturnValue(
         createMockQueryBuilder([mockIntention]),
       );
-      intentionRepo.save!.mockResolvedValue({ ...mockIntention, status: 'cancelled' });
+      intentionRepo.save!.mockResolvedValue({
+        ...mockIntention,
+        status: 'cancelled',
+      });
 
       await service.cancel(intentionId, playerId);
 
@@ -994,7 +1065,10 @@ describe('IntentionService', () => {
       intentionRepo.createQueryBuilder!.mockReturnValue(
         createMockQueryBuilder([mockIntention]),
       );
-      intentionRepo.save!.mockResolvedValue({ ...mockIntention, status: 'cancelled' });
+      intentionRepo.save!.mockResolvedValue({
+        ...mockIntention,
+        status: 'cancelled',
+      });
 
       await service.cancel(intentionId, playerId);
 
@@ -1005,9 +1079,13 @@ describe('IntentionService', () => {
       const intentionId = 999;
       const playerId = 1;
 
-      intentionRepo.createQueryBuilder!.mockReturnValue(createMockQueryBuilder([]));
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([]),
+      );
 
-      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(NotFoundException);
+      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw ForbiddenException when non-owner tries to cancel', async () => {
@@ -1023,7 +1101,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(ForbiddenException);
+      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('should throw BadRequestException when intention is confirmed', async () => {
@@ -1039,7 +1119,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(BadRequestException);
+      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when intention is already cancelled', async () => {
@@ -1055,7 +1137,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(BadRequestException);
+      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when intention is expired', async () => {
@@ -1071,7 +1155,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(BadRequestException);
+      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException when intention is failed', async () => {
@@ -1087,7 +1173,9 @@ describe('IntentionService', () => {
         createMockQueryBuilder([mockIntention]),
       );
 
-      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(BadRequestException);
+      await expect(service.cancel(intentionId, playerId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -1099,10 +1187,24 @@ describe('IntentionService', () => {
       const mockIntention = createMockIntention({
         id: intentionId,
         intentionVenues: [
-          { id: 1, intentionId: 1, venueId: 1, priority: 1, venue: createMockVenue(), intention: {} as any },
+          {
+            id: 1,
+            intentionId: 1,
+            venueId: 1,
+            priority: 1,
+            venue: createMockVenue(),
+            intention: {} as any,
+          },
         ],
         intentionFormats: [
-          { id: 1, intentionId: 1, formatId: 1, priority: 1, format: createMockFormat(), intention: {} as any },
+          {
+            id: 1,
+            intentionId: 1,
+            formatId: 1,
+            priority: 1,
+            format: createMockFormat(),
+            intention: {} as any,
+          },
         ],
       });
 
@@ -1141,9 +1243,13 @@ describe('IntentionService', () => {
     it('should throw NotFoundException when intention does not exist', async () => {
       const intentionId = 999;
 
-      intentionRepo.createQueryBuilder!.mockReturnValue(createMockQueryBuilder([]));
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([]),
+      );
 
-      await expect(service.findById(intentionId)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(intentionId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -1173,8 +1279,14 @@ describe('IntentionService', () => {
 
     it('should filter by status', async () => {
       const playerId = 1;
-      const query: QueryIntentionDto = { page: 1, pageSize: 10, status: 'pending' };
-      const mockIntentions = [createMockIntention({ id: 1, playerId, status: 'pending' })];
+      const query: QueryIntentionDto = {
+        page: 1,
+        pageSize: 10,
+        status: 'pending',
+      };
+      const mockIntentions = [
+        createMockIntention({ id: 1, playerId, status: 'pending' }),
+      ];
 
       const qb = createMockQueryBuilder(mockIntentions);
       intentionRepo.createQueryBuilder!.mockReturnValue(qb);
@@ -1182,10 +1294,9 @@ describe('IntentionService', () => {
       const result = await service.findByPlayer(playerId, query);
 
       expect(result).toBeDefined();
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        'intention.status = :status',
-        { status: 'pending' },
-      );
+      expect(qb.andWhere).toHaveBeenCalledWith('intention.status = :status', {
+        status: 'pending',
+      });
     });
 
     it('should use default pagination when not provided', async () => {

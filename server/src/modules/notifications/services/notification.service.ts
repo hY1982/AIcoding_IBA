@@ -78,7 +78,9 @@ export class NotificationService {
    * Uses repository.save for bulk write and wraps in a transaction
    * for atomicity. Each user receives an independent notification record.
    */
-  async batchCreateNotifications(dto: BatchCreateNotificationDto): Promise<Notification[]> {
+  async batchCreateNotifications(
+    dto: BatchCreateNotificationDto,
+  ): Promise<Notification[]> {
     if (dto.userIds.length === 0) {
       return [];
     }
@@ -130,7 +132,9 @@ export class NotificationService {
     });
 
     if (!notification) {
-      throw new NotFoundException(`Notification not found: id=${notificationId}`);
+      throw new NotFoundException(
+        `Notification not found: id=${notificationId}`,
+      );
     }
 
     const targetChannels = channels ?? ['in_app'];
@@ -197,17 +201,24 @@ export class NotificationService {
    *
    * Validates ownership to prevent users from marking others' notifications.
    */
-  async markAsRead(notificationId: number, userId: number): Promise<Notification> {
+  async markAsRead(
+    notificationId: number,
+    userId: number,
+  ): Promise<Notification> {
     const notification = await this.notificationRepo.findOne({
       where: { id: notificationId },
     });
 
     if (!notification) {
-      throw new NotFoundException(`Notification not found: id=${notificationId}`);
+      throw new NotFoundException(
+        `Notification not found: id=${notificationId}`,
+      );
     }
 
     if (notification.userId !== userId) {
-      throw new NotFoundException(`Notification not found: id=${notificationId}`);
+      throw new NotFoundException(
+        `Notification not found: id=${notificationId}`,
+      );
     }
 
     notification.isRead = true;

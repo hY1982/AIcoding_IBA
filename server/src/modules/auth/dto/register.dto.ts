@@ -10,13 +10,16 @@ import {
   Max,
   IsNumber,
   ArrayMaxSize,
-
   Matches,
-
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { USER_TYPES, UserType } from '@shared/common';
-import { GENDERS, Gender, BASKETBALL_POSITIONS, BasketballPosition } from '@shared/player';
+import {
+  GENDERS,
+  Gender,
+  BASKETBALL_POSITIONS,
+  BasketballPosition,
+} from '@shared/player';
 
 /**
  * 密码复杂度校验：最小8位，至少包含1个字母和1个数字

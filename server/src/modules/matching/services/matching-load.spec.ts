@@ -16,7 +16,9 @@ describe('Matching Load Tests', () => {
   /**
    * 生成指定数量的模拟球员数据
    */
-  function generatePlayers(count: number): Array<{ id: number; totalAbilityScore: number }> {
+  function generatePlayers(
+    count: number,
+  ): Array<{ id: number; totalAbilityScore: number }> {
     const players: Array<{ id: number; totalAbilityScore: number }> = [];
     // 使用伪随机但确定性的种子，保证测试可重复
     let seed = 42;
@@ -43,7 +45,9 @@ describe('Matching Load Tests', () => {
     players: Array<{ id: number; totalAbilityScore: number }>,
     threshold: number,
   ): Array<{ id: number; totalAbilityScore: number }> {
-    const sorted = [...players].sort((a, b) => b.totalAbilityScore - a.totalAbilityScore);
+    const sorted = [...players].sort(
+      (a, b) => b.totalAbilityScore - a.totalAbilityScore,
+    );
 
     let bestStart = 0;
     let bestEnd = 0;
@@ -53,7 +57,8 @@ describe('Matching Load Tests', () => {
       // 利用已排序特性：窗口内 max = sorted[left], min = sorted[right]
       while (
         left < right &&
-        sorted[left].totalAbilityScore - sorted[right].totalAbilityScore > threshold
+        sorted[left].totalAbilityScore - sorted[right].totalAbilityScore >
+          threshold
       ) {
         left++;
       }
@@ -210,7 +215,10 @@ describe('Matching Load Tests', () => {
 
         // 验证结果
         expect(teams.length).toBeGreaterThanOrEqual(format.teamCountMin);
-        const totalAssigned = teams.reduce((sum, t) => sum + t.players.length, 0);
+        const totalAssigned = teams.reduce(
+          (sum, t) => sum + t.players.length,
+          0,
+        );
         expect(totalAssigned).toBe(candidateSet.length);
       }
 

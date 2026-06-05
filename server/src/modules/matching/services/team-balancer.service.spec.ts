@@ -231,10 +231,7 @@ describe('TeamBalancerService', () => {
     // ==================== Edge Cases ====================
 
     it('should throw BadRequestException when player count is insufficient', () => {
-      const players = [
-        createMockPlayer(1, 80),
-        createMockPlayer(2, 70),
-      ];
+      const players = [createMockPlayer(1, 80), createMockPlayer(2, 70)];
       const format = createMockFormat(5, 2, 4); // needs at least 10 players
 
       expect(() => service.snakeDraft({ players, format })).toThrow(

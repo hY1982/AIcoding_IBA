@@ -15,7 +15,11 @@ describe('CurrentUser decorator', () => {
       }
     }
 
-    const metadata = Reflect.getMetadata(ROUTE_ARGS_METADATA, TestController, 'testMethod');
+    const metadata = Reflect.getMetadata(
+      ROUTE_ARGS_METADATA,
+      TestController,
+      'testMethod',
+    );
     expect(metadata).toBeDefined();
     expect(typeof metadata).toBe('object');
   });
@@ -37,7 +41,11 @@ describe('CurrentUser decorator', () => {
       }
     }
 
-    const metadata = Reflect.getMetadata(ROUTE_ARGS_METADATA, TestController, 'testMethod');
+    const metadata = Reflect.getMetadata(
+      ROUTE_ARGS_METADATA,
+      TestController,
+      'testMethod',
+    );
     expect(metadata).toBeDefined();
 
     // Find the factory function in metadata and invoke it
@@ -64,10 +72,16 @@ describe('CurrentUser decorator', () => {
       }
     }
 
-    const metadata = Reflect.getMetadata(ROUTE_ARGS_METADATA, TestController, 'testMethod');
+    const metadata = Reflect.getMetadata(
+      ROUTE_ARGS_METADATA,
+      TestController,
+      'testMethod',
+    );
     const metadataKey = Object.keys(metadata)[0];
     const factory = metadata[metadataKey].factory;
 
-    expect(() => factory(undefined, mockExecutionContext)).toThrow(UnauthorizedException);
+    expect(() => factory(undefined, mockExecutionContext)).toThrow(
+      UnauthorizedException,
+    );
   });
 });

@@ -34,7 +34,9 @@ describe('MatchingScheduler', () => {
     mockQueue = {
       add: jest.fn(),
       getJobs: jest.fn().mockResolvedValue([]),
-      getJobCounts: jest.fn().mockResolvedValue({ waiting: 0, active: 0, delayed: 0 }),
+      getJobCounts: jest
+        .fn()
+        .mockResolvedValue({ waiting: 0, active: 0, delayed: 0 }),
     };
 
     mockConfigService = {
@@ -92,7 +94,9 @@ describe('MatchingScheduler', () => {
 
     it('should schedule job for region with pending intentions', async () => {
       // 模拟有活跃地区
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       // 模拟 hasPendingIntentions 返回 true
       const countQb = createMockQueryBuilder([{ count: '5' }]);
       // 模拟 getJobs 返回空（无活跃 job）
@@ -106,7 +110,7 @@ describe('MatchingScheduler', () => {
       mockDataSource.createQueryBuilder.mockImplementation(() => {
         callCount++;
         if (callCount === 1) return regionQb; // getActiveRegionCodes
-        if (callCount === 2) return countQb;  // hasPendingIntentions
+        if (callCount === 2) return countQb; // hasPendingIntentions
         return regionQb;
       });
 
@@ -121,7 +125,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should skip when lock is already held', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -142,7 +148,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should skip when queue has active job for region', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -155,7 +163,11 @@ describe('MatchingScheduler', () => {
 
       mockRedis.set.mockResolvedValue('OK');
       // 模拟有活跃 job（getJobCounts 返回非零）
-      mockQueue.getJobCounts.mockResolvedValue({ waiting: 1, active: 0, delayed: 0 });
+      mockQueue.getJobCounts.mockResolvedValue({
+        waiting: 1,
+        active: 0,
+        delayed: 0,
+      });
       // 队列已有该地区的活跃 job
       mockQueue.getJobs.mockResolvedValue([
         { id: 'existing-job', data: { regionCode: 'shenzhen_futian' } },
@@ -176,7 +188,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should skip region when no pending intentions', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       // hasPendingIntentions 返回 0
       const countQb = createMockQueryBuilder([{ count: '0' }]);
 
@@ -196,7 +210,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should handle redis lock acquisition failure', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -216,7 +232,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should handle getJobs exception gracefully', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -239,7 +257,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should skip paused region when consecutiveFailures >= 3', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -273,7 +293,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should resume paused region when consecutiveFailures < 3', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -285,7 +307,9 @@ describe('MatchingScheduler', () => {
       });
 
       // 设置地区状态为暂停，但 consecutiveFailures < 3
-      const state = (scheduler as any).getOrCreateRegionState('shenzhen_futian');
+      const state = (scheduler as any).getOrCreateRegionState(
+        'shenzhen_futian',
+      );
       state.isPaused = true;
       state.consecutiveFailures = 2;
 
@@ -299,7 +323,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should track consecutive failures and pause region after 3 failures', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -329,7 +355,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should resume paused region after failures decrease', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -367,7 +395,9 @@ describe('MatchingScheduler', () => {
 
   describe('lock management', () => {
     it('should release lock after processing', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -388,7 +418,9 @@ describe('MatchingScheduler', () => {
     });
 
     it('should handle release lock failure gracefully', async () => {
-      const regionQb = createMockQueryBuilder([{ regionCode: 'shenzhen_futian' }]);
+      const regionQb = createMockQueryBuilder([
+        { regionCode: 'shenzhen_futian' },
+      ]);
       const countQb = createMockQueryBuilder([{ count: '5' }]);
 
       let callCount = 0;
@@ -431,7 +463,9 @@ describe('MatchingScheduler', () => {
 
 // ==================== Helpers ====================
 
-function createMockQueryBuilder(results: Array<Record<string, unknown>> = []): SelectQueryBuilder<Record<string, unknown>> {
+function createMockQueryBuilder(
+  results: Array<Record<string, unknown>> = [],
+): SelectQueryBuilder<Record<string, unknown>> {
   const qb = {
     select: jest.fn().mockReturnThis(),
     from: jest.fn().mockReturnThis(),

@@ -10,7 +10,10 @@ import { IntentionVenue } from '@modules/intentions/entities/intention-venue.ent
 import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
 import { Format } from '@modules/formats/entities/format.entity';
-import { createTestNotification, createTestUser } from '../../../../test/factories/feedback.factory';
+import {
+  createTestNotification,
+  createTestUser,
+} from '../../../../test/factories/feedback.factory';
 
 describe('Notification Entity', () => {
   let dataSource: DataSource;
@@ -27,7 +30,18 @@ describe('Notification Entity', () => {
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || '',
       database: 'basketball_platform_test',
-      entities: [User, VenueManager, Player, Venue, VenueTimeSlot, IntentionVenue, IntentionFormat, Intention, Format, Notification],
+      entities: [
+        User,
+        VenueManager,
+        Player,
+        Venue,
+        VenueTimeSlot,
+        IntentionVenue,
+        IntentionFormat,
+        Intention,
+        Format,
+        Notification,
+      ],
       synchronize: true,
     });
     await dataSource.initialize();
@@ -295,7 +309,9 @@ describe('Notification Entity', () => {
       const userRepo = dataSource.getRepository(User);
       await userRepo.remove(user);
 
-      const found = await notificationRepo.findOne({ where: { id: notification.id } });
+      const found = await notificationRepo.findOne({
+        where: { id: notification.id },
+      });
       expect(found).toBeNull();
     });
   });

@@ -12,7 +12,13 @@ import { Format } from '@modules/formats/entities/format.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Match, MatchPlayer, MatchTeam, VenueTimeSlot, Format]),
+    TypeOrmModule.forFeature([
+      Match,
+      MatchPlayer,
+      MatchTeam,
+      VenueTimeSlot,
+      Format,
+    ]),
     PaymentsModule,
   ],
   providers: [

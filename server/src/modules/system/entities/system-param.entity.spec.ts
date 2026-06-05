@@ -134,7 +134,8 @@ describe('SystemParam Entity', () => {
 
     it('should allow description to be null', async () => {
       const param = await createTestSystemParam(dataSource, {
-        paramKey: 'test_param_no_desc' as import('@shared/system').SystemParamKey,
+        paramKey:
+          'test_param_no_desc' as import('@shared/system').SystemParamKey,
         paramValue: { key: 'value' },
       });
 

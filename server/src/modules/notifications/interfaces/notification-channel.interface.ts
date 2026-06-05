@@ -10,7 +10,9 @@
 
 import { Notification } from '../entities/notification.entity';
 
-export const NOTIFICATION_CHANNEL_PROVIDER = Symbol('NOTIFICATION_CHANNEL_PROVIDER');
+export const NOTIFICATION_CHANNEL_PROVIDER = Symbol(
+  'NOTIFICATION_CHANNEL_PROVIDER',
+);
 
 export interface ChannelSendResult {
   success: boolean;

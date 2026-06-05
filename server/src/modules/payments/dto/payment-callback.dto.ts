@@ -1,5 +1,8 @@
 import { IsString, IsNotEmpty, IsEnum, IsOptional } from 'class-validator';
-import { PaymentCallbackStatus, PAYMENT_CALLBACK_STATUSES } from '../interfaces/payment-provider.interface';
+import {
+  PaymentCallbackStatus,
+  PAYMENT_CALLBACK_STATUSES,
+} from '../interfaces/payment-provider.interface';
 
 /**
  * DTO for payment callback from third-party provider

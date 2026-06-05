@@ -13,7 +13,11 @@ import {
   SPORTSMANSHIP_OPTIONS,
   ACTION_CLEANLINESS_OPTIONS,
 } from '@shared/feedback';
-import type { LevelMatch, Sportsmanship, ActionCleanliness } from '@shared/feedback';
+import type {
+  LevelMatch,
+  Sportsmanship,
+  ActionCleanliness,
+} from '@shared/feedback';
 
 /**
  * 对其他球员的评分实体

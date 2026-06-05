@@ -11,11 +11,15 @@ export class CreateTimeSlotDto {
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, { message: '时间格式必须为 HH:mm 或 HH:mm:ss' })
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, {
+    message: '时间格式必须为 HH:mm 或 HH:mm:ss',
+  })
   startTime!: string;
 
   @IsString()
   @IsNotEmpty()
-  @Matches(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, { message: '时间格式必须为 HH:mm 或 HH:mm:ss' })
+  @Matches(/^([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$/, {
+    message: '时间格式必须为 HH:mm 或 HH:mm:ss',
+  })
   endTime!: string;
 }

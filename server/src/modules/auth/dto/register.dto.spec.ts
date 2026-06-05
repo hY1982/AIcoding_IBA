@@ -1,6 +1,11 @@
 import { validate } from 'class-validator';
 import { plainToInstance } from 'class-transformer';
-import { PlayerRegisterDto, VenueManagerRegisterDto, PHONE_REGEX, PASSWORD_REGEX } from './register.dto';
+import {
+  PlayerRegisterDto,
+  VenueManagerRegisterDto,
+  PHONE_REGEX,
+  PASSWORD_REGEX,
+} from './register.dto';
 
 describe('Register DTOs', () => {
   describe('PlayerRegisterDto', () => {

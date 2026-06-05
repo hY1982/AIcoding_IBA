@@ -3,10 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { FeedbackPlayerRating } from '@modules/feedbacks/entities/feedback-player-rating.entity';
-import {
-  AbilityAdjustWeights,
-  isAbilityAdjustWeights,
-} from '@shared/system';
+import { AbilityAdjustWeights, isAbilityAdjustWeights } from '@shared/system';
 
 /**
  * 能力匹配调节值计算服务
@@ -122,9 +119,6 @@ export class AbilityAdjustService {
    * @returns number 裁剪后的调节值
    */
   clampAdjustValue(totalAdjust: number): number {
-    return Math.max(
-      this.MIN_ADJUST,
-      Math.min(this.MAX_ADJUST, totalAdjust),
-    );
+    return Math.max(this.MIN_ADJUST, Math.min(this.MAX_ADJUST, totalAdjust));
   }
 }

@@ -291,7 +291,9 @@ describe('Feedback Entity', () => {
     it('should cascade delete feedbacks when match is deleted', async () => {
       const feedback = await createTestFeedback(dataSource);
       const matchRepo = dataSource.getRepository(Match);
-      const match = await matchRepo.findOne({ where: { id: feedback.matchId } });
+      const match = await matchRepo.findOne({
+        where: { id: feedback.matchId },
+      });
       expect(match).not.toBeNull();
 
       await matchRepo.remove(match!);

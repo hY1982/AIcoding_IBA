@@ -3,7 +3,11 @@ import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { ConflictException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import * as bcryptjs from 'bcryptjs';
 import { AuthService } from './auth.service';
 import { User } from '@modules/users/entities/user.entity';
@@ -12,7 +16,10 @@ import { PlayerPosition } from '@modules/players/entities/player-position.entity
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { hashForQuery } from '@common/utils/encrypt.util';
 import { RedisService } from '@common/services/redis.service';
-import { PlayerRegisterDto, VenueManagerRegisterDto } from '../dto/register.dto';
+import {
+  PlayerRegisterDto,
+  VenueManagerRegisterDto,
+} from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 
 // Mock encrypt.util
@@ -36,7 +43,15 @@ describe('AuthService', () => {
   let configService: jest.Mocked<ConfigService>;
   let dataSource: jest.Mocked<DataSource>;
   let redisService: jest.Mocked<RedisService>;
-  let redisClient: { get: jest.Mock; getdel: jest.Mock; set: jest.Mock; del: jest.Mock; keys: jest.Mock; sadd: jest.Mock; smembers: jest.Mock };
+  let redisClient: {
+    get: jest.Mock;
+    getdel: jest.Mock;
+    set: jest.Mock;
+    del: jest.Mock;
+    keys: jest.Mock;
+    sadd: jest.Mock;
+    smembers: jest.Mock;
+  };
   let entityManager: jest.Mocked<EntityManager>;
 
   beforeEach(async () => {
@@ -72,7 +87,8 @@ describe('AuthService', () => {
         if (key === 'JWT_SECRET') return 'test-secret';
         if (key === 'JWT_EXPIRES_IN') return '2h';
         if (key === 'JWT_REFRESH_EXPIRES_IN') return '7d';
-        if (key === 'REFRESH_TOKEN_HASH_SECRET') return 'test-refresh-hash-secret';
+        if (key === 'REFRESH_TOKEN_HASH_SECRET')
+          return 'test-refresh-hash-secret';
         return undefined;
       }),
     } as unknown as jest.Mocked<ConfigService>;
@@ -125,25 +141,26 @@ describe('AuthService', () => {
   });
 
   // Helper functions
-  const createMockUser = (overrides: Partial<User> = {}): User =>
-    ({
-      id: 1,
-      phone: '13800138000',
-      phoneHash: 'hmac_13800138000',
-      passwordHash: '$2a$12$mockhash',
-      nickname: 'TestUser',
-      userType: 'player' as const,
-      status: 'active' as const,
-      regionCode: null,
-      avatarUrl: null,
-      realName: null,
-      idCard: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...overrides,
-    }) as User;
+  const createMockUser = (overrides: Partial<User> = {}): User => ({
+    id: 1,
+    phone: '13800138000',
+    phoneHash: 'hmac_13800138000',
+    passwordHash: '$2a$12$mockhash',
+    nickname: 'TestUser',
+    userType: 'player' as const,
+    status: 'active' as const,
+    regionCode: null,
+    avatarUrl: null,
+    realName: null,
+    idCard: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  });
 
-  const createPlayerRegisterDto = (overrides: Partial<PlayerRegisterDto> = {}): PlayerRegisterDto => ({
+  const createPlayerRegisterDto = (
+    overrides: Partial<PlayerRegisterDto> = {},
+  ): PlayerRegisterDto => ({
     phone: '13800138000',
     password: 'Password123',
     nickname: 'TestPlayer',
@@ -160,7 +177,9 @@ describe('AuthService', () => {
     ...overrides,
   });
 
-  const createVenueManagerRegisterDto = (overrides: Partial<VenueManagerRegisterDto> = {}): VenueManagerRegisterDto => ({
+  const createVenueManagerRegisterDto = (
+    overrides: Partial<VenueManagerRegisterDto> = {},
+  ): VenueManagerRegisterDto => ({
     phone: '13800138111',
     password: 'Password123',
     nickname: 'TestManager',
@@ -176,7 +195,9 @@ describe('AuthService', () => {
       userRepository.findOne.mockResolvedValue(null);
       const mockUser = createMockUser({ nickname: 'TestPlayer' });
       const mockPlayer = { id: 1, userId: 1 } as Player;
-      entityManager.save.mockResolvedValueOnce(mockUser).mockResolvedValueOnce(mockPlayer);
+      entityManager.save
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce(mockPlayer);
 
       const dto = createPlayerRegisterDto();
       const result = await authService.register(dto);
@@ -192,7 +213,11 @@ describe('AuthService', () => {
 
     it('should register a new venue manager successfully', async () => {
       userRepository.findOne.mockResolvedValue(null);
-      const mockUser = createMockUser({ id: 2, userType: 'venue_manager', nickname: 'TestManager' });
+      const mockUser = createMockUser({
+        id: 2,
+        userType: 'venue_manager',
+        nickname: 'TestManager',
+      });
       entityManager.save.mockResolvedValue(mockUser);
 
       const dto = createVenueManagerRegisterDto();
@@ -207,7 +232,9 @@ describe('AuthService', () => {
       userRepository.findOne.mockResolvedValue(existingUser);
 
       const dto = createPlayerRegisterDto();
-      await expect(authService.register(dto)).rejects.toThrow(ConflictException);
+      await expect(authService.register(dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should handle concurrent duplicate registration via transaction', async () => {
@@ -215,15 +242,21 @@ describe('AuthService', () => {
       dataSource.transaction.mockRejectedValueOnce({ code: '23505' });
 
       const dto = createPlayerRegisterDto();
-      await expect(authService.register(dto)).rejects.toThrow(ConflictException);
+      await expect(authService.register(dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should rethrow ConflictException from transaction unchanged', async () => {
       // Simulate transaction throwing ConflictException directly
-      dataSource.transaction.mockRejectedValueOnce(new ConflictException('该手机号已被注册'));
+      dataSource.transaction.mockRejectedValueOnce(
+        new ConflictException('该手机号已被注册'),
+      );
 
       const dto = createPlayerRegisterDto();
-      await expect(authService.register(dto)).rejects.toThrow(ConflictException);
+      await expect(authService.register(dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should reject registration with weak password', async () => {
@@ -263,7 +296,9 @@ describe('AuthService', () => {
         password: 'Password123',
       };
 
-      await expect(authService.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(authService.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should reject login with wrong password', async () => {
@@ -276,7 +311,9 @@ describe('AuthService', () => {
         password: 'WrongPassword123',
       };
 
-      await expect(authService.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(authService.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should reject login for banned user', async () => {
@@ -288,7 +325,9 @@ describe('AuthService', () => {
         password: 'Password123',
       };
 
-      await expect(authService.login(loginDto)).rejects.toThrow(UnauthorizedException);
+      await expect(authService.login(loginDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should mask phone in response', async () => {
@@ -313,8 +352,15 @@ describe('AuthService', () => {
       const refreshToken = 'valid-refresh-token';
       const tokenHash = (authService as any).hashToken(refreshToken);
 
-      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
-      jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'refresh' });
+      redisClient.getdel.mockResolvedValue(
+        JSON.stringify({ userId: 1, issuedAt: Date.now() }),
+      );
+      jwtService.verify.mockReturnValue({
+        sub: 1,
+        phone: '13800138000',
+        userType: 'player',
+        type: 'refresh',
+      });
       userRepository.findOne.mockResolvedValue(mockUser);
       redisClient.set.mockResolvedValue('OK');
       redisClient.sadd.mockResolvedValue(1);
@@ -331,11 +377,18 @@ describe('AuthService', () => {
       const refreshToken = 'old-refresh-token';
 
       // First call: token exists (getdel atomically deletes it)
-      redisClient.getdel.mockResolvedValueOnce(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
+      redisClient.getdel.mockResolvedValueOnce(
+        JSON.stringify({ userId: 1, issuedAt: Date.now() }),
+      );
       // Second call: token no longer exists
       redisClient.getdel.mockResolvedValueOnce(null);
 
-      jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'refresh' });
+      jwtService.verify.mockReturnValue({
+        sub: 1,
+        phone: '13800138000',
+        userType: 'player',
+        type: 'refresh',
+      });
 
       // First refresh succeeds
       const mockUser = createMockUser();
@@ -345,58 +398,97 @@ describe('AuthService', () => {
       await authService.refresh({ refreshToken });
 
       // Second refresh with same token should fail
-      await expect(authService.refresh({ refreshToken })).rejects.toThrow(UnauthorizedException);
+      await expect(authService.refresh({ refreshToken })).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should reject refresh with invalid refresh token', async () => {
       redisClient.getdel.mockResolvedValue(null);
 
-      await expect(authService.refresh({ refreshToken: 'invalid-token' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        authService.refresh({ refreshToken: 'invalid-token' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh with expired refresh token', async () => {
       redisClient.getdel.mockResolvedValue(null);
 
-      await expect(authService.refresh({ refreshToken: 'expired-token' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        authService.refresh({ refreshToken: 'expired-token' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh with corrupted redis data', async () => {
       redisClient.getdel.mockResolvedValue('not-valid-json');
 
-      await expect(authService.refresh({ refreshToken: 'corrupted-token' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        authService.refresh({ refreshToken: 'corrupted-token' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh with invalid jwt signature', async () => {
-      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
+      redisClient.getdel.mockResolvedValue(
+        JSON.stringify({ userId: 1, issuedAt: Date.now() }),
+      );
       jwtService.verify.mockImplementation(() => {
         throw new Error('invalid signature');
       });
 
-      await expect(authService.refresh({ refreshToken: 'bad-signature-token' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        authService.refresh({ refreshToken: 'bad-signature-token' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh with wrong token type', async () => {
-      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
-      jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'access' });
+      redisClient.getdel.mockResolvedValue(
+        JSON.stringify({ userId: 1, issuedAt: Date.now() }),
+      );
+      jwtService.verify.mockReturnValue({
+        sub: 1,
+        phone: '13800138000',
+        userType: 'player',
+        type: 'access',
+      });
 
-      await expect(authService.refresh({ refreshToken: 'access-type-token' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        authService.refresh({ refreshToken: 'access-type-token' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh for banned user', async () => {
       const mockUser = createMockUser({ status: 'banned' });
-      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 1, issuedAt: Date.now() }));
-      jwtService.verify.mockReturnValue({ sub: 1, phone: '13800138000', userType: 'player', type: 'refresh' });
+      redisClient.getdel.mockResolvedValue(
+        JSON.stringify({ userId: 1, issuedAt: Date.now() }),
+      );
+      jwtService.verify.mockReturnValue({
+        sub: 1,
+        phone: '13800138000',
+        userType: 'player',
+        type: 'refresh',
+      });
       userRepository.findOne.mockResolvedValue(mockUser);
 
-      await expect(authService.refresh({ refreshToken: 'banned-user-token' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        authService.refresh({ refreshToken: 'banned-user-token' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should reject refresh for non-existent user', async () => {
-      redisClient.getdel.mockResolvedValue(JSON.stringify({ userId: 999, issuedAt: Date.now() }));
-      jwtService.verify.mockReturnValue({ sub: 999, phone: '13800999999', userType: 'player', type: 'refresh' });
+      redisClient.getdel.mockResolvedValue(
+        JSON.stringify({ userId: 999, issuedAt: Date.now() }),
+      );
+      jwtService.verify.mockReturnValue({
+        sub: 999,
+        phone: '13800999999',
+        userType: 'player',
+        type: 'refresh',
+      });
       userRepository.findOne.mockResolvedValue(null);
 
-      await expect(authService.refresh({ refreshToken: 'missing-user-token' })).rejects.toThrow(UnauthorizedException);
+      await expect(
+        authService.refresh({ refreshToken: 'missing-user-token' }),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -408,7 +500,10 @@ describe('AuthService', () => {
       await authService.logout(1);
 
       expect(redisClient.smembers).toHaveBeenCalledWith('user_refresh:1');
-      expect(redisClient.del).toHaveBeenCalledWith('refresh:hash1', 'refresh:hash2');
+      expect(redisClient.del).toHaveBeenCalledWith(
+        'refresh:hash1',
+        'refresh:hash2',
+      );
       expect(redisClient.del).toHaveBeenCalledWith('user_refresh:1');
     });
 

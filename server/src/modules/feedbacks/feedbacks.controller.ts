@@ -6,12 +6,7 @@ import {
   Param,
   ParseIntPipe,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiParam,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { FeedbackService } from './services/feedback.service';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { Feedback } from './entities/feedback.entity';
@@ -37,9 +32,15 @@ export class FeedbacksController {
     description: '反馈提交成功',
     type: Feedback,
   })
-  @ApiResponse({ status: 400, description: '请求参数错误（自评/评价非参赛球员等）' })
+  @ApiResponse({
+    status: 400,
+    description: '请求参数错误（自评/评价非参赛球员等）',
+  })
   @ApiResponse({ status: 404, description: '比赛不存在或球员未参赛' })
-  @ApiResponse({ status: 409, description: '比赛未结束/球员未确认/已提交过反馈' })
+  @ApiResponse({
+    status: 409,
+    description: '比赛未结束/球员未确认/已提交过反馈',
+  })
   async create(@Body() dto: CreateFeedbackDto): Promise<Feedback> {
     return this.feedbackService.createFeedback(dto);
   }

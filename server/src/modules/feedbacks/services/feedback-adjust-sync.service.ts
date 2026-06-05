@@ -113,8 +113,10 @@ export class FeedbackAdjustSyncService {
     // 计算累计调节值
     let totalAdjust = 0;
     for (const [, matchRatings] of ratingsByMatch) {
-      totalAdjust +=
-        this.abilityAdjustService.calculateMatchAdjustForPlayer(matchRatings, w);
+      totalAdjust += this.abilityAdjustService.calculateMatchAdjustForPlayer(
+        matchRatings,
+        w,
+      );
     }
     totalAdjust = this.abilityAdjustService.clampAdjustValue(totalAdjust);
 

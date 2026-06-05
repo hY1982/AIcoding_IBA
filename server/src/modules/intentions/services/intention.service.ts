@@ -262,9 +262,7 @@ export class IntentionService {
         where: { id: intentionId },
       });
       if (!intentionInTx) {
-        throw new NotFoundException(
-          `意向不存在: intentionId=${intentionId}`,
-        );
+        throw new NotFoundException(`意向不存在: intentionId=${intentionId}`);
       }
 
       // 更新 Intention 主表
@@ -357,9 +355,7 @@ export class IntentionService {
 
     // 状态校验
     if (!this.canTransitionStatus(intention.status, 'cancelled')) {
-      throw new BadRequestException(
-        `当前状态为 ${intention.status}，不可取消`,
-      );
+      throw new BadRequestException(`当前状态为 ${intention.status}，不可取消`);
     }
 
     intention.status = 'cancelled';

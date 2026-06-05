@@ -12,7 +12,12 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { GENDERS, Gender, BASKETBALL_POSITIONS, BasketballPosition } from '@shared/player';
+import {
+  GENDERS,
+  Gender,
+  BASKETBALL_POSITIONS,
+  BasketballPosition,
+} from '@shared/player';
 
 /**
  * 创建球员 DTO

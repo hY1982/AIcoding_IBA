@@ -79,7 +79,8 @@ export async function createTestSystemParam(
   const paramRepo = dataSource.getRepository(SystemParam);
 
   const param = paramRepo.create({
-    paramKey: (overrides.paramKey ?? `test_param_${Date.now()}`) as import('@shared/system').SystemParamKey,
+    paramKey: (overrides.paramKey ??
+      `test_param_${Date.now()}`) as import('@shared/system').SystemParamKey,
     paramValue: overrides.paramValue ?? { test: true },
     description: overrides.description ?? null,
   });

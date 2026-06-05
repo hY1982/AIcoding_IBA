@@ -19,12 +19,7 @@ import { MatchingScheduler } from './matching.scheduler';
  */
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Intention,
-      Match,
-      Format,
-      SystemParam,
-    ]),
+    TypeOrmModule.forFeature([Intention, Match, Format, SystemParam]),
     BullModule.registerQueueAsync({
       name: 'matching',
       imports: [ConfigModule],

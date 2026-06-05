@@ -149,5 +149,7 @@ export const FEMALE_PERCENTILE_DATASET: PercentileDataset = {
 };
 
 export function getDataset(gender: Gender): PercentileDataset {
-  return gender === 'male' ? MALE_PERCENTILE_DATASET : FEMALE_PERCENTILE_DATASET;
+  return gender === 'male'
+    ? MALE_PERCENTILE_DATASET
+    : FEMALE_PERCENTILE_DATASET;
 }

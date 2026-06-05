@@ -87,12 +87,14 @@ function createMockVenue(overrides: Partial<Venue> = {}): Venue {
       venues: [],
       createdAt: new Date('2026-01-01T00:00:00Z'),
       updatedAt: new Date('2026-01-01T00:00:00Z'),
-    } as unknown as VenueManager,
+    },
     ...overrides,
-  } as Venue;
+  };
 }
 
-function createMockVenueTimeSlot(overrides: Partial<VenueTimeSlot> = {}): VenueTimeSlot {
+function createMockVenueTimeSlot(
+  overrides: Partial<VenueTimeSlot> = {},
+): VenueTimeSlot {
   return {
     id: 1,
     venueId: 1,
@@ -104,7 +106,7 @@ function createMockVenueTimeSlot(overrides: Partial<VenueTimeSlot> = {}): VenueT
     createdAt: new Date('2026-01-01T00:00:00Z'),
     venue: createMockVenue(),
     ...overrides,
-  } as VenueTimeSlot;
+  };
 }
 
 function createMockQueryBuilder<T extends object>(items: T[] = []) {
@@ -302,7 +304,9 @@ describe('VenueService', () => {
         pricePerHour: 0,
       };
 
-      await expect(service.create(managerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(managerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject courtCount < 1', async () => {
@@ -314,7 +318,9 @@ describe('VenueService', () => {
         courtCount: 0,
       };
 
-      await expect(service.create(managerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(managerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -341,7 +347,9 @@ describe('VenueService', () => {
     });
 
     it('should filter by regionCode', async () => {
-      const mockVenues = [createMockVenue({ id: 1, regionCode: 'shenzhen_futian' })];
+      const mockVenues = [
+        createMockVenue({ id: 1, regionCode: 'shenzhen_futian' }),
+      ];
 
       const qb = createMockQueryBuilder(mockVenues);
       venueRepo.createQueryBuilder!.mockReturnValue(qb as any);
@@ -364,10 +372,9 @@ describe('VenueService', () => {
       const query: QueryVenueDto = { status: 'active' };
       await service.findAll(query);
 
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        'venue.status = :status',
-        { status: 'active' },
-      );
+      expect(qb.andWhere).toHaveBeenCalledWith('venue.status = :status', {
+        status: 'active',
+      });
     });
 
     it('should apply custom pagination', async () => {
@@ -467,20 +474,23 @@ describe('VenueService', () => {
       const otherManagerId = 20;
       const dto: UpdateVenueDto = { name: 'Hacked Name' };
 
-      const existingVenue = createMockVenue({ id: venueId, managerId: ownerManagerId });
+      const existingVenue = createMockVenue({
+        id: venueId,
+        managerId: ownerManagerId,
+      });
       venueRepo.findOneBy!.mockResolvedValue(existingVenue);
 
-      await expect(service.update(venueId, otherManagerId, dto)).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(
+        service.update(venueId, otherManagerId, dto),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should throw NotFoundException when venue does not exist', async () => {
       venueRepo.findOneBy!.mockResolvedValue(null);
 
-      await expect(service.update(999, 10, { name: 'New Name' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.update(999, 10, { name: 'New Name' }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should reject pricePerHour <= 0 on update', async () => {
@@ -564,7 +574,10 @@ describe('VenueService', () => {
       const ownerManagerId = 10;
       const otherManagerId = 20;
 
-      const existingVenue = createMockVenue({ id: venueId, managerId: ownerManagerId });
+      const existingVenue = createMockVenue({
+        id: venueId,
+        managerId: ownerManagerId,
+      });
       venueRepo.findOneBy!.mockResolvedValue(existingVenue);
 
       await expect(service.remove(venueId, otherManagerId)).rejects.toThrow(
@@ -626,7 +639,10 @@ describe('VenueService', () => {
         { slotDate: '2026-06-15', startTime: '09:00', endTime: '11:00' },
       ];
 
-      const existingVenue = createMockVenue({ id: venueId, managerId: ownerManagerId });
+      const existingVenue = createMockVenue({
+        id: venueId,
+        managerId: ownerManagerId,
+      });
       venueRepo.findOneBy!.mockResolvedValue(existingVenue);
 
       await expect(
@@ -669,9 +685,7 @@ describe('VenueService', () => {
     it('should filter time slots by date', async () => {
       const venueId = 1;
       const slotDate = '2026-06-15';
-      const mockSlots = [
-        createMockVenueTimeSlot({ id: 1, venueId, slotDate }),
-      ];
+      const mockSlots = [createMockVenueTimeSlot({ id: 1, venueId, slotDate })];
 
       slotRepo.find!.mockResolvedValue(mockSlots);
 
@@ -720,9 +734,13 @@ describe('VenueService', () => {
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
           create: jest.fn().mockImplementation((_entity, data) => data),
-          save: jest.fn().mockResolvedValue(dtos.map((dto, i) =>
-            createMockVenueTimeSlot({ id: i + 1, venueId, ...dto }),
-          )),
+          save: jest
+            .fn()
+            .mockResolvedValue(
+              dtos.map((dto, i) =>
+                createMockVenueTimeSlot({ id: i + 1, venueId, ...dto }),
+              ),
+            ),
         };
         return cb(manager);
       });
@@ -746,9 +764,13 @@ describe('VenueService', () => {
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = {
           create: jest.fn().mockImplementation((_entity, data) => data),
-          save: jest.fn().mockResolvedValue(dtos.map((dto, i) =>
-            createMockVenueTimeSlot({ id: i + 1, venueId, ...dto }),
-          )),
+          save: jest
+            .fn()
+            .mockResolvedValue(
+              dtos.map((dto, i) =>
+                createMockVenueTimeSlot({ id: i + 1, venueId, ...dto }),
+              ),
+            ),
         };
         return cb(manager);
       });
@@ -767,7 +789,11 @@ describe('VenueService', () => {
       const managerId = 10;
       const dto: UpdateVenueDto = { name: 'Updated Name' };
 
-      const existingVenue = createMockVenue({ id: venueId, managerId, version: 1 });
+      const existingVenue = createMockVenue({
+        id: venueId,
+        managerId,
+        version: 1,
+      });
       venueRepo.findOneBy!.mockResolvedValue(existingVenue);
 
       dataSource.transaction.mockImplementation(async (cb: any) => {

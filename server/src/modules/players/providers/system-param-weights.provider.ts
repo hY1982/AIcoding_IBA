@@ -19,7 +19,9 @@ const WEIGHT_SUM_TOLERANCE = 0.01;
  * 读取失败、不存在、结构不合法或权重和不为 1.0 时，回退到 DefaultWeightsProvider。
  */
 @Injectable()
-export class SystemParamWeightsProvider implements AbilityWeightsProvider, OnModuleInit {
+export class SystemParamWeightsProvider
+  implements AbilityWeightsProvider, OnModuleInit
+{
   private readonly logger = new Logger(SystemParamWeightsProvider.name);
   private cachedWeights: BaseAbilityWeights | null = null;
 
@@ -87,10 +89,7 @@ export class SystemParamWeightsProvider implements AbilityWeightsProvider, OnMod
       this.cachedWeights = value;
       this.logger.log('已从数据库加载 base_ability_weights 配置');
     } catch (error) {
-      this.logger.error(
-        '读取 base_ability_weights 失败，使用默认权重',
-        error,
-      );
+      this.logger.error('读取 base_ability_weights 失败，使用默认权重', error);
       this.cachedWeights = this.defaultProvider.getWeights();
     }
   }

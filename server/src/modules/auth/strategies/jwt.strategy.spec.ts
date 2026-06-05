@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { DataSource, Repository } from 'typeorm';
@@ -103,7 +102,9 @@ describe('JwtStrategy', () => {
         type: 'access' as const,
       };
 
-      await expect(jwtStrategy.validate(payload)).rejects.toThrow(UnauthorizedException);
+      await expect(jwtStrategy.validate(payload)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should reject payload with banned user', async () => {
@@ -125,7 +126,9 @@ describe('JwtStrategy', () => {
         type: 'access',
       };
 
-      await expect(jwtStrategy.validate(payload)).rejects.toThrow(UnauthorizedException);
+      await expect(jwtStrategy.validate(payload)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should reject tampered token signature', async () => {
@@ -148,7 +151,9 @@ describe('JwtStrategy', () => {
       };
 
       // Since user doesn't exist, it should reject
-      await expect(jwtStrategy.validate(payload)).rejects.toThrow(UnauthorizedException);
+      await expect(jwtStrategy.validate(payload)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should reject expired token', async () => {

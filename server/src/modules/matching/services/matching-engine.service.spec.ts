@@ -88,7 +88,7 @@ function createMockPlayer(overrides: Partial<Player> = {}): Player {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
-  } as Player;
+  };
 }
 
 function createMockFormat(overrides: Partial<Format> = {}): Format {
@@ -106,7 +106,7 @@ function createMockFormat(overrides: Partial<Format> = {}): Format {
     createdAt: new Date('2026-01-01T00:00:00Z'),
     intentionFormats: Promise.resolve([]),
     ...overrides,
-  } as Format;
+  };
 }
 
 function createMockIntention(overrides: Partial<Intention> = {}): Intention {
@@ -116,7 +116,9 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
   const endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
   const acceptableWaitMinutes = 30;
   const submittedAt = now;
-  const expiresAt = new Date(submittedAt.getTime() + acceptableWaitMinutes * 60 * 1000);
+  const expiresAt = new Date(
+    submittedAt.getTime() + acceptableWaitMinutes * 60 * 1000,
+  );
 
   return {
     id: 1,
@@ -136,7 +138,7 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
     intentionFormats: [],
     computeDerivedTimes: jest.fn(),
     ...overrides,
-  } as Intention;
+  };
 }
 
 function createMockSystemParamThreshold(
@@ -154,7 +156,7 @@ function createMockSystemParamThreshold(
     description: '匹配动态阈值参数',
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as SystemParam;
+  };
 }
 
 function createMockQueryBuilder<T extends object>(
@@ -226,27 +228,43 @@ describe('MatchingEngineService', () => {
 
   describe('calculateDynamicThreshold', () => {
     it('should calculate threshold correctly for small intention count', () => {
-      const params = { base_threshold: 20, min_threshold: 5, intention_count_factor: 0.5 };
+      const params = {
+        base_threshold: 20,
+        min_threshold: 5,
+        intention_count_factor: 0.5,
+      };
       const result = (service as any).calculateDynamicThreshold(10, params);
       // max(5, 20 - 10*0.5) = max(5, 15) = 15
       expect(result).toBe(15);
     });
 
     it('should return min_threshold when intention count is large', () => {
-      const params = { base_threshold: 20, min_threshold: 5, intention_count_factor: 0.5 };
+      const params = {
+        base_threshold: 20,
+        min_threshold: 5,
+        intention_count_factor: 0.5,
+      };
       const result = (service as any).calculateDynamicThreshold(50, params);
       // max(5, 20 - 50*0.5) = max(5, -5) = 5
       expect(result).toBe(5);
     });
 
     it('should return base_threshold when intention count is zero', () => {
-      const params = { base_threshold: 20, min_threshold: 5, intention_count_factor: 0.5 };
+      const params = {
+        base_threshold: 20,
+        min_threshold: 5,
+        intention_count_factor: 0.5,
+      };
       const result = (service as any).calculateDynamicThreshold(0, params);
       expect(result).toBe(20);
     });
 
     it('should handle exact boundary where dynamic equals min', () => {
-      const params = { base_threshold: 20, min_threshold: 5, intention_count_factor: 0.5 };
+      const params = {
+        base_threshold: 20,
+        min_threshold: 5,
+        intention_count_factor: 0.5,
+      };
       // 20 - n*0.5 = 5 => n = 30
       const result = (service as any).calculateDynamicThreshold(30, params);
       expect(result).toBe(5);
@@ -280,9 +298,30 @@ describe('MatchingEngineService', () => {
         createMockIntention({
           id: i + 1,
           playerId: i + 1,
-          player: createMockPlayer({ id: i + 1, totalAbilityScore: 80 - i * 2 }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          player: createMockPlayer({
+            id: i + 1,
+            totalAbilityScore: 80 - i * 2,
+          }),
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -323,23 +362,77 @@ describe('MatchingEngineService', () => {
           id: 1,
           playerId: 1,
           startTime: new Date('2026-06-15T14:00:00Z'),
-          intentionVenues: [{ id: 1, intentionId: 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 1, intentionId: 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 1,
+              intentionId: 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 1,
+              intentionId: 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
         createMockIntention({
           id: 2,
           playerId: 2,
           startTime: new Date('2026-06-15T14:00:00Z'),
-          intentionVenues: [{ id: 2, intentionId: 2, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 2, intentionId: 2, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 2,
+              intentionId: 2,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 2,
+              intentionId: 2,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
         // Different venue - should be separate group
         createMockIntention({
           id: 3,
           playerId: 3,
           startTime: new Date('2026-06-15T14:00:00Z'),
-          intentionVenues: [{ id: 3, intentionId: 3, venueId: 2, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 3, intentionId: 3, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 3,
+              intentionId: 3,
+              venueId: 2,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 3,
+              intentionId: 3,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       ];
 
@@ -375,8 +468,26 @@ describe('MatchingEngineService', () => {
           id: i + 1,
           playerId: i + 1,
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -430,8 +541,26 @@ describe('MatchingEngineService', () => {
           id: i + 1,
           playerId: i + 1,
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -460,8 +589,26 @@ describe('MatchingEngineService', () => {
           id: i + 1,
           playerId: i + 1,
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -471,7 +618,7 @@ describe('MatchingEngineService', () => {
 
       formatRepo.findOneBy!.mockResolvedValue(createMockFormat());
 
-      let capturedUpdates: any[] = [];
+      const capturedUpdates: any[] = [];
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
         manager.save.mockImplementation((entity: any, data: any) => {
@@ -482,10 +629,12 @@ describe('MatchingEngineService', () => {
           return Promise.resolve({ ...item, id: 1 });
         });
         manager.create.mockImplementation((_entity: any, data: any) => data);
-        manager.update.mockImplementation((entity: any, criteria: any, data: any) => {
-          capturedUpdates.push({ entity, criteria, data });
-          return Promise.resolve({ affected: 1 });
-        });
+        manager.update.mockImplementation(
+          (entity: any, criteria: any, data: any) => {
+            capturedUpdates.push({ entity, criteria, data });
+            return Promise.resolve({ affected: 1 });
+          },
+        );
         return cb(manager);
       });
 
@@ -515,8 +664,26 @@ describe('MatchingEngineService', () => {
           playerId: i + 1,
           status: i < 3 ? 'pending' : 'matched', // Some already matched
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -582,16 +749,52 @@ describe('MatchingEngineService', () => {
           id: 1,
           playerId: 1,
           player: createMockPlayer({ id: 1, totalAbilityScore: 80 }),
-          intentionVenues: [{ id: 1, intentionId: 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 1, intentionId: 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 1,
+              intentionId: 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 1,
+              intentionId: 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
         // Group 2: venue=2, format=1
         createMockIntention({
           id: 2,
           playerId: 2,
           player: createMockPlayer({ id: 2, totalAbilityScore: 85 }),
-          intentionVenues: [{ id: 2, intentionId: 2, venueId: 2, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 2, intentionId: 2, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 2,
+              intentionId: 2,
+              venueId: 2,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 2,
+              intentionId: 2,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       ];
 
@@ -634,16 +837,52 @@ describe('MatchingEngineService', () => {
           playerId: 1,
           submittedAt: new Date(now.getTime() - 3600000), // 1 hour ago
           player: createMockPlayer({ id: 1, totalAbilityScore: 75 }),
-          intentionVenues: [{ id: 1, intentionId: 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 1, intentionId: 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 1,
+              intentionId: 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 1,
+              intentionId: 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
         createMockIntention({
           id: 2,
           playerId: 2,
           submittedAt: new Date(now.getTime() - 1800000), // 30 min ago
           player: createMockPlayer({ id: 2, totalAbilityScore: 75 }),
-          intentionVenues: [{ id: 2, intentionId: 2, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 2, intentionId: 2, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 2,
+              intentionId: 2,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 2,
+              intentionId: 2,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       ];
 
@@ -676,8 +915,26 @@ describe('MatchingEngineService', () => {
           id: i + 1,
           playerId: i + 1,
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -728,8 +985,26 @@ describe('MatchingEngineService', () => {
           id: i + 1,
           playerId: i + 1,
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -760,8 +1035,16 @@ describe('MatchingEngineService', () => {
       });
 
       teamBalancer.snakeDraft.mockReturnValue([
-        { teamNumber: 1, players: [{ id: 1, totalAbilityScore: 75 }], avgAbility: 76 },
-        { teamNumber: 2, players: [{ id: 2, totalAbilityScore: 76 }], avgAbility: 77 },
+        {
+          teamNumber: 1,
+          players: [{ id: 1, totalAbilityScore: 75 }],
+          avgAbility: 76,
+        },
+        {
+          teamNumber: 2,
+          players: [{ id: 2, totalAbilityScore: 76 }],
+          avgAbility: 77,
+        },
       ]);
 
       const result = await service.runMatching('shenzhen_futian');
@@ -778,8 +1061,26 @@ describe('MatchingEngineService', () => {
           id: i + 1,
           playerId: i + 1,
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -815,8 +1116,16 @@ describe('MatchingEngineService', () => {
       });
 
       teamBalancer.snakeDraft.mockReturnValue([
-        { teamNumber: 1, players: [{ id: 1, totalAbilityScore: 75 }], avgAbility: 76 },
-        { teamNumber: 2, players: [{ id: 2, totalAbilityScore: 76 }], avgAbility: 77 },
+        {
+          teamNumber: 1,
+          players: [{ id: 1, totalAbilityScore: 75 }],
+          avgAbility: 76,
+        },
+        {
+          teamNumber: 2,
+          players: [{ id: 2, totalAbilityScore: 76 }],
+          avgAbility: 77,
+        },
       ]);
 
       const result = await service.runMatching('shenzhen_futian');
@@ -848,7 +1157,7 @@ describe('MatchingEngineService', () => {
         description: null,
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as SystemParam);
+      });
 
       intentionRepo.createQueryBuilder!.mockReturnValue(
         createMockQueryBuilder<Intention>([]),
@@ -872,8 +1181,26 @@ describe('MatchingEngineService', () => {
           id: i + 1,
           playerId: i + 1,
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
-          intentionVenues: [{ id: i + 1, intentionId: i + 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: i + 1, intentionId: i + 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1,
+              intentionId: i + 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       );
 
@@ -909,8 +1236,16 @@ describe('MatchingEngineService', () => {
       });
 
       teamBalancer.snakeDraft.mockReturnValue([
-        { teamNumber: 1, players: [{ id: 1, totalAbilityScore: 75 }], avgAbility: 76 },
-        { teamNumber: 2, players: [{ id: 2, totalAbilityScore: 76 }], avgAbility: 77 },
+        {
+          teamNumber: 1,
+          players: [{ id: 1, totalAbilityScore: 75 }],
+          avgAbility: 76,
+        },
+        {
+          teamNumber: 2,
+          players: [{ id: 2, totalAbilityScore: 76 }],
+          avgAbility: 77,
+        },
       ]);
 
       const result = await service.runMatching('shenzhen_futian');
@@ -934,8 +1269,26 @@ describe('MatchingEngineService', () => {
           status: 'pending',
           expiresAt: new Date(now.getTime() + 10 * 60 * 1000), // 10分钟后过期
           player: createMockPlayer({ id: 1, totalAbilityScore: 75 }),
-          intentionVenues: [{ id: 1, intentionId: 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 1, intentionId: 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 1,
+              intentionId: 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 1,
+              intentionId: 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       ];
 
@@ -943,7 +1296,9 @@ describe('MatchingEngineService', () => {
         createMockQueryBuilder<Intention>(intentions),
       );
 
-      formatRepo.findOneBy!.mockResolvedValue(createMockFormat({ teamSize: 5, teamCountMin: 2 }));
+      formatRepo.findOneBy!.mockResolvedValue(
+        createMockFormat({ teamSize: 5, teamCountMin: 2 }),
+      );
 
       // 模拟事务内过期更新时抛出异常
       dataSource.transaction.mockRejectedValue(new Error('Transaction error'));
@@ -966,8 +1321,26 @@ describe('MatchingEngineService', () => {
           status: 'pending',
           expiresAt: new Date(now.getTime() + 10 * 60 * 1000), // 10分钟后过期
           player: createMockPlayer({ id: 1, totalAbilityScore: 75 }),
-          intentionVenues: [{ id: 1, intentionId: 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 1, intentionId: 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 1,
+              intentionId: 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 1,
+              intentionId: 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       ];
 
@@ -975,7 +1348,9 @@ describe('MatchingEngineService', () => {
         createMockQueryBuilder<Intention>(intentions),
       );
 
-      formatRepo.findOneBy!.mockResolvedValue(createMockFormat({ teamSize: 5, teamCountMin: 2 }));
+      formatRepo.findOneBy!.mockResolvedValue(
+        createMockFormat({ teamSize: 5, teamCountMin: 2 }),
+      );
 
       // 模拟事务内过期更新成功
       dataSource.transaction.mockImplementation(async (cb: any) => {
@@ -1002,8 +1377,26 @@ describe('MatchingEngineService', () => {
           status: 'pending',
           expiresAt: new Date(now.getTime() + 10 * 60 * 1000),
           player: createMockPlayer({ id: 1, totalAbilityScore: 75 }),
-          intentionVenues: [{ id: 1, intentionId: 1, venueId: 1, priority: 1, venue: {} as any, intention: {} as any }],
-          intentionFormats: [{ id: 1, intentionId: 1, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+          intentionVenues: [
+            {
+              id: 1,
+              intentionId: 1,
+              venueId: 1,
+              priority: 1,
+              venue: {} as any,
+              intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: 1,
+              intentionId: 1,
+              formatId: 1,
+              priority: 1,
+              format: {} as any,
+              intention: {} as any,
+            },
+          ],
         }),
       ];
 
@@ -1011,7 +1404,9 @@ describe('MatchingEngineService', () => {
         createMockQueryBuilder<Intention>(intentions),
       );
 
-      formatRepo.findOneBy!.mockResolvedValue(createMockFormat({ teamSize: 5, teamCountMin: 2 }));
+      formatRepo.findOneBy!.mockResolvedValue(
+        createMockFormat({ teamSize: 5, teamCountMin: 2 }),
+      );
 
       // 模拟事务内更新未影响任何行（可能已被其他任务处理）
       dataSource.transaction.mockImplementation(async (cb: any) => {

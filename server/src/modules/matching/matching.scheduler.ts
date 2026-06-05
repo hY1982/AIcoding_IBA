@@ -140,9 +140,7 @@ export class MatchingScheduler implements OnModuleDestroy {
       const hasActiveJob = await this.hasActiveJobForRegion(regionCode);
       if (hasActiveJob) {
         state.lastSkipReason = 'queue_congested';
-        this.logger.warn(
-          `地区 ${regionCode} 队列已有活跃 job，可能存在拥堵`,
-        );
+        this.logger.warn(`地区 ${regionCode} 队列已有活跃 job，可能存在拥堵`);
         return;
       }
 
@@ -170,9 +168,7 @@ export class MatchingScheduler implements OnModuleDestroy {
       state.consecutiveFailures = 0;
       state.lastSkipReason = 'none';
       state.lastScheduledAt = new Date();
-      this.logger.log(
-        `地区 ${regionCode} 已添加匹配任务: jobId=${job.id}`,
-      );
+      this.logger.log(`地区 ${regionCode} 已添加匹配任务: jobId=${job.id}`);
     } catch (error) {
       state.consecutiveFailures++;
       state.lastSkipReason = 'job_failed';
@@ -207,7 +203,9 @@ export class MatchingScheduler implements OnModuleDestroy {
       })
       .getRawMany();
 
-    return result.map((r: { regionCode: string }) => r.regionCode).filter(Boolean);
+    return result
+      .map((r: { regionCode: string }) => r.regionCode)
+      .filter(Boolean);
   }
 
   /**
@@ -241,9 +239,7 @@ export class MatchingScheduler implements OnModuleDestroy {
         'delayed',
       );
       const totalActive =
-        (counts.waiting || 0) +
-        (counts.active || 0) +
-        (counts.delayed || 0);
+        (counts.waiting || 0) + (counts.active || 0) + (counts.delayed || 0);
 
       if (totalActive === 0) {
         return false;
@@ -257,9 +253,7 @@ export class MatchingScheduler implements OnModuleDestroy {
       ]);
       return jobs.some((job) => job.data?.regionCode === regionCode);
     } catch (error) {
-      this.logger.warn(
-        `检查活跃 job 失败: ${(error as Error).message}`,
-      );
+      this.logger.warn(`检查活跃 job 失败: ${(error as Error).message}`);
       return false; // 保守策略：假设没有活跃 job
     }
   }
@@ -282,12 +276,15 @@ export class MatchingScheduler implements OnModuleDestroy {
   /**
    * 获取 Redis 分布式锁（SETNX）
    */
-  private async acquireLock(
-    key: string,
-    value: string,
-  ): Promise<boolean> {
+  private async acquireLock(key: string, value: string): Promise<boolean> {
     try {
-      const result = await this.redis.set(key, value, 'EX', this.lockTtlSeconds, 'NX');
+      const result = await this.redis.set(
+        key,
+        value,
+        'EX',
+        this.lockTtlSeconds,
+        'NX',
+      );
       return result === 'OK';
     } catch (error) {
       this.logger.error(`获取锁失败: ${(error as Error).message}`);

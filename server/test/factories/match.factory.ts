@@ -13,7 +13,10 @@ import { hashForQuery } from '@common/utils/encrypt.util';
 function nextPhone(): string {
   const ts = Date.now();
   const rand = Math.floor(Math.random() * 10000);
-  return `138${String(ts % 100000000).padStart(8, '0')}${String(rand).padStart(4, '0')}`.slice(0, 11);
+  return `138${String(ts % 100000000).padStart(8, '0')}${String(rand).padStart(4, '0')}`.slice(
+    0,
+    11,
+  );
 }
 
 function nextVenueName(): string {
@@ -155,7 +158,8 @@ export async function createTestMatch(
     formatId = format.id;
   }
 
-  const startTime = overrides.startTime ?? new Date('2026-06-15T14:00:00+08:00');
+  const startTime =
+    overrides.startTime ?? new Date('2026-06-15T14:00:00+08:00');
   const endTime = overrides.endTime ?? new Date('2026-06-15T16:00:00+08:00');
 
   const match = matchRepo.create({

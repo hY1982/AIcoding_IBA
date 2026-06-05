@@ -133,7 +133,11 @@ describe('FeedbackPlayerRating Entity', () => {
     });
 
     it('should have enum columns as USER-DEFINED type', async () => {
-      for (const col of ['level_match', 'sportsmanship', 'action_cleanliness']) {
+      for (const col of [
+        'level_match',
+        'sportsmanship',
+        'action_cleanliness',
+      ]) {
         const columns = await dataSource.query(
           `SELECT column_name, data_type, udt_name, is_nullable
            FROM information_schema.columns
@@ -179,8 +183,8 @@ describe('FeedbackPlayerRating Entity', () => {
       expect(fks.length).toBeGreaterThanOrEqual(2);
 
       // Verify at least one FK has CASCADE delete (for feedback)
-      const cascadeFk = fks.find((fk: { delete_rule: string }) =>
-        fk.delete_rule === 'CASCADE',
+      const cascadeFk = fks.find(
+        (fk: { delete_rule: string }) => fk.delete_rule === 'CASCADE',
       );
       expect(cascadeFk).toBeDefined();
     });

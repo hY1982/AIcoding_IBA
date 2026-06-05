@@ -218,8 +218,12 @@ describe('NotificationService', () => {
         content: '支付成功',
       };
 
-      notificationRepo.create!.mockImplementation((data) => ({ ...data } as Notification));
-      notificationRepo.save!.mockImplementation((n) => Promise.resolve(n as Notification));
+      notificationRepo.create!.mockImplementation(
+        (data) => ({ ...data }) as Notification,
+      );
+      notificationRepo.save!.mockImplementation((n) =>
+        Promise.resolve(n as Notification),
+      );
 
       await service.createNotification(dto);
 
@@ -266,9 +270,24 @@ describe('NotificationService', () => {
       };
 
       const mockNotifications = [
-        { id: 1, userId: 1, type: 'match_invited', content: '您被邀请参加比赛' },
-        { id: 2, userId: 2, type: 'match_invited', content: '您被邀请参加比赛' },
-        { id: 3, userId: 3, type: 'match_invited', content: '您被邀请参加比赛' },
+        {
+          id: 1,
+          userId: 1,
+          type: 'match_invited',
+          content: '您被邀请参加比赛',
+        },
+        {
+          id: 2,
+          userId: 2,
+          type: 'match_invited',
+          content: '您被邀请参加比赛',
+        },
+        {
+          id: 3,
+          userId: 3,
+          type: 'match_invited',
+          content: '您被邀请参加比赛',
+        },
       ] as Notification[];
 
       dataSource.transaction.mockImplementation(async (fn: any) => {
@@ -346,7 +365,10 @@ describe('NotificationService', () => {
       } as Notification;
 
       notificationRepo.findOne!.mockResolvedValue(notification);
-      channelService.send.mockResolvedValue({ success: true, channel: 'in_app' });
+      channelService.send.mockResolvedValue({
+        success: true,
+        channel: 'in_app',
+      });
       notificationRepo.save!.mockImplementation((n) => {
         const saved = { ...(n as Notification) };
         // InAppChannel sets sentAt, simulate that
@@ -367,7 +389,9 @@ describe('NotificationService', () => {
     it('should throw NotFoundException for non-existent notification', async () => {
       notificationRepo.findOne!.mockResolvedValue(null);
 
-      await expect(service.sendNotification(999)).rejects.toThrow(NotFoundException);
+      await expect(service.sendNotification(999)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should handle unimplemented channels gracefully', async () => {
@@ -380,8 +404,13 @@ describe('NotificationService', () => {
       } as Notification;
 
       notificationRepo.findOne!.mockResolvedValue(notification);
-      channelService.send.mockResolvedValue({ success: true, channel: 'in_app' });
-      notificationRepo.save!.mockImplementation((n) => Promise.resolve(n as Notification));
+      channelService.send.mockResolvedValue({
+        success: true,
+        channel: 'in_app',
+      });
+      notificationRepo.save!.mockImplementation((n) =>
+        Promise.resolve(n as Notification),
+      );
 
       const result = await service.sendNotification(1, ['in_app', 'sms']);
 
@@ -399,8 +428,14 @@ describe('NotificationService', () => {
       } as Notification;
 
       notificationRepo.findOne!.mockResolvedValue(notification);
-      channelService.send.mockResolvedValue({ success: false, channel: 'in_app', errorMessage: 'DB error' });
-      notificationRepo.save!.mockImplementation((n) => Promise.resolve(n as Notification));
+      channelService.send.mockResolvedValue({
+        success: false,
+        channel: 'in_app',
+        errorMessage: 'DB error',
+      });
+      notificationRepo.save!.mockImplementation((n) =>
+        Promise.resolve(n as Notification),
+      );
 
       const result = await service.sendNotification(1);
 
@@ -430,7 +465,9 @@ describe('NotificationService', () => {
     });
 
     it('should filter by isRead status', async () => {
-      const notifications = [{ id: 1, userId: 1, isRead: false }] as Notification[];
+      const notifications = [
+        { id: 1, userId: 1, isRead: false },
+      ] as Notification[];
       const qb = createMockQueryBuilder(notifications);
       notificationRepo.createQueryBuilder!.mockReturnValue(qb);
 
@@ -480,7 +517,9 @@ describe('NotificationService', () => {
       } as Notification;
 
       notificationRepo.findOne!.mockResolvedValue(notification);
-      notificationRepo.save!.mockImplementation((n) => Promise.resolve(n as Notification));
+      notificationRepo.save!.mockImplementation((n) =>
+        Promise.resolve(n as Notification),
+      );
 
       const result = await service.markAsRead(1, 1);
 
@@ -490,7 +529,9 @@ describe('NotificationService', () => {
     it('should throw NotFoundException for non-existent notification', async () => {
       notificationRepo.findOne!.mockResolvedValue(null);
 
-      await expect(service.markAsRead(999, 1)).rejects.toThrow(NotFoundException);
+      await expect(service.markAsRead(999, 1)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should throw NotFoundException for other user notification', async () => {

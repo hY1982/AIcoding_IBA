@@ -67,12 +67,15 @@ export class TeamBalancerService {
     });
 
     // 初始化队伍
-    const teams: TeamAssignment[] = Array.from({ length: teamCount }, (_, i) => ({
-      teamNumber: i + 1,
-      teamName: `队伍${i + 1}`,
-      players: [],
-      avgAbility: 0,
-    }));
+    const teams: TeamAssignment[] = Array.from(
+      { length: teamCount },
+      (_, i) => ({
+        teamNumber: i + 1,
+        teamName: `队伍${i + 1}`,
+        players: [],
+        avgAbility: 0,
+      }),
+    );
 
     // 蛇形分配
     let teamIndex = 0;
@@ -99,10 +102,7 @@ export class TeamBalancerService {
 
     // 计算每队平均能力值
     for (const team of teams) {
-      const sum = team.players.reduce(
-        (acc, p) => acc + p.totalAbilityScore,
-        0,
-      );
+      const sum = team.players.reduce((acc, p) => acc + p.totalAbilityScore, 0);
       team.avgAbility =
         team.players.length > 0
           ? Math.round((sum / team.players.length) * 100) / 100

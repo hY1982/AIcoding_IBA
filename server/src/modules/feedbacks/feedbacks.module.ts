@@ -25,15 +25,7 @@ import { FeedbacksController } from './feedbacks.controller';
     ]),
   ],
   controllers: [FeedbacksController],
-  providers: [
-    FeedbackService,
-    AbilityAdjustService,
-    FeedbackAdjustSyncService,
-  ],
-  exports: [
-    FeedbackService,
-    AbilityAdjustService,
-    FeedbackAdjustSyncService,
-  ],
+  providers: [FeedbackService, AbilityAdjustService, FeedbackAdjustSyncService],
+  exports: [FeedbackService, AbilityAdjustService, FeedbackAdjustSyncService],
 })
 export class FeedbacksModule {}

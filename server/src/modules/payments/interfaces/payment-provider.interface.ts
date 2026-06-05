@@ -46,7 +46,11 @@ export interface CreatePaymentOrderInput {
   description?: string;
 }
 
-export const PAYMENT_CALLBACK_STATUSES = ['success', 'failed', 'closed'] as const;
+export const PAYMENT_CALLBACK_STATUSES = [
+  'success',
+  'failed',
+  'closed',
+] as const;
 export type PaymentCallbackStatus = (typeof PAYMENT_CALLBACK_STATUSES)[number];
 
 export interface PaymentCallbackInput {

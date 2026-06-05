@@ -14,7 +14,11 @@ import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { AbilityCalculationService } from './ability-calculation.service';
 import { CreatePlayerDto } from '../dto/create-player.dto';
 import { UpdatePlayerDto } from '../dto/update-player.dto';
-import { PlayerProfile, PlayerAttributes, PlayerPosition as PlayerPositionType } from '@shared/player';
+import {
+  PlayerProfile,
+  PlayerAttributes,
+  PlayerPosition as PlayerPositionType,
+} from '@shared/player';
 import { maskPhone, maskRealName } from '@common/utils/privacy.util';
 
 /**
@@ -89,7 +93,8 @@ export class PlayerService {
 
     // 计算基础能力值
     const playerAttributes = this.buildPlayerAttributesFromDto(dto);
-    const baseAbilityScore = this.abilityCalcService.calculateBaseAbility(playerAttributes);
+    const baseAbilityScore =
+      this.abilityCalcService.calculateBaseAbility(playerAttributes);
 
     // 使用事务原子创建 Player + PlayerPosition
     const savedPlayer = await this.dataSource.transaction(async (manager) => {
@@ -125,7 +130,9 @@ export class PlayerService {
       return saved;
     });
 
-    this.logger.log(`球员创建成功: playerId=${savedPlayer.id}, userId=${userId}, baseAbilityScore=${baseAbilityScore}`);
+    this.logger.log(
+      `球员创建成功: playerId=${savedPlayer.id}, userId=${userId}, baseAbilityScore=${baseAbilityScore}`,
+    );
 
     // 返回完整的脱敏资料
     return this.findById(savedPlayer.id);
@@ -170,8 +177,12 @@ export class PlayerService {
     let baseAbilityScore = existingPlayer.baseAbilityScore;
 
     if (shouldRecalculate) {
-      const mergedAttributes = this.buildPlayerAttributesForUpdate(existingPlayer, dto);
-      baseAbilityScore = this.abilityCalcService.calculateBaseAbility(mergedAttributes);
+      const mergedAttributes = this.buildPlayerAttributesForUpdate(
+        existingPlayer,
+        dto,
+      );
+      baseAbilityScore =
+        this.abilityCalcService.calculateBaseAbility(mergedAttributes);
     }
 
     // 使用事务原子更新 Player + PlayerPosition
@@ -223,7 +234,9 @@ export class PlayerService {
       }
     });
 
-    this.logger.log(`球员更新成功: playerId=${playerId}, baseAbilityScore=${baseAbilityScore}`);
+    this.logger.log(
+      `球员更新成功: playerId=${playerId}, baseAbilityScore=${baseAbilityScore}`,
+    );
 
     // 返回更新后的脱敏资料
     return this.findById(playerId);
@@ -353,10 +366,10 @@ export class PlayerService {
       basketballAge: dto.basketballAge ?? existing.basketballAge,
       gender: dto.gender ?? existing.gender,
       height: dto.height ?? existing.height,
-      weight: dto.weight ?? (existing.weight ?? undefined),
-      wingspan: dto.wingspan ?? (existing.wingspan ?? undefined),
-      standingReach: dto.standingReach ?? (existing.standingReach ?? undefined),
-      jumpingReach: dto.jumpingReach ?? (existing.jumpingReach ?? undefined),
+      weight: dto.weight ?? existing.weight ?? undefined,
+      wingspan: dto.wingspan ?? existing.wingspan ?? undefined,
+      standingReach: dto.standingReach ?? existing.standingReach ?? undefined,
+      jumpingReach: dto.jumpingReach ?? existing.jumpingReach ?? undefined,
       positions: dto.positions ?? [],
     };
   }

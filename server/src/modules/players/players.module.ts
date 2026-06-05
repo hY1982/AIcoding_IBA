@@ -18,7 +18,15 @@ import { ABILITY_WEIGHTS_PROVIDER } from './interfaces/ability-weights.provider'
  * 导出 PlayerService 供其他模块（如 AuthModule、MatchesModule）使用。
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Player, PlayerPosition, User, SystemParam, MatchPlayer])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Player,
+      PlayerPosition,
+      User,
+      SystemParam,
+      MatchPlayer,
+    ]),
+  ],
   providers: [
     PlayerService,
     AbilityCalculationService,

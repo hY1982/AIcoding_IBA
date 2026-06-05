@@ -79,7 +79,9 @@ export class VenueService {
     });
 
     const saved = await this.venueRepo.save(venue);
-    this.logger.log(`场地创建成功: venueId=${saved.id}, managerId=${managerId}, name=${saved.name}`);
+    this.logger.log(
+      `场地创建成功: venueId=${saved.id}, managerId=${managerId}, name=${saved.name}`,
+    );
 
     return this.findById(saved.id);
   }
@@ -92,7 +94,9 @@ export class VenueService {
    * 默认只返回 active 状态的场地。管理后台可通过显式传入 status 查询其他状态。
    * 支持按 regionCode 和 status 筛选。
    */
-  async findAll(query: QueryVenueDto): Promise<PaginatedResponse<VenueListItem>> {
+  async findAll(
+    query: QueryVenueDto,
+  ): Promise<PaginatedResponse<VenueListItem>> {
     const page = query.page ?? 1;
     const pageSize = query.pageSize ?? 10;
     const skip = (page - 1) * pageSize;
@@ -103,12 +107,12 @@ export class VenueService {
     qb.andWhere('venue.status = :status', { status: query.status ?? 'active' });
 
     if (query.regionCode) {
-      qb.andWhere('venue.regionCode = :regionCode', { regionCode: query.regionCode });
+      qb.andWhere('venue.regionCode = :regionCode', {
+        regionCode: query.regionCode,
+      });
     }
 
-    qb.orderBy('venue.createdAt', 'DESC')
-      .skip(skip)
-      .take(pageSize);
+    qb.orderBy('venue.createdAt', 'DESC').skip(skip).take(pageSize);
 
     const [venues, total] = await qb.getManyAndCount();
 
@@ -307,7 +311,9 @@ export class VenueService {
 
     for (const [slotDate, slots] of grouped) {
       // 按开始时间排序
-      const sorted = [...slots].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const sorted = [...slots].sort((a, b) =>
+        a.startTime.localeCompare(b.startTime),
+      );
 
       for (let i = 0; i < sorted.length - 1; i++) {
         const current = sorted[i];

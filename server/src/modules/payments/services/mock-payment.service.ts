@@ -59,7 +59,9 @@ export class MockPaymentService implements PaymentProviderInterface {
     });
 
     const saved = await this.orderRepo.save(order);
-    this.logger.log(`Mock order created: ${orderNo}, matchId=${dto.matchId}, amount=${dto.amount}`);
+    this.logger.log(
+      `Mock order created: ${orderNo}, matchId=${dto.matchId}, amount=${dto.amount}`,
+    );
 
     return {
       orderNo: saved.orderNo,
@@ -84,7 +86,11 @@ export class MockPaymentService implements PaymentProviderInterface {
       }
 
       if (order.status !== 'pending') {
-        return { success: false, orderNo, errorMessage: `订单状态不正确: ${order.status}` };
+        return {
+          success: false,
+          orderNo,
+          errorMessage: `订单状态不正确: ${order.status}`,
+        };
       }
 
       if (new Date() > order.expireAt) {
@@ -110,7 +116,9 @@ export class MockPaymentService implements PaymentProviderInterface {
    * Protected by database transaction to ensure atomic state updates
    * and prevent race conditions between concurrent callbacks.
    */
-  async handleCallback(dto: PaymentCallbackInput): Promise<PaymentCallbackResult> {
+  async handleCallback(
+    dto: PaymentCallbackInput,
+  ): Promise<PaymentCallbackResult> {
     return this.orderRepo.manager.transaction(async (manager) => {
       const order = await manager.findOne(MockOrder, {
         where: { orderNo: dto.orderNo },
@@ -149,7 +157,9 @@ export class MockPaymentService implements PaymentProviderInterface {
       }
 
       await manager.save(order);
-      this.logger.log(`Payment callback handled: ${dto.orderNo}, status=${dto.status}`);
+      this.logger.log(
+        `Payment callback handled: ${dto.orderNo}, status=${dto.status}`,
+      );
 
       return {
         orderNo: dto.orderNo,

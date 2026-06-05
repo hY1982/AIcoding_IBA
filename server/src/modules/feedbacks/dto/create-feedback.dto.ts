@@ -17,7 +17,11 @@ import {
   SPORTSMANSHIP_OPTIONS,
   ACTION_CLEANLINESS_OPTIONS,
 } from '@shared/feedback';
-import type { LevelMatch, Sportsmanship, ActionCleanliness } from '@shared/feedback';
+import type {
+  LevelMatch,
+  Sportsmanship,
+  ActionCleanliness,
+} from '@shared/feedback';
 
 /**
  * 单条球员评分 DTO
@@ -30,17 +34,26 @@ export class CreateFeedbackPlayerRatingDto {
   @Type(() => Number)
   ratedPlayerId!: number;
 
-  @ApiPropertyOptional({ description: '水平匹配评价', enum: LEVEL_MATCH_OPTIONS })
+  @ApiPropertyOptional({
+    description: '水平匹配评价',
+    enum: LEVEL_MATCH_OPTIONS,
+  })
   @IsOptional()
   @IsEnum(LEVEL_MATCH_OPTIONS)
   levelMatch?: LevelMatch;
 
-  @ApiPropertyOptional({ description: '体育道德评价', enum: SPORTSMANSHIP_OPTIONS })
+  @ApiPropertyOptional({
+    description: '体育道德评价',
+    enum: SPORTSMANSHIP_OPTIONS,
+  })
   @IsOptional()
   @IsEnum(SPORTSMANSHIP_OPTIONS)
   sportsmanship?: Sportsmanship;
 
-  @ApiPropertyOptional({ description: '动作干净程度评价', enum: ACTION_CLEANLINESS_OPTIONS })
+  @ApiPropertyOptional({
+    description: '动作干净程度评价',
+    enum: ACTION_CLEANLINESS_OPTIONS,
+  })
   @IsOptional()
   @IsEnum(ACTION_CLEANLINESS_OPTIONS)
   actionCleanliness?: ActionCleanliness;
@@ -86,7 +99,10 @@ export class CreateFeedbackDto {
   @MaxLength(500)
   overallReason?: string;
 
-  @ApiProperty({ description: '对其他球员的多维度评分', type: [CreateFeedbackPlayerRatingDto] })
+  @ApiProperty({
+    description: '对其他球员的多维度评分',
+    type: [CreateFeedbackPlayerRatingDto],
+  })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateFeedbackPlayerRatingDto)

@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import { BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PlayerService } from './player.service';
 import { Player } from '../entities/player.entity';
 import { PlayerPosition } from '../entities/player-position.entity';
@@ -13,7 +17,9 @@ import { UpdatePlayerDto } from '../dto/update-player.dto';
 import { Gender } from '@shared/player';
 
 // Mock repositories
-type MockRepository<T extends object = object> = Partial<Record<keyof Repository<T>, jest.Mock>>;
+type MockRepository<T extends object = object> = Partial<
+  Record<keyof Repository<T>, jest.Mock>
+>;
 
 const createMockRepository = <T extends object>(): MockRepository<T> => ({
   findOne: jest.fn(),
@@ -109,7 +115,7 @@ describe('PlayerService', () => {
     player.userId = 100;
     player.age = 25;
     player.basketballAge = 5;
-    player.gender = 'male' as Gender;
+    player.gender = 'male';
     player.height = 180;
     player.weight = 75;
     player.wingspan = 185;
@@ -145,7 +151,11 @@ describe('PlayerService', () => {
     { id: 2, playerId: 1, position: 'SG', priority: 2 } as PlayerPosition,
   ];
 
-  const setupFindByIdQueryBuilder = (player: Player, user: User, positions: PlayerPosition[]) => {
+  const setupFindByIdQueryBuilder = (
+    player: Player,
+    user: User,
+    positions: PlayerPosition[],
+  ) => {
     const mockQueryBuilder = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),
@@ -162,7 +172,7 @@ describe('PlayerService', () => {
   const createValidDto = (): CreatePlayerDto => ({
     age: 25,
     basketballAge: 5,
-    gender: 'male' as Gender,
+    gender: 'male',
     height: 180,
     weight: 75,
     wingspan: 185,
@@ -191,7 +201,8 @@ describe('PlayerService', () => {
         manager.create.mockImplementation((entity: any, data: any) => data);
         manager.save.mockImplementation(async (entity: any, data: any) => {
           if (entity === Player) return { ...mockPlayer, ...data, id: 1 };
-          if (Array.isArray(data)) return data.map((d, i) => ({ id: i + 1, ...d }));
+          if (Array.isArray(data))
+            return data.map((d, i) => ({ id: i + 1, ...d }));
           return { id: 1, ...data };
         });
         return cb(manager);
@@ -264,9 +275,14 @@ describe('PlayerService', () => {
 
     it('should throw BadRequestException when positions exceed 3', async () => {
       const userId = 100;
-      const dto = { ...createValidDto(), positions: ['PG', 'SG', 'SF', 'PF'] as any };
+      const dto = {
+        ...createValidDto(),
+        positions: ['PG', 'SG', 'SF', 'PF'] as any,
+      };
 
-      await expect(service.create(userId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.create(userId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw ConflictException when user already has a player record', async () => {
@@ -276,7 +292,9 @@ describe('PlayerService', () => {
 
       playerRepo.findOneBy!.mockResolvedValue(existingPlayer);
 
-      await expect(service.create(userId, dto)).rejects.toThrow(ConflictException);
+      await expect(service.create(userId, dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should handle missing optional fields by using defaults for ability calculation', async () => {
@@ -284,7 +302,7 @@ describe('PlayerService', () => {
       const dto = {
         age: 25,
         basketballAge: 5,
-        gender: 'male' as Gender,
+        gender: 'male',
         height: 180,
       } as CreatePlayerDto;
       const mockPlayer = createMockPlayer();
@@ -457,7 +475,8 @@ describe('PlayerService', () => {
           execute: jest.fn().mockResolvedValue({ affected: 1 }),
         });
         manager.save.mockImplementation(async (entity: any, data: any) => {
-          if (Array.isArray(data)) return data.map((d, i) => ({ id: i + 3, ...d }));
+          if (Array.isArray(data))
+            return data.map((d, i) => ({ id: i + 3, ...d }));
           return data;
         });
         manager.delete.mockResolvedValue({ affected: 2 });
@@ -510,12 +529,16 @@ describe('PlayerService', () => {
 
     it('should throw BadRequestException when positions exceed 3', async () => {
       const playerId = 1;
-      const dto: UpdatePlayerDto = { positions: ['PG', 'SG', 'SF', 'PF'] as any };
+      const dto: UpdatePlayerDto = {
+        positions: ['PG', 'SG', 'SF', 'PF'] as any,
+      };
       const existingPlayer = createMockPlayer();
 
       playerRepo.findOne!.mockResolvedValue(existingPlayer);
 
-      await expect(service.update(playerId, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.update(playerId, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw NotFoundException when player does not exist', async () => {
@@ -524,7 +547,9 @@ describe('PlayerService', () => {
 
       playerRepo.findOne!.mockResolvedValue(null);
 
-      await expect(service.update(playerId, dto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(playerId, dto)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should keep matchAdjustValue unchanged during update', async () => {
@@ -632,7 +657,9 @@ describe('PlayerService', () => {
         return cb(manager);
       });
 
-      await expect(service.update(playerId, dto)).rejects.toThrow(ConflictException);
+      await expect(service.update(playerId, dto)).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -673,7 +700,9 @@ describe('PlayerService', () => {
       };
       playerRepo.createQueryBuilder!.mockReturnValue(mockQueryBuilder as any);
 
-      await expect(service.findById(playerId)).rejects.toThrow(NotFoundException);
+      await expect(service.findById(playerId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should include positions in the result', async () => {
@@ -842,8 +871,12 @@ describe('PlayerService', () => {
 
       await service.remove(playerId);
 
-      expect(playerRepo.findOne).toHaveBeenCalledWith({ where: { id: playerId } });
-      expect(matchPlayerRepo.count).toHaveBeenCalledWith({ where: { playerId } });
+      expect(playerRepo.findOne).toHaveBeenCalledWith({
+        where: { id: playerId },
+      });
+      expect(matchPlayerRepo.count).toHaveBeenCalledWith({
+        where: { playerId },
+      });
       expect(playerRepo.remove).toHaveBeenCalledWith(mockPlayer);
     });
 

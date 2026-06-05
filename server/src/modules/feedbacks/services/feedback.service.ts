@@ -87,9 +87,7 @@ export class FeedbackService {
       throw new NotFoundException(`比赛不存在: matchId=${dto.matchId}`);
     }
     if (match.status !== 'completed') {
-      throw new ConflictException(
-        `比赛状态为 ${match.status}，不可提交反馈`,
-      );
+      throw new ConflictException(`比赛状态为 ${match.status}，不可提交反馈`);
     }
 
     // 校验球员是 confirmed 参赛球员
@@ -194,7 +192,10 @@ export class FeedbackService {
         await this.failureRepo.save({
           matchId: dto.matchId,
           ratedPlayerId: rating.ratedPlayerId,
-          errorMessage: errorMessage.slice(0, FEEDBACK_CONSTANTS.MAX_ERROR_MESSAGE_LENGTH),
+          errorMessage: errorMessage.slice(
+            0,
+            FEEDBACK_CONSTANTS.MAX_ERROR_MESSAGE_LENGTH,
+          ),
           retryCount: this.maxRetries,
           resolved: false,
         });
@@ -220,7 +221,8 @@ export class FeedbackService {
    * @returns Match[] 待反馈的比赛列表
    */
   async findPendingFeedbacks(playerId: number): Promise<Match[]> {
-    const qb = this.matchRepo.createQueryBuilder('match')
+    const qb = this.matchRepo
+      .createQueryBuilder('match')
       .innerJoin(
         MatchPlayer,
         'mp',
@@ -233,7 +235,9 @@ export class FeedbackService {
         'fb.match_id = match.id AND fb.player_id = :playerId',
         { playerId },
       )
-      .where('match.status = :completedStatus', { completedStatus: 'completed' })
+      .where('match.status = :completedStatus', {
+        completedStatus: 'completed',
+      })
       .andWhere('fb.id IS NULL');
 
     return qb.getMany();
@@ -306,7 +310,9 @@ export class FeedbackService {
     });
 
     if (!player) {
-      this.logger.warn(`Player not found for adjust update: playerId=${playerId}`);
+      this.logger.warn(
+        `Player not found for adjust update: playerId=${playerId}`,
+      );
       return;
     }
 

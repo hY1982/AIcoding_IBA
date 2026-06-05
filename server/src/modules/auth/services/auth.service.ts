@@ -79,9 +79,17 @@ export class AuthService {
 
         // 2. Create role-specific record
         if (dto.userType === 'player') {
-          await this.createPlayerRecord(manager, savedUser.id, dto as PlayerRegisterDto);
+          await this.createPlayerRecord(
+            manager,
+            savedUser.id,
+            dto as PlayerRegisterDto,
+          );
         } else if (dto.userType === 'venue_manager') {
-          await this.createVenueManagerRecord(manager, savedUser.id, dto as VenueManagerRegisterDto);
+          await this.createVenueManagerRecord(
+            manager,
+            savedUser.id,
+            dto as VenueManagerRegisterDto,
+          );
         }
 
         // 3. Generate tokens
@@ -127,7 +135,10 @@ export class AuthService {
     }
 
     // Verify password
-    const isPasswordValid = await bcryptjs.compare(dto.password, user.passwordHash);
+    const isPasswordValid = await bcryptjs.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
       throw new UnauthorizedException('手机号或密码错误');
     }
@@ -160,11 +171,16 @@ export class AuthService {
     }
 
     // Verify the token signature and decode payload
-    let decodedPayload: { sub: number; phone: string; userType: string; type: string };
+    let decodedPayload: {
+      sub: number;
+      phone: string;
+      userType: string;
+      type: string;
+    };
     try {
       decodedPayload = this.jwtService.verify(dto.refreshToken, {
         secret: this.configService.get<string>('JWT_SECRET'),
-      }) as { sub: number; phone: string; userType: string; type: string };
+      });
     } catch {
       throw new UnauthorizedException('Refresh token 签名无效');
     }
@@ -197,7 +213,9 @@ export class AuthService {
     const userIndexKey = `user_refresh:${userId}`;
     const tokenHashes = await redisClient.smembers(userIndexKey);
     if (tokenHashes.length > 0) {
-      const keys = tokenHashes.map((h: string) => `${REDIS_KEY_REFRESH_TOKEN}:${h}`);
+      const keys = tokenHashes.map(
+        (h: string) => `${REDIS_KEY_REFRESH_TOKEN}:${h}`,
+      );
       await redisClient.del(...keys);
     }
     await redisClient.del(userIndexKey);
@@ -214,7 +232,8 @@ export class AuthService {
       type: TOKEN_TYPE_ACCESS,
     };
     return this.jwtService.sign(payload, {
-      expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '2h') as `${number}h`,
+      expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') ||
+        '2h') as `${number}h`,
     });
   }
 
@@ -229,7 +248,8 @@ export class AuthService {
       type: TOKEN_TYPE_REFRESH,
     };
     return this.jwtService.sign(payload, {
-      expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d') as `${number}d`,
+      expiresIn: (this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ||
+        '7d') as `${number}d`,
     });
   }
 
@@ -245,7 +265,8 @@ export class AuthService {
     const redisKey = `${REDIS_KEY_REFRESH_TOKEN}:${tokenHash}`;
     const redisClient = this.redisService.getClient();
 
-    const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
+    const refreshExpiresIn =
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '7d';
     const ttlSeconds = this.parseExpiresInToSeconds(refreshExpiresIn);
 
     await redisClient.set(
@@ -338,7 +359,9 @@ export class AuthService {
   private hashToken(token: string): string {
     const secret = this.configService.get<string>('REFRESH_TOKEN_HASH_SECRET');
     if (!secret) {
-      throw new Error('REFRESH_TOKEN_HASH_SECRET environment variable is required');
+      throw new Error(
+        'REFRESH_TOKEN_HASH_SECRET environment variable is required',
+      );
     }
     return createHmac('sha256', secret).update(token).digest('hex');
   }

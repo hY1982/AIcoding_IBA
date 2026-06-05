@@ -100,7 +100,11 @@ export class Player {
     transformer: {
       to: (value: number) => value,
       from: (value: number | string | null) =>
-        value === null ? 0 : typeof value === 'string' ? parseFloat(value) : value,
+        value === null
+          ? 0
+          : typeof value === 'string'
+            ? parseFloat(value)
+            : value,
     },
   })
   matchAdjustValue!: number;

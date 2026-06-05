@@ -44,13 +44,15 @@ const mockAbilityAdjustService = () => ({
 });
 
 const mockDataSource = () => ({
-  transaction: jest.fn((fn) => fn({
-    findOne: jest.fn(),
-    find: jest.fn(),
-    create: jest.fn((entity, data) => data),
-    save: jest.fn((entity, data) => Promise.resolve(data)),
-    getRepository: jest.fn(),
-  })),
+  transaction: jest.fn((fn) =>
+    fn({
+      findOne: jest.fn(),
+      find: jest.fn(),
+      create: jest.fn((entity, data) => data),
+      save: jest.fn((entity, data) => Promise.resolve(data)),
+      getRepository: jest.fn(),
+    }),
+  ),
 });
 
 describe('FeedbackService', () => {
@@ -129,19 +131,49 @@ describe('FeedbackService', () => {
       overallRating: 4,
       overallReason: 'Great match!',
       playerRatings: [
-        { ratedPlayerId: 20, levelMatch: 'equal', sportsmanship: 'good', actionCleanliness: 'clean', isPunctual: true },
+        {
+          ratedPlayerId: 20,
+          levelMatch: 'equal',
+          sportsmanship: 'good',
+          actionCleanliness: 'clean',
+          isPunctual: true,
+        },
       ],
     };
 
     it('should create feedback with playerRatings successfully', async () => {
-      const mockMatch = { id: 1, status: 'completed', regionCode: 'test' } as Match;
-      const mockMatchPlayer = { matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer;
-      const mockOtherPlayer = { matchId: 1, playerId: 20, status: 'confirmed' } as MatchPlayer;
-      const savedFeedback = { id: 100, ...createDto, submittedAt: new Date(), updatedAt: new Date(), regionCode: 'test' } as unknown as Feedback;
-      const savedRating = { id: 200, feedbackId: 100, ratedPlayerId: 20 } as FeedbackPlayerRating;
+      const mockMatch = {
+        id: 1,
+        status: 'completed',
+        regionCode: 'test',
+      } as Match;
+      const mockMatchPlayer = {
+        matchId: 1,
+        playerId: 10,
+        status: 'confirmed',
+      } as MatchPlayer;
+      const mockOtherPlayer = {
+        matchId: 1,
+        playerId: 20,
+        status: 'confirmed',
+      } as MatchPlayer;
+      const savedFeedback = {
+        id: 100,
+        ...createDto,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+        regionCode: 'test',
+      } as unknown as Feedback;
+      const savedRating = {
+        id: 200,
+        feedbackId: 100,
+        ratedPlayerId: 20,
+      } as FeedbackPlayerRating;
 
       matchRepo.findOne.mockResolvedValue(mockMatch);
-      matchPlayerRepo.findOne.mockResolvedValueOnce(mockMatchPlayer).mockResolvedValueOnce(mockOtherPlayer);
+      matchPlayerRepo.findOne
+        .mockResolvedValueOnce(mockMatchPlayer)
+        .mockResolvedValueOnce(mockOtherPlayer);
       feedbackRepo.findOneBy.mockResolvedValue(null);
       feedbackRepo.create.mockReturnValue(savedFeedback);
       feedbackRepo.save.mockResolvedValue(savedFeedback);
@@ -154,7 +186,10 @@ describe('FeedbackService', () => {
         punctuality: { true: 1, false: -1 },
       });
       abilityAdjustService.calculateMatchAdjustForPlayer.mockReturnValue(3);
-      playerRepo.findOne.mockResolvedValue({ id: 20, matchAdjustValue: 0 } as Player);
+      playerRepo.findOne.mockResolvedValue({
+        id: 20,
+        matchAdjustValue: 0,
+      } as Player);
 
       const result = await service.createFeedback(createDto);
 
@@ -175,7 +210,10 @@ describe('FeedbackService', () => {
     });
 
     it('should reject when match status is not completed', async () => {
-      matchRepo.findOne.mockResolvedValue({ id: 1, status: 'pending_confirmation' } as Match);
+      matchRepo.findOne.mockResolvedValue({
+        id: 1,
+        status: 'pending_confirmation',
+      } as Match);
 
       await expect(service.createFeedback(createDto)).rejects.toThrow(
         ConflictException,
@@ -183,7 +221,10 @@ describe('FeedbackService', () => {
     });
 
     it('should reject when player is not a match participant', async () => {
-      matchRepo.findOne.mockResolvedValue({ id: 1, status: 'completed' } as Match);
+      matchRepo.findOne.mockResolvedValue({
+        id: 1,
+        status: 'completed',
+      } as Match);
       matchPlayerRepo.findOne.mockResolvedValue(null);
 
       await expect(service.createFeedback(createDto)).rejects.toThrow(
@@ -192,8 +233,15 @@ describe('FeedbackService', () => {
     });
 
     it('should reject when player status is not confirmed', async () => {
-      matchRepo.findOne.mockResolvedValue({ id: 1, status: 'completed' } as Match);
-      matchPlayerRepo.findOne.mockResolvedValue({ matchId: 1, playerId: 10, status: 'invited' } as MatchPlayer);
+      matchRepo.findOne.mockResolvedValue({
+        id: 1,
+        status: 'completed',
+      } as Match);
+      matchPlayerRepo.findOne.mockResolvedValue({
+        matchId: 1,
+        playerId: 10,
+        status: 'invited',
+      } as MatchPlayer);
 
       await expect(service.createFeedback(createDto)).rejects.toThrow(
         ConflictException,
@@ -201,9 +249,20 @@ describe('FeedbackService', () => {
     });
 
     it('should reject duplicate feedback', async () => {
-      matchRepo.findOne.mockResolvedValue({ id: 1, status: 'completed' } as Match);
-      matchPlayerRepo.findOne.mockResolvedValueOnce({ matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer);
-      feedbackRepo.findOneBy.mockResolvedValue({ id: 99, matchId: 1, playerId: 10 } as Feedback);
+      matchRepo.findOne.mockResolvedValue({
+        id: 1,
+        status: 'completed',
+      } as Match);
+      matchPlayerRepo.findOne.mockResolvedValueOnce({
+        matchId: 1,
+        playerId: 10,
+        status: 'confirmed',
+      } as MatchPlayer);
+      feedbackRepo.findOneBy.mockResolvedValue({
+        id: 99,
+        matchId: 1,
+        playerId: 10,
+      } as Feedback);
 
       await expect(service.createFeedback(createDto)).rejects.toThrow(
         ConflictException,
@@ -216,8 +275,15 @@ describe('FeedbackService', () => {
         playerRatings: [{ ratedPlayerId: 10, levelMatch: 'equal' }],
       };
 
-      matchRepo.findOne.mockResolvedValue({ id: 1, status: 'completed' } as Match);
-      matchPlayerRepo.findOne.mockResolvedValueOnce({ matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer);
+      matchRepo.findOne.mockResolvedValue({
+        id: 1,
+        status: 'completed',
+      } as Match);
+      matchPlayerRepo.findOne.mockResolvedValueOnce({
+        matchId: 1,
+        playerId: 10,
+        status: 'confirmed',
+      } as MatchPlayer);
       feedbackRepo.findOneBy.mockResolvedValue(null);
 
       await expect(service.createFeedback(selfRatingDto)).rejects.toThrow(
@@ -226,9 +292,16 @@ describe('FeedbackService', () => {
     });
 
     it('should reject rating a player who is not in the same match', async () => {
-      matchRepo.findOne.mockResolvedValue({ id: 1, status: 'completed' } as Match);
+      matchRepo.findOne.mockResolvedValue({
+        id: 1,
+        status: 'completed',
+      } as Match);
       matchPlayerRepo.findOne
-        .mockResolvedValueOnce({ matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer)
+        .mockResolvedValueOnce({
+          matchId: 1,
+          playerId: 10,
+          status: 'confirmed',
+        } as MatchPlayer)
         .mockResolvedValueOnce(null);
       feedbackRepo.findOneBy.mockResolvedValue(null);
 
@@ -238,10 +311,21 @@ describe('FeedbackService', () => {
     });
 
     it('should reject rating a player who is not confirmed', async () => {
-      matchRepo.findOne.mockResolvedValue({ id: 1, status: 'completed' } as Match);
+      matchRepo.findOne.mockResolvedValue({
+        id: 1,
+        status: 'completed',
+      } as Match);
       matchPlayerRepo.findOne
-        .mockResolvedValueOnce({ matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer)
-        .mockResolvedValueOnce({ matchId: 1, playerId: 20, status: 'invited' } as MatchPlayer);
+        .mockResolvedValueOnce({
+          matchId: 1,
+          playerId: 10,
+          status: 'confirmed',
+        } as MatchPlayer)
+        .mockResolvedValueOnce({
+          matchId: 1,
+          playerId: 20,
+          status: 'invited',
+        } as MatchPlayer);
       feedbackRepo.findOneBy.mockResolvedValue(null);
 
       await expect(service.createFeedback(createDto)).rejects.toThrow(
@@ -250,10 +334,23 @@ describe('FeedbackService', () => {
     });
 
     it('should allow empty playerRatings array', async () => {
-      const emptyRatingsDto: CreateFeedbackDto = { ...createDto, playerRatings: [] };
+      const emptyRatingsDto: CreateFeedbackDto = {
+        ...createDto,
+        playerRatings: [],
+      };
       const mockMatch = { id: 1, status: 'completed' } as Match;
-      const mockMatchPlayer = { matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer;
-      const savedFeedback = { id: 100, ...emptyRatingsDto, submittedAt: new Date(), updatedAt: new Date(), regionCode: null } as unknown as Feedback;
+      const mockMatchPlayer = {
+        matchId: 1,
+        playerId: 10,
+        status: 'confirmed',
+      } as MatchPlayer;
+      const savedFeedback = {
+        id: 100,
+        ...emptyRatingsDto,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+        regionCode: null,
+      } as unknown as Feedback;
 
       matchRepo.findOne.mockResolvedValue(mockMatch);
       matchPlayerRepo.findOne.mockResolvedValueOnce(mockMatchPlayer);
@@ -273,13 +370,33 @@ describe('FeedbackService', () => {
 
     it('should retry updatePlayerMatchAdjust on failure and eventually succeed', async () => {
       const mockMatch = { id: 1, status: 'completed' } as Match;
-      const mockMatchPlayer = { matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer;
-      const mockOtherPlayer = { matchId: 1, playerId: 20, status: 'confirmed' } as MatchPlayer;
-      const savedFeedback = { id: 100, ...createDto, submittedAt: new Date(), updatedAt: new Date(), regionCode: null } as unknown as Feedback;
-      const savedRating = { id: 200, feedbackId: 100, ratedPlayerId: 20 } as FeedbackPlayerRating;
+      const mockMatchPlayer = {
+        matchId: 1,
+        playerId: 10,
+        status: 'confirmed',
+      } as MatchPlayer;
+      const mockOtherPlayer = {
+        matchId: 1,
+        playerId: 20,
+        status: 'confirmed',
+      } as MatchPlayer;
+      const savedFeedback = {
+        id: 100,
+        ...createDto,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+        regionCode: null,
+      } as unknown as Feedback;
+      const savedRating = {
+        id: 200,
+        feedbackId: 100,
+        ratedPlayerId: 20,
+      } as FeedbackPlayerRating;
 
       matchRepo.findOne.mockResolvedValue(mockMatch);
-      matchPlayerRepo.findOne.mockResolvedValueOnce(mockMatchPlayer).mockResolvedValueOnce(mockOtherPlayer);
+      matchPlayerRepo.findOne
+        .mockResolvedValueOnce(mockMatchPlayer)
+        .mockResolvedValueOnce(mockOtherPlayer);
       feedbackRepo.findOneBy.mockResolvedValue(null);
       feedbackRepo.create.mockReturnValue(savedFeedback);
       feedbackRepo.save.mockResolvedValue(savedFeedback);
@@ -311,13 +428,33 @@ describe('FeedbackService', () => {
 
     it('should log error and not throw when all retries fail', async () => {
       const mockMatch = { id: 1, status: 'completed' } as Match;
-      const mockMatchPlayer = { matchId: 1, playerId: 10, status: 'confirmed' } as MatchPlayer;
-      const mockOtherPlayer = { matchId: 1, playerId: 20, status: 'confirmed' } as MatchPlayer;
-      const savedFeedback = { id: 100, ...createDto, submittedAt: new Date(), updatedAt: new Date(), regionCode: null } as unknown as Feedback;
-      const savedRating = { id: 200, feedbackId: 100, ratedPlayerId: 20 } as FeedbackPlayerRating;
+      const mockMatchPlayer = {
+        matchId: 1,
+        playerId: 10,
+        status: 'confirmed',
+      } as MatchPlayer;
+      const mockOtherPlayer = {
+        matchId: 1,
+        playerId: 20,
+        status: 'confirmed',
+      } as MatchPlayer;
+      const savedFeedback = {
+        id: 100,
+        ...createDto,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+        regionCode: null,
+      } as unknown as Feedback;
+      const savedRating = {
+        id: 200,
+        feedbackId: 100,
+        ratedPlayerId: 20,
+      } as FeedbackPlayerRating;
 
       matchRepo.findOne.mockResolvedValue(mockMatch);
-      matchPlayerRepo.findOne.mockResolvedValueOnce(mockMatchPlayer).mockResolvedValueOnce(mockOtherPlayer);
+      matchPlayerRepo.findOne
+        .mockResolvedValueOnce(mockMatchPlayer)
+        .mockResolvedValueOnce(mockOtherPlayer);
       feedbackRepo.findOneBy.mockResolvedValue(null);
       feedbackRepo.create.mockReturnValue(savedFeedback);
       feedbackRepo.save.mockResolvedValue(savedFeedback);

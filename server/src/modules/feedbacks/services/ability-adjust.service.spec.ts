@@ -13,7 +13,9 @@ jest.mock('@shared/system', () => ({
 }));
 
 import { isAbilityAdjustWeights as rawIsAbilityAdjustWeights } from '@shared/system';
-const isAbilityAdjustWeights = rawIsAbilityAdjustWeights as jest.MockedFunction<typeof rawIsAbilityAdjustWeights>;
+const isAbilityAdjustWeights = rawIsAbilityAdjustWeights as jest.MockedFunction<
+  typeof rawIsAbilityAdjustWeights
+>;
 
 const mockSystemParamRepo = () => ({
   findOne: jest.fn(),
@@ -63,7 +65,7 @@ describe('AbilityAdjustService', () => {
         description: 'test',
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as SystemParam);
+      });
 
       const result = await service.getWeights();
 
@@ -87,7 +89,7 @@ describe('AbilityAdjustService', () => {
         description: 'test',
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as SystemParam);
+      });
 
       isAbilityAdjustWeights.mockReturnValue(false);
 
@@ -104,7 +106,7 @@ describe('AbilityAdjustService', () => {
         description: 'test',
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as SystemParam);
+      });
 
       await service.getWeights();
 
@@ -245,33 +247,68 @@ describe('AbilityAdjustService', () => {
   describe('calculateMatchAdjustForPlayer', () => {
     it('should sum multiple ratings for the same player', () => {
       const ratings = [
-        { levelMatch: 'higher', sportsmanship: 'good', actionCleanliness: 'clean', isPunctual: true } as FeedbackPlayerRating,
-        { levelMatch: 'equal', sportsmanship: 'average', actionCleanliness: 'average', isPunctual: true } as FeedbackPlayerRating,
+        {
+          levelMatch: 'higher',
+          sportsmanship: 'good',
+          actionCleanliness: 'clean',
+          isPunctual: true,
+        } as FeedbackPlayerRating,
+        {
+          levelMatch: 'equal',
+          sportsmanship: 'average',
+          actionCleanliness: 'average',
+          isPunctual: true,
+        } as FeedbackPlayerRating,
       ];
 
-      const result = service.calculateMatchAdjustForPlayer(ratings, validWeights);
+      const result = service.calculateMatchAdjustForPlayer(
+        ratings,
+        validWeights,
+      );
 
       // Rating1: 1+1+1+1 = 4; Rating2: 0+0+0+1 = 1; Total = 5
       expect(result).toBe(5);
     });
 
     it('should clamp total to upper bound 50', () => {
-      const ratings = Array(20).fill(null).map(() =>
-        ({ levelMatch: 'higher', sportsmanship: 'good', actionCleanliness: 'clean', isPunctual: true } as FeedbackPlayerRating),
-      );
+      const ratings = Array(20)
+        .fill(null)
+        .map(
+          () =>
+            ({
+              levelMatch: 'higher',
+              sportsmanship: 'good',
+              actionCleanliness: 'clean',
+              isPunctual: true,
+            }) as FeedbackPlayerRating,
+        );
 
-      const result = service.calculateMatchAdjustForPlayer(ratings, validWeights);
+      const result = service.calculateMatchAdjustForPlayer(
+        ratings,
+        validWeights,
+      );
 
       // Each = 4, 20 * 4 = 80, clamped to 50
       expect(result).toBe(50);
     });
 
     it('should clamp total to lower bound -50', () => {
-      const ratings = Array(20).fill(null).map(() =>
-        ({ levelMatch: 'lower', sportsmanship: 'poor', actionCleanliness: 'dirty', isPunctual: false } as FeedbackPlayerRating),
-      );
+      const ratings = Array(20)
+        .fill(null)
+        .map(
+          () =>
+            ({
+              levelMatch: 'lower',
+              sportsmanship: 'poor',
+              actionCleanliness: 'dirty',
+              isPunctual: false,
+            }) as FeedbackPlayerRating,
+        );
 
-      const result = service.calculateMatchAdjustForPlayer(ratings, validWeights);
+      const result = service.calculateMatchAdjustForPlayer(
+        ratings,
+        validWeights,
+      );
 
       // Each: -1 + (-1) + (-2) + (-1) = -5, 20 * -5 = -100, clamped to -50
       expect(result).toBe(-50);
@@ -279,11 +316,24 @@ describe('AbilityAdjustService', () => {
 
     it('should handle mix of positive and negative ratings', () => {
       const ratings = [
-        { levelMatch: 'higher', sportsmanship: 'good', actionCleanliness: 'clean', isPunctual: true } as FeedbackPlayerRating,
-        { levelMatch: 'lower', sportsmanship: 'poor', actionCleanliness: 'dirty', isPunctual: false } as FeedbackPlayerRating,
+        {
+          levelMatch: 'higher',
+          sportsmanship: 'good',
+          actionCleanliness: 'clean',
+          isPunctual: true,
+        } as FeedbackPlayerRating,
+        {
+          levelMatch: 'lower',
+          sportsmanship: 'poor',
+          actionCleanliness: 'dirty',
+          isPunctual: false,
+        } as FeedbackPlayerRating,
       ];
 
-      const result = service.calculateMatchAdjustForPlayer(ratings, validWeights);
+      const result = service.calculateMatchAdjustForPlayer(
+        ratings,
+        validWeights,
+      );
 
       // 4 + (-5) = -1
       expect(result).toBe(-1);

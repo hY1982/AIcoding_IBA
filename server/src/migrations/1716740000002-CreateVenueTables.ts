@@ -111,8 +111,14 @@ export class CreateVenueTables1716740000002 implements MigrationInterface {
       `DROP INDEX IF EXISTS "public"."IDX_venues_manager"`,
     );
     await queryRunner.query(`DROP TABLE IF EXISTS "venues"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "public"."venues_status_enum"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "public"."venues_court_type_enum"`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "public"."venues_floor_material_enum"`);
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "public"."venues_status_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "public"."venues_court_type_enum"`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "public"."venues_floor_material_enum"`,
+    );
   }
 }

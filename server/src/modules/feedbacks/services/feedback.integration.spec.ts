@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { DataSource, Repository } from 'typeorm';
 import { FeedbackService } from './feedback.service';
 import { AbilityAdjustService } from './ability-adjust.service';
@@ -244,7 +243,9 @@ describe('Feedback Integration Tests', () => {
     it('should reject feedback when match is not completed', async () => {
       await seedSystemParams();
 
-      const match = await createTestMatch(dataSource, { status: 'pending_confirmation' });
+      const match = await createTestMatch(dataSource, {
+        status: 'pending_confirmation',
+      });
       const playerA = await createTestPlayer(dataSource);
       const playerB = await createTestPlayer(dataSource);
 
@@ -287,7 +288,9 @@ describe('Feedback Integration Tests', () => {
         playerRatings: [],
       });
 
-      const pendingAfter = await feedbackService.findPendingFeedbacks(playerA.id);
+      const pendingAfter = await feedbackService.findPendingFeedbacks(
+        playerA.id,
+      );
       expect(pendingAfter.length).toBe(0);
     });
 
@@ -323,7 +326,9 @@ describe('Feedback Integration Tests', () => {
       });
 
       // playerB 的 matchAdjustValue 应该还是 0
-      let playerBBefore = await playerRepo.findOne({ where: { id: playerB.id } });
+      const playerBBefore = await playerRepo.findOne({
+        where: { id: playerB.id },
+      });
       const beforeValue = parseFloat(String(playerBBefore!.matchAdjustValue));
       expect(beforeValue).toBe(0);
 
@@ -332,7 +337,9 @@ describe('Feedback Integration Tests', () => {
       expect(result.processed).toBeGreaterThanOrEqual(1);
 
       // 同步后应该更新
-      const playerBAfter = await playerRepo.findOne({ where: { id: playerB.id } });
+      const playerBAfter = await playerRepo.findOne({
+        where: { id: playerB.id },
+      });
       const afterValue = parseFloat(String(playerBAfter!.matchAdjustValue));
       expect(afterValue).toBe(4); // higher(1)+good(1)+clean(1)+true(1)=4
     });

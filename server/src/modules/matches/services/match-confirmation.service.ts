@@ -25,10 +25,7 @@ import {
   GroupChatProviderInterface,
   GROUP_CHAT_PROVIDER,
 } from '../interfaces/group-chat-provider.interface';
-import {
-  MatchStatus,
-  MatchPlayerStatus,
-} from '@shared/match';
+import { MatchStatus, MatchPlayerStatus } from '@shared/match';
 
 export interface ConfirmParticipationResult {
   success: boolean;
@@ -151,7 +148,10 @@ export class MatchConfirmationService {
           { orderNo: orderResult.orderNo },
         );
 
-        return { orderNo: orderResult.orderNo, depositAmount: match.depositAmount };
+        return {
+          orderNo: orderResult.orderNo,
+          depositAmount: match.depositAmount,
+        };
       },
     );
 
@@ -164,9 +164,7 @@ export class MatchConfirmationService {
         { matchId, playerId },
         { orderNo: null },
       );
-      throw new BadRequestException(
-        `支付失败: ${paymentResult.errorMessage}`,
-      );
+      throw new BadRequestException(`支付失败: ${paymentResult.errorMessage}`);
     }
 
     // Phase 3: Finalize confirmation (within transaction)
@@ -188,10 +186,7 @@ export class MatchConfirmationService {
         orderNo,
       );
 
-      const isMatchConfirmed = await this.checkAndConfirmMatch(
-        manager,
-        match,
-      );
+      const isMatchConfirmed = await this.checkAndConfirmMatch(manager, match);
 
       const message = isMatchConfirmed
         ? '确认参赛成功，比赛已确认'
@@ -219,10 +214,7 @@ export class MatchConfirmationService {
    * Protected by transaction and pessimistic lock on Match row
    * to prevent race conditions with concurrent confirmation operations.
    */
-  async declineParticipation(
-    matchId: number,
-    playerId: number,
-  ): Promise<void> {
+  async declineParticipation(matchId: number, playerId: number): Promise<void> {
     return this.dataSource.transaction(async (manager) => {
       const match = await manager
         .createQueryBuilder(Match, 'match')
@@ -235,9 +227,7 @@ export class MatchConfirmationService {
       }
 
       if (match.status !== 'pending_confirmation') {
-        throw new ConflictException(
-          `比赛状态为 ${match.status}，不可拒绝参赛`,
-        );
+        throw new ConflictException(`比赛状态为 ${match.status}，不可拒绝参赛`);
       }
 
       const matchPlayer = await manager.findOne(MatchPlayer, {
@@ -296,9 +286,7 @@ export class MatchConfirmationService {
         });
 
         if (!matchPlayer) {
-          this.logger.warn(
-            `MatchPlayer not found for orderNo=${dto.orderNo}`,
-          );
+          this.logger.warn(`MatchPlayer not found for orderNo=${dto.orderNo}`);
           return;
         }
 
@@ -539,9 +527,7 @@ export class MatchConfirmationService {
    */
   private assertCanConfirm(match: Match, matchPlayer: MatchPlayer): void {
     if (match.status !== 'pending_confirmation') {
-      throw new ConflictException(
-        `比赛状态为 ${match.status}，不可确认参赛`,
-      );
+      throw new ConflictException(`比赛状态为 ${match.status}，不可确认参赛`);
     }
 
     const now = new Date();
@@ -886,7 +872,7 @@ export class MatchConfirmationService {
 
     await this.createNotificationWithRetry(() =>
       this.notificationService.createNotification({
-        userId: venueManager!.userId,
+        userId: venueManager.userId,
         type: 'match_success',
         title: '新比赛预订确认',
         content: `您的场地已被预订用于比赛，时间: ${match.startTime.toISOString()}`,
@@ -911,7 +897,8 @@ export class MatchConfirmationService {
       try {
         return await operation();
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
+        const message =
+          error instanceof Error ? error.message : 'Unknown error';
         if (attempt < maxRetries) {
           const delay = baseDelayMs * Math.pow(2, attempt - 1);
           this.logger.warn(

@@ -20,11 +20,11 @@ export class DefaultWeightsProvider implements AbilityWeightsProvider {
   private readonly logger = new Logger(DefaultWeightsProvider.name);
 
   private readonly defaultWeights: BaseAbilityWeights = {
-    height: 0.20,
-    weight: 0.10,
+    height: 0.2,
+    weight: 0.1,
     wingspan: 0.15,
     standing_reach: 0.15,
-    jumping_reach: 0.20,
+    jumping_reach: 0.2,
     basketball_age: 0.15,
     age: 0.05,
   };

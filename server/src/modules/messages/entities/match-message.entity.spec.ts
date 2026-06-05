@@ -147,7 +147,7 @@ describe('MatchMessage Entity', () => {
         match.id,
         player.userId,
         {
-          content: 'Let\'s play!',
+          content: "Let's play!",
           messageType: 'text',
         },
       );
@@ -155,7 +155,7 @@ describe('MatchMessage Entity', () => {
       expect(msg.id).toBeDefined();
       expect(msg.matchId).toBe(match.id);
       expect(msg.senderId).toBe(player.userId);
-      expect(msg.content).toBe('Let\'s play!');
+      expect(msg.content).toBe("Let's play!");
       expect(msg.messageType).toBe('text');
       expect(msg.createdAt).toBeInstanceOf(Date);
     });

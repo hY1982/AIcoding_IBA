@@ -23,7 +23,8 @@ import { VenueManager } from '@modules/users/entities/venue-manager.entity';
         return {
           secret,
           signOptions: {
-            expiresIn: (configService.get<string>('JWT_EXPIRES_IN') || '2h') as `${number}h`,
+            expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ||
+              '2h') as `${number}h`,
           },
         };
       },

@@ -51,7 +51,9 @@ describe('MatchingProcessor', () => {
 
       const result = await processor.process(job);
 
-      expect(matchingEngine.runMatching).toHaveBeenCalledWith('shenzhen_futian');
+      expect(matchingEngine.runMatching).toHaveBeenCalledWith(
+        'shenzhen_futian',
+      );
       expect(result).toEqual(mockResult);
     });
 
@@ -109,7 +111,9 @@ describe('MatchingProcessor', () => {
         attemptsMade: 2,
       } as unknown as Job<{ regionCode: string }>;
 
-      expect(() => processor.onFailed(job, new Error('Test error'))).not.toThrow();
+      expect(() =>
+        processor.onFailed(job, new Error('Test error')),
+      ).not.toThrow();
     });
 
     it('should handle active event without error', () => {
