@@ -117,8 +117,11 @@ export function isMatchThresholdParams(value: unknown): value is MatchThresholdP
   const v = value as Record<string, unknown>;
   return (
     typeof v.base_threshold === 'number' &&
+    v.base_threshold >= 0 &&
     typeof v.min_threshold === 'number' &&
-    typeof v.intention_count_factor === 'number'
+    v.min_threshold >= 0 &&
+    typeof v.intention_count_factor === 'number' &&
+    v.intention_count_factor >= 0
   );
 }
 

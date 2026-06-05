@@ -89,17 +89,24 @@ describe('MatchMessage Entity', () => {
       expect(columnNames).toContain('created_at');
     });
 
-    it('should have match_id and sender_id as non-nullable bigint', async () => {
-      for (const col of ['match_id', 'sender_id']) {
-        const columns = await dataSource.query(
-          `SELECT column_name, data_type, is_nullable
-           FROM information_schema.columns
-           WHERE table_name = 'match_messages' AND column_name = '${col}'`,
-        );
-        expect(columns.length).toBe(1);
-        expect(columns[0].data_type).toBe('bigint');
-        expect(columns[0].is_nullable).toBe('NO');
-      }
+    it('should have match_id as non-nullable bigint and sender_id as nullable bigint', async () => {
+      const matchIdColumns = await dataSource.query(
+        `SELECT column_name, data_type, is_nullable
+         FROM information_schema.columns
+         WHERE table_name = 'match_messages' AND column_name = 'match_id'`,
+      );
+      expect(matchIdColumns.length).toBe(1);
+      expect(matchIdColumns[0].data_type).toBe('bigint');
+      expect(matchIdColumns[0].is_nullable).toBe('NO');
+
+      const senderIdColumns = await dataSource.query(
+        `SELECT column_name, data_type, is_nullable
+         FROM information_schema.columns
+         WHERE table_name = 'match_messages' AND column_name = 'sender_id'`,
+      );
+      expect(senderIdColumns.length).toBe(1);
+      expect(senderIdColumns[0].data_type).toBe('bigint');
+      expect(senderIdColumns[0].is_nullable).toBe('YES');
     });
 
     it('should have content as text non-nullable', async () => {

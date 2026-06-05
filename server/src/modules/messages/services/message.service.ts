@@ -11,6 +11,7 @@ import { EventEmitter } from 'events';
 import { MatchMessage } from '../entities/match-message.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
+import { Player } from '@modules/players/entities/player.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { QueryMessageDto } from '../dto/query-message.dto';
@@ -26,7 +27,7 @@ import { PaginatedResponse } from '@shared/common';
 export interface MessageSentEvent {
   id: number;
   matchId: number;
-  senderId: number;
+  senderId: number | null;
   content: string;
   messageType: string;
   createdAt: Date;
@@ -81,6 +82,8 @@ export class MessageService {
     private readonly matchRepo: Repository<Match>,
     @InjectRepository(MatchPlayer)
     private readonly matchPlayerRepo: Repository<MatchPlayer>,
+    @InjectRepository(Player)
+    private readonly playerRepo: Repository<Player>,
     @InjectRepository(SystemParam)
     private readonly systemParamRepo: Repository<SystemParam>,
     private readonly eventEmitter: EventEmitter,
@@ -201,7 +204,7 @@ export class MessageService {
 
     const message = this.messageRepo.create({
       matchId,
-      senderId: 0, // System messages use senderId = 0
+      senderId: null, // System messages have no user sender
       content: trimmedContent,
       messageType: 'system',
     });
@@ -275,8 +278,15 @@ export class MessageService {
     matchId: number,
     userId: number,
   ): Promise<boolean> {
+    // Resolve player record from userId, then check match participation
+    const player = await this.playerRepo.findOne({
+      where: { userId },
+    });
+    if (!player) {
+      return false;
+    }
     const count = await this.matchPlayerRepo.count({
-      where: { matchId, playerId: userId },
+      where: { matchId, playerId: player.id },
     });
     return count > 0;
   }

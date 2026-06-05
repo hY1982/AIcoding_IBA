@@ -7,6 +7,7 @@ import { MatchConfirmationService } from './services/match-confirmation.service'
 import { MockGroupChatService } from './services/mock-group-chat.service';
 import { GROUP_CHAT_PROVIDER } from './interfaces/group-chat-provider.interface';
 import { PaymentsModule } from '@modules/payments/payments.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 
@@ -20,6 +21,7 @@ import { Format } from '@modules/formats/entities/format.entity';
       Format,
     ]),
     PaymentsModule,
+    NotificationsModule,
   ],
   providers: [
     MatchConfirmationService,

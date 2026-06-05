@@ -38,13 +38,13 @@ export class MatchMessage {
   @Column({
     name: 'sender_id',
     type: 'bigint',
-    nullable: false,
+    nullable: true,
   })
-  senderId!: number;
+  senderId!: number | null;
 
-  @ManyToOne(() => User, { onDelete: 'NO ACTION' })
+  @ManyToOne(() => User, { onDelete: 'NO ACTION', nullable: true })
   @JoinColumn({ name: 'sender_id' })
-  sender!: User;
+  sender!: User | null;
 
   @Column({
     type: 'text',

@@ -11,6 +11,7 @@ import { MessageService } from './message.service';
 import { MatchMessage } from '../entities/match-message.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
+import { Player } from '@modules/players/entities/player.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { QueryMessageDto } from '../dto/query-message.dto';
@@ -102,6 +103,7 @@ describe('MessageService', () => {
   let messageRepo: MockRepository<MatchMessage>;
   let matchRepo: MockRepository<Match>;
   let matchPlayerRepo: MockRepository<MatchPlayer>;
+  let playerRepo: MockRepository<Player>;
   let systemParamRepo: MockRepository<SystemParam>;
   let eventEmitter: EventEmitter;
 
@@ -109,8 +111,12 @@ describe('MessageService', () => {
     messageRepo = createMockRepository();
     matchRepo = createMockRepository();
     matchPlayerRepo = createMockRepository();
+    playerRepo = createMockRepository();
     systemParamRepo = createMockRepository();
     eventEmitter = new EventEmitter();
+
+    // Default player resolution: userId 100 -> playerId 100
+    playerRepo.findOne!.mockResolvedValue({ id: 100, userId: 100 } as Player);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -126,6 +132,10 @@ describe('MessageService', () => {
         {
           provide: getRepositoryToken(MatchPlayer),
           useValue: matchPlayerRepo,
+        },
+        {
+          provide: getRepositoryToken(Player),
+          useValue: playerRepo,
         },
         {
           provide: getRepositoryToken(SystemParam),
@@ -209,6 +219,7 @@ describe('MessageService', () => {
     it('should throw ForbiddenException when sender is not a match participant', async () => {
       const match = createMockMatch();
       matchRepo.findOneBy!.mockResolvedValue(match);
+      playerRepo.findOne!.mockResolvedValue(null);
       matchPlayerRepo.count!.mockResolvedValue(0);
 
       const dto: SendMessageDto = { content: 'Test' };
@@ -408,6 +419,7 @@ describe('MessageService', () => {
     it('should throw ForbiddenException when user is not a participant', async () => {
       const match = createMockMatch();
       matchRepo.findOneBy!.mockResolvedValue(match);
+      playerRepo.findOne!.mockResolvedValue(null);
       matchPlayerRepo.count!.mockResolvedValue(0);
 
       const query: QueryMessageDto = {};
