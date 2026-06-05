@@ -144,6 +144,8 @@ describe('MessageService', () => {
   afterEach(() => {
     jest.clearAllMocks();
     eventEmitter.removeAllListeners();
+    // Reset the private cache to prevent cross-test contamination
+    (service as unknown as { expiryDaysCache: unknown }).expiryDaysCache = null;
   });
 
   it('should be defined', () => {
@@ -357,6 +359,25 @@ describe('MessageService', () => {
         ForbiddenException,
       );
     });
+
+    it('should throw NotFoundException when match does not exist', async () => {
+      matchRepo.findOneBy!.mockResolvedValue(null);
+
+      await expect(service.sendSystemMessage(999, 'Test')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw BadRequestException when content is empty', async () => {
+      const match = createMockMatch();
+
+      matchRepo.findOneBy!.mockResolvedValue(match);
+      systemParamRepo.findOneBy!.mockResolvedValue(createMockSystemParam());
+
+      await expect(service.sendSystemMessage(1, '   ')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
   });
 
   // ==================== GET MESSAGE HISTORY ====================
@@ -461,8 +482,24 @@ describe('MessageService', () => {
   // ==================== CAN SEND MESSAGES (BOUNDARY TESTS) ====================
 
   describe('canSendMessages boundary tests via sendMessage', () => {
+    /**
+     * 固定时间基准，消除 Date.now() 时序漂移导致的测试不稳定。
+     * 所有边界测试使用同一时间锚点，确保 createdAt 和运行时 now 的一致性。
+     */
+    const FIXED_NOW = new Date('2026-06-05T12:00:00.000Z');
+
+    beforeEach(() => {
+      jest.spyOn(Date, 'now').mockReturnValue(FIXED_NOW.getTime());
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
     it('should allow messages within configured expiry days', async () => {
-      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+      const threeDaysAgo = new Date(
+        FIXED_NOW.getTime() - 3 * 24 * 60 * 60 * 1000,
+      );
       const match = createMockMatch({ createdAt: threeDaysAgo });
       const dto: SendMessageDto = { content: 'Recent message' };
       const mockMessage = createMockMatchMessage({ content: 'Recent message' });
@@ -480,7 +517,9 @@ describe('MessageService', () => {
     });
 
     it('should block messages after configured expiry days', async () => {
-      const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+      const sixDaysAgo = new Date(
+        FIXED_NOW.getTime() - 6 * 24 * 60 * 60 * 1000,
+      );
       const match = createMockMatch({ createdAt: sixDaysAgo });
 
       matchRepo.findOneBy!.mockResolvedValue(match);
@@ -496,7 +535,9 @@ describe('MessageService', () => {
     });
 
     it('should use default 7 days when system param is missing', async () => {
-      const sixDaysAgo = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+      const sixDaysAgo = new Date(
+        FIXED_NOW.getTime() - 6 * 24 * 60 * 60 * 1000,
+      );
       const match = createMockMatch({ createdAt: sixDaysAgo });
       const dto: SendMessageDto = { content: 'Default expiry test' };
       const mockMessage = createMockMatchMessage({
@@ -514,9 +555,8 @@ describe('MessageService', () => {
     });
 
     it('should allow messages exactly at expiry day boundary', async () => {
-      const now = new Date();
       const exactlySevenDaysAgo = new Date(
-        now.getTime() - 7 * 24 * 60 * 60 * 1000,
+        FIXED_NOW.getTime() - 7 * 24 * 60 * 60 * 1000,
       );
       const match = createMockMatch({ createdAt: exactlySevenDaysAgo });
       const dto: SendMessageDto = { content: 'Boundary test' };
@@ -530,6 +570,71 @@ describe('MessageService', () => {
 
       const result = await service.sendMessage(1, 100, dto);
       expect(result.content).toBe('Boundary test');
+    });
+
+    it('should use cached expiry days on subsequent calls', async () => {
+      const match = createMockMatch();
+      const dto: SendMessageDto = { content: 'Cache test' };
+      const mockMessage = createMockMatchMessage({ content: 'Cache test' });
+
+      matchRepo.findOneBy!.mockResolvedValue(match);
+      matchPlayerRepo.count!.mockResolvedValue(1);
+      systemParamRepo.findOneBy!.mockResolvedValue(createMockSystemParam());
+      messageRepo.create!.mockReturnValue(mockMessage);
+      messageRepo.save!.mockResolvedValue(mockMessage);
+
+      // First call — should query database
+      await service.sendMessage(1, 100, dto);
+      expect(systemParamRepo.findOneBy).toHaveBeenCalledTimes(1);
+
+      // Second call — should use cache, no additional DB query
+      await service.sendMessage(1, 100, dto);
+      expect(systemParamRepo.findOneBy).toHaveBeenCalledTimes(1);
+    });
+
+    it('should fallback to default when system param query throws', async () => {
+      const sixDaysAgo = new Date(
+        FIXED_NOW.getTime() - 6 * 24 * 60 * 60 * 1000,
+      );
+      const match = createMockMatch({ createdAt: sixDaysAgo });
+      const dto: SendMessageDto = { content: 'DB error fallback' };
+      const mockMessage = createMockMatchMessage({
+        content: 'DB error fallback',
+      });
+
+      matchRepo.findOneBy!.mockResolvedValue(match);
+      matchPlayerRepo.count!.mockResolvedValue(1);
+      systemParamRepo.findOneBy!.mockRejectedValue(
+        new Error('Connection timeout'),
+      );
+      messageRepo.create!.mockReturnValue(mockMessage);
+      messageRepo.save!.mockResolvedValue(mockMessage);
+
+      const result = await service.sendMessage(1, 100, dto);
+      expect(result.content).toBe('DB error fallback');
+    });
+
+    it('should fallback to default when system param value is invalid', async () => {
+      const sixDaysAgo = new Date(
+        FIXED_NOW.getTime() - 6 * 24 * 60 * 60 * 1000,
+      );
+      const match = createMockMatch({ createdAt: sixDaysAgo });
+      const dto: SendMessageDto = { content: 'Invalid param fallback' };
+      const mockMessage = createMockMatchMessage({
+        content: 'Invalid param fallback',
+      });
+
+      matchRepo.findOneBy!.mockResolvedValue(match);
+      matchPlayerRepo.count!.mockResolvedValue(1);
+      // paramValue has expiry_days but it's a string, not a number
+      systemParamRepo.findOneBy!.mockResolvedValue(
+        createMockSystemParam({ paramValue: { expiry_days: 'seven' } }),
+      );
+      messageRepo.create!.mockReturnValue(mockMessage);
+      messageRepo.save!.mockResolvedValue(mockMessage);
+
+      const result = await service.sendMessage(1, 100, dto);
+      expect(result.content).toBe('Invalid param fallback');
     });
   });
 });

@@ -52,10 +52,27 @@ export interface MessageSentEvent {
  * - Group chat expiry days are read from system_params table
  *   (key: group_chat_expiry_days, default: 7)
  */
+/**
+ * 缓存条目结构
+ */
+interface CacheEntry<T> {
+  value: T;
+  expiry: number;
+}
+
 @Injectable()
 export class MessageService {
   private readonly logger = new Logger(MessageService.name);
   private readonly defaultExpiryDays = 7;
+
+  /**
+   * 群聊有效期天数缓存（毫秒级时间戳）
+   *
+   * 缓存 60 秒，避免高并发群聊场景下频繁查询 system_params 表。
+   * 该参数变更频率极低（运营手动调整），60 秒延迟可接受。
+   */
+  private expiryDaysCache: CacheEntry<number> | null = null;
+  private readonly expiryCacheTtlMs = 60_000;
 
   constructor(
     @InjectRepository(MatchMessage)
@@ -288,11 +305,22 @@ export class MessageService {
   /**
    * Get the configured group chat expiry days.
    *
-   * Reads from system_params table. Returns default (7) if:
-   * - Parameter not found
+   * 优先读取内存缓存（60 秒 TTL），缓存未命中时查询 system_params 表。
+   *
+   * Returns default (7) if:
+   * - Cache expired and parameter not found in DB
    * - Parameter value is invalid
+   * - Database query throws
    */
   private async getExpiryDays(): Promise<number> {
+    const now = Date.now();
+
+    // 1. Check memory cache
+    if (this.expiryDaysCache && this.expiryDaysCache.expiry > now) {
+      return this.expiryDaysCache.value;
+    }
+
+    // 2. Cache miss — query database
     try {
       const param = await this.systemParamRepo.findOneBy({
         paramKey: 'group_chat_expiry_days',
@@ -300,7 +328,12 @@ export class MessageService {
       if (param && param.paramValue && typeof param.paramValue === 'object') {
         const value = param.paramValue as Record<string, unknown>;
         if (typeof value.expiry_days === 'number' && value.expiry_days > 0) {
-          return value.expiry_days;
+          const days = value.expiry_days;
+          this.expiryDaysCache = {
+            value: days,
+            expiry: now + this.expiryCacheTtlMs,
+          };
+          return days;
         }
       }
     } catch (error) {
@@ -308,6 +341,8 @@ export class MessageService {
         `Failed to read group_chat_expiry_days from system_params: ${(error as Error).message}. Using default.`,
       );
     }
+
+    // 3. Fallback to default (do not cache default to allow recovery)
     return this.defaultExpiryDays;
   }
 
