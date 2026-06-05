@@ -1,9 +1,23 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { EventEmitter } from 'events';
 import { MatchMessage } from './entities/match-message.entity';
+import { Match } from '@modules/matches/entities/match.entity';
+import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
+import { SystemParam } from '@modules/system/entities/system-param.entity';
+import { MessageService } from './services/message.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MatchMessage])],
-  exports: [TypeOrmModule],
+  imports: [
+    TypeOrmModule.forFeature([MatchMessage, Match, MatchPlayer, SystemParam]),
+  ],
+  providers: [
+    MessageService,
+    {
+      provide: EventEmitter,
+      useValue: new EventEmitter(),
+    },
+  ],
+  exports: [MessageService, TypeOrmModule],
 })
 export class MessagesModule {}

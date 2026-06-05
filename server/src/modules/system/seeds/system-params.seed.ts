@@ -39,14 +39,21 @@ export const DEFAULT_SYSTEM_PARAMS: {
   {
     paramKey: 'base_ability_weights',
     paramValue: {
-      height: 0.20,
-      weight: 0.10,
+      height: 0.2,
+      weight: 0.1,
       wingspan: 0.15,
       standing_reach: 0.15,
-      jumping_reach: 0.20,
+      jumping_reach: 0.2,
       basketball_age: 0.15,
       age: 0.05,
     },
     description: '基础能力值计算权重（MVP版本，不含位置适配）',
+  },
+  {
+    paramKey: 'group_chat_expiry_days',
+    paramValue: {
+      expiry_days: 7,
+    },
+    description: '群聊有效期天数（Module 2.10 群聊消息服务）',
   },
 ];

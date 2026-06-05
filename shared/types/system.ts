@@ -5,6 +5,7 @@ export const SYSTEM_PARAM_KEYS = [
   'ability_adjust_weights',
   'match_threshold_params',
   'base_ability_weights',
+  'group_chat_expiry_days',
 ] as const;
 export type SystemParamKey = (typeof SYSTEM_PARAM_KEYS)[number];
 
@@ -44,6 +45,14 @@ export interface BaseAbilityWeights {
 }
 
 /**
+ * 群聊有效期配置
+ * 用于 Module 2.10（群聊消息服务）
+ */
+export interface GroupChatExpiryDays {
+  expiry_days: number;
+}
+
+/**
  * 系统参数值映射 — 将键名映射到对应的 TypeScript 接口类型
  * 保证类型安全：通过 SystemParamKey 可推导 param_value 的具体结构
  */
@@ -51,6 +60,7 @@ export interface SystemParamValueMap {
   ability_adjust_weights: AbilityAdjustWeights;
   match_threshold_params: MatchThresholdParams;
   base_ability_weights: BaseAbilityWeights;
+  group_chat_expiry_days: GroupChatExpiryDays;
 }
 
 /**
@@ -130,6 +140,15 @@ export function isBaseAbilityWeights(value: unknown): value is BaseAbilityWeight
 }
 
 /**
+ * 类型守卫：判断 value 是否符合 GroupChatExpiryDays 结构
+ */
+export function isGroupChatExpiryDays(value: unknown): value is GroupChatExpiryDays {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.expiry_days === 'number' && v.expiry_days > 0;
+}
+
+/**
  * 根据 paramKey 获取对应的类型守卫函数
  */
 export function getSystemParamGuard<K extends SystemParamKey>(
@@ -142,6 +161,8 @@ export function getSystemParamGuard<K extends SystemParamKey>(
       return isMatchThresholdParams as (value: unknown) => value is SystemParamValueMap[K];
     case 'base_ability_weights':
       return isBaseAbilityWeights as (value: unknown) => value is SystemParamValueMap[K];
+    case 'group_chat_expiry_days':
+      return isGroupChatExpiryDays as (value: unknown) => value is SystemParamValueMap[K];
     default:
       // exhaustive check
       return (_value: unknown): _value is SystemParamValueMap[K] => false;
