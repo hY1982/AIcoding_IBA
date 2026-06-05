@@ -52,3 +52,9 @@ logs/
 # System / Temp files
 *.tmp
 *.temp
+
+# Module-specific coverage reports (generated)
+server/src/coverage-*/
+
+# Qoder IDE workspace files
+.qoder/
