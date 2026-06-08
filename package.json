@@ -12,7 +12,7 @@
     "dev:mobile": "cd apps/mobile && npx expo start --lan",
     "dev:web": "cd apps/mobile && npm run web",
     "dev:all": "docker-compose -f docker-compose.dev.yml up -d && cd server && npm run start:dev",
-    "build:mobile:android": "cd apps/mobile && npx eas build --profile development --platform android",
+    "build:mobile:android": "cd apps/mobile && node ../../node_modules/eas-cli/bin/run build --profile development --platform android",
     "test:mobile": "cd apps/mobile && npm test"
   }
 }
