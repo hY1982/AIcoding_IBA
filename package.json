@@ -14,5 +14,8 @@
     "dev:all": "docker-compose -f docker-compose.dev.yml up -d && cd server && npm run start:dev",
     "build:mobile:android": "cd apps/mobile && node ../../node_modules/eas-cli/bin/run build --profile development --platform android",
     "test:mobile": "cd apps/mobile && npm test"
+  },
+  "devDependencies": {
+    "eas-cli": "^20.1.0"
   }
 }
