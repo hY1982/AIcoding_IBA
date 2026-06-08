@@ -29,7 +29,13 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiUrl": "${EXPO_PUBLIC_API_URL}"
-    }
+      "apiUrl": "${EXPO_PUBLIC_API_URL}",
+      "eas": {
+        "projectId": "9baf10a4-4e98-44a3-8e3b-541f9bca0911"
+      }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }
