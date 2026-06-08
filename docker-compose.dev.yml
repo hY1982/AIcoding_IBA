@@ -15,7 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    # No ports exposed to host — fully isolated inside Docker network
+    ports:
+      - "5432:5432"
 
   redis:
     image: redis:7-alpine
@@ -27,7 +28,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    # No ports exposed to host — fully isolated inside Docker network
+    ports:
+      - "6379:6379"
 
   backend:
     build:
