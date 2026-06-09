@@ -8,6 +8,11 @@ const monorepoPackages = {
   '@basketball-match/shared': path.resolve(__dirname, '../../shared/types'),
 };
 
+// Path alias support for @/ imports
+const pathAliases = {
+  '@': path.resolve(__dirname, 'src'),
+};
+
 config.watchFolders = [
   __dirname,
   path.resolve(__dirname, '../../shared'),
@@ -21,6 +26,7 @@ config.resolver.nodeModulesPaths = [
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   ...monorepoPackages,
+  ...pathAliases,
 };
 
 module.exports = config;
