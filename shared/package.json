@@ -3,15 +3,21 @@
   "version": "0.0.1",
   "private": true,
   "description": "Shared types and constants for basketball match platform",
-  "types": "./types/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./types/index.ts"
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     },
-    "./*": "./types/*.ts"
+    "./*": {
+      "default": "./dist/*.js",
+      "types": "./dist/*.d.ts"
+    }
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
