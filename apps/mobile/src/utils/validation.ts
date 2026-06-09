@@ -4,6 +4,7 @@
  * ⚠️ 契约同步责任：修改此处规则时，必须同步更新后端对应 DTO 文件：
  * - server/src/modules/auth/dto/register.dto.ts
  * - server/src/modules/auth/dto/login.dto.ts
+ * - server/src/modules/players/dto/update-player.dto.ts
  *
  * 后端验证规则（class-validator）：
  * - 手机号：@Matches(/^1[3-9]\d{9}$/)
@@ -11,6 +12,7 @@
  * - 昵称：@MinLength(1) @MaxLength(50)
  * - 年龄：@Min(1) @Max(120)
  * - 身高：@Min(50) @Max(300)
+ * - 体重/臂展/站立摸高/起跳摸高：@IsPositive()（可选字段）
  * - 位置：@ArrayMaxSize(3) @IsEnum(BASKETBALL_POSITIONS)
  * - 公司名称：@MaxLength(100)
  * - 联系人姓名：@MaxLength(50)
@@ -76,6 +78,13 @@ export function validatePositions(positions: string[]): string | null {
       return '位置必须是 PG, SG, SF, PF, C 之一';
     }
   }
+  return null;
+}
+
+export function validateOptionalPositiveNumber(value: number | undefined, fieldName: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (Number.isNaN(value)) return `${fieldName}必须是有效数字`;
+  if (value <= 0) return `${fieldName}必须大于0`;
   return null;
 }
 

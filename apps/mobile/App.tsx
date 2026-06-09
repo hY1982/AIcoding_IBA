@@ -8,6 +8,9 @@ import { LoginScreen } from './src/screens/auth/LoginScreen';
 import { RegisterScreen } from './src/screens/auth/RegisterScreen';
 import { PlayerRegisterScreen } from './src/screens/auth/PlayerRegisterScreen';
 import { VenueManagerRegisterScreen } from './src/screens/auth/VenueManagerRegisterScreen';
+import { ProfileScreen } from './src/screens/player/ProfileScreen';
+import { EditProfileScreen } from './src/screens/player/EditProfileScreen';
+import { AbilityScreenContainer } from './src/screens/player/AbilityScreen';
 
 function HomeScreen() {
   return (
@@ -48,6 +51,21 @@ export default function App() {
           name="VenueManagerRegister"
           component={VenueManagerRegisterScreen}
           options={{ title: '场地方信息' }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ title: '我的资料' }}
+        />
+        <Stack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{ title: '编辑资料' }}
+        />
+        <Stack.Screen
+          name="Ability"
+          component={AbilityScreenContainer}
+          options={{ title: '能力值详情' }}
         />
         <Stack.Screen
           name="Home"

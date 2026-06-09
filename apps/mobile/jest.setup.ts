@@ -1,3 +1,9 @@
+// Node.js v24+ compatibility: pre-define window to prevent react-native jest setup from redefining it
+// @ts-expect-error: window polyfill for Node v24
+if (!global.window) {
+  global.window = global;
+}
+
 // Disable automatic cleanup to avoid timeout issues with fake timers
 // Must be set BEFORE importing @testing-library/react-native
 process.env.RNTL_SKIP_AUTO_CLEANUP = 'true';

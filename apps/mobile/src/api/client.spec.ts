@@ -29,9 +29,9 @@ describe('API Client', () => {
   });
 
   describe('Request Interceptor', () => {
-    it('should pass through config without modification', () => {
+    it('should pass through config without modification', async () => {
       const mockConfig = { headers: {} } as InternalAxiosRequestConfig;
-      const result = requestFulfilled(mockConfig);
+      const result = await requestFulfilled(mockConfig);
       expect(result).toBe(mockConfig);
     });
 

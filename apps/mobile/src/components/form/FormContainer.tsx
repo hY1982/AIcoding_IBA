@@ -14,6 +14,7 @@ interface FormContainerProps {
   submitLabel: string;
   isLoading?: boolean;
   error?: string;
+  success?: string;
 }
 
 export function FormContainer({
@@ -22,11 +23,18 @@ export function FormContainer({
   submitLabel,
   isLoading = false,
   error,
+  success,
 }: FormContainerProps) {
   return (
     <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
       <View style={styles.form}>
         {children}
+
+        {success ? (
+          <Text style={styles.globalSuccess} accessibilityLiveRegion="assertive">
+            {success}
+          </Text>
+        ) : null}
 
         {error ? (
           <Text style={styles.globalError} accessibilityLiveRegion="assertive">
@@ -82,6 +90,12 @@ const styles = StyleSheet.create({
   },
   globalError: {
     color: '#e74c3c',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  globalSuccess: {
+    color: '#27ae60',
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 12,
