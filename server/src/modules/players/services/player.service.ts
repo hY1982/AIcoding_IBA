@@ -186,10 +186,12 @@ export class PlayerService {
     }
 
     // 使用事务原子更新 Player + PlayerPosition
-    await this.dataSource.transaction(async (manager) => {
+    const updatedPlayer = await this.dataSource.transaction(async (manager) => {
       // 更新 Player 记录（使用乐观锁防止并发更新丢失）
+      // 注意：positions 是 PlayerPosition[] 关系属性，需单独处理，不能从 DTO 直接 spread
+      const { positions: _positions, ...playerFields } = dto;
       const updateData: Partial<Player> = {
-        ...dto,
+        ...playerFields,
         baseAbilityScore,
         // matchAdjustValue 始终不变，不在这里设置即可保持原值
       };
@@ -200,9 +202,6 @@ export class PlayerService {
           delete updateData[key as keyof Player];
         }
       });
-
-      // 单独处理 positions，不在 Player 实体上直接设置
-      delete (updateData as any).positions;
 
       // 使用 UpdateQueryBuilder + 版本号进行乐观锁更新
       const updateResult = await manager
@@ -232,14 +231,27 @@ export class PlayerService {
           await manager.save(PlayerPosition, positions);
         }
       }
+
+      // 重新加载更新后的 Player（含最新 version 和关联数据）
+      return manager
+        .createQueryBuilder(Player, 'player')
+        .leftJoinAndSelect('player.user', 'user')
+        .leftJoinAndSelect('player.positions', 'positions')
+        .where('player.id = :playerId', { playerId })
+        .orderBy('positions.priority', 'ASC')
+        .getOne();
     });
 
     this.logger.log(
       `球员更新成功: playerId=${playerId}, baseAbilityScore=${baseAbilityScore}`,
     );
 
-    // 返回更新后的脱敏资料
-    return this.findById(playerId);
+    if (!updatedPlayer) {
+      throw new NotFoundException(`球员不存在: playerId=${playerId}`);
+    }
+
+    // 返回更新后的脱敏资料（无需额外查询）
+    return this.toPlayerProfile(updatedPlayer);
   }
 
   // ==================== READ ====================
@@ -261,12 +273,9 @@ export class PlayerService {
     const player = await this.playerRepo
       .createQueryBuilder('player')
       .leftJoinAndSelect('player.user', 'user')
-      .leftJoinAndSelect(
-        PlayerPosition,
-        'position',
-        'position.player_id = player.id',
-      )
+      .leftJoinAndSelect('player.positions', 'positions')
       .where('player.id = :playerId', { playerId })
+      .orderBy('positions.priority', 'ASC')
       .getOne();
 
     if (!player) {
@@ -286,12 +295,9 @@ export class PlayerService {
     const player = await this.playerRepo
       .createQueryBuilder('player')
       .leftJoinAndSelect('player.user', 'user')
-      .leftJoinAndSelect(
-        PlayerPosition,
-        'position',
-        'position.player_id = player.id',
-      )
+      .leftJoinAndSelect('player.positions', 'positions')
       .where('player.user_id = :userId', { userId })
+      .orderBy('positions.priority', 'ASC')
       .getOne();
 
     if (!player) {
@@ -407,9 +413,9 @@ export class PlayerService {
       baseAbilityScore: player.baseAbilityScore,
       matchAdjustValue: player.matchAdjustValue,
       totalAbilityScore: player.totalAbilityScore,
-      phone: maskPhone(user?.phone),
+      phone: user?.phone ? maskPhone(user.phone) : '',
       nickname: user?.nickname || '',
-      realName: maskRealName(user?.realName),
+      realName: user?.realName ? maskRealName(user.realName) : '',
       avatarUrl: user?.avatarUrl || undefined,
       createdAt: player.createdAt.toISOString(),
       updatedAt: player.updatedAt.toISOString(),

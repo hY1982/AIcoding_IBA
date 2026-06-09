@@ -5,11 +5,13 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  OneToMany,
   JoinColumn,
   Index,
   VersionColumn,
 } from 'typeorm';
 import { User } from '@modules/users/entities/user.entity';
+import { PlayerPosition } from './player-position.entity';
 import { Gender, GENDERS, TEAM_ROLES, TeamRole } from '@shared/player';
 
 @Entity('players')
@@ -239,4 +241,9 @@ export class Player {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
+
+  @OneToMany(() => PlayerPosition, (position) => position.player, {
+    cascade: true,
+  })
+  positions!: PlayerPosition[];
 }

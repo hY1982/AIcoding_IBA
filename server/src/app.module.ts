@@ -1,7 +1,8 @@
 import { Module, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { APP_INTERCEPTOR, APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_FILTER, APP_PIPE, APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
 import { CommonModule } from './common/common.module';
@@ -101,6 +102,11 @@ import { AppService } from './app.service';
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
+    },
+    // Global JwtAuthGuard — 所有端点默认需要 JWT 认证（除标记 @Public 的端点）
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
     },
   ],
 })
