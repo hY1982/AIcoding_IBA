@@ -13,6 +13,11 @@ config.watchFolders = [
   path.resolve(__dirname, '../../shared'),
 ];
 
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+  path.resolve(__dirname, '../../node_modules'),
+];
+
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   ...monorepoPackages,
