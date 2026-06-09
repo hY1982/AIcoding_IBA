@@ -1,5 +1,6 @@
 {
   "name": "basketball-match-mobile",
+  "displayName": "BasketballMatch",
   "version": "0.0.1",
   "main": "App.tsx",
   "scripts": {
