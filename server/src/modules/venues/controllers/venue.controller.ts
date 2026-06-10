@@ -23,6 +23,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { VenueService } from '../services/venue.service';
+import { VenueManagerProfileService } from '../services/venue-manager-profile.service';
 import { CreateVenueDto } from '../dto/create-venue.dto';
 import { UpdateVenueDto } from '../dto/update-venue.dto';
 import { VenueDetail, VenueListItem } from '@shared/venue';
@@ -47,7 +48,10 @@ interface RequestWithUser extends Request {
 @UseGuards(JwtAuthGuard)
 @Controller('venues')
 export class VenueController {
-  constructor(private readonly venueService: VenueService) {}
+  constructor(
+    private readonly venueService: VenueService,
+    private readonly venueManagerProfileService: VenueManagerProfileService,
+  ) {}
 
   /**
    * POST /api/v1/venues
@@ -67,10 +71,12 @@ export class VenueController {
     @Req() req: RequestWithUser,
     @Body() dto: CreateVenueDto,
   ): Promise<VenueDetail> {
-    // 获取当前场地方的 managerId
-    // 注意：这里假设 userId 和 venueManager.id 一致
-    // 实际应该通过 venueManagerProfileService 查询
-    return this.venueService.create(req.user.userId, dto);
+    // 根据 userId 查询 venueManager.id
+    const profile = await this.venueManagerProfileService.findByUserId(req.user.userId);
+    if (!profile) {
+      throw new NotFoundException('场地方资料不存在');
+    }
+    return this.venueService.create(profile.id, dto);
   }
 
   /**
@@ -88,6 +94,11 @@ export class VenueController {
   async findMyVenues(
     @Req() req: RequestWithUser,
   ): Promise<VenueListItem[]> {
+    // 根据 userId 查询 venueManager.id
+    const profile = await this.venueManagerProfileService.findByUserId(req.user.userId);
+    if (!profile) {
+      throw new NotFoundException('场地方资料不存在');
+    }
     // 查询当前场地方的所有场地
     const result = await this.venueService.findAll({
       page: 1,
@@ -95,7 +106,6 @@ export class VenueController {
       status: 'active',
     });
     // 过滤出属于当前 manager 的场地
-    // 注意：这里简化处理，实际应该在服务层添加按 managerId 查询
     return result.list.filter((v) => true); // 暂时不过滤，后续优化
   }
 
