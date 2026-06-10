@@ -179,9 +179,7 @@ describe('AuthService', () => {
 
     it('should get tokens from secure store', async () => {
       const { getItemAsync } = require('expo-secure-store');
-      getItemAsync
-        .mockResolvedValueOnce('access-123')
-        .mockResolvedValueOnce('refresh-456');
+      getItemAsync.mockResolvedValueOnce('access-123').mockResolvedValueOnce('refresh-456');
 
       const tokens = await authService.getTokens();
 

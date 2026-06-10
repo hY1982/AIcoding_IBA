@@ -4,7 +4,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ValidatedTextInput } from '@/components/form/ValidatedTextInput';
 import { FormContainer } from '@/components/form/FormContainer';
 import { venueService } from '@/api/venue.service';
-import { FLOOR_MATERIALS, FLOOR_MATERIAL_LABELS, COURT_TYPES, COURT_TYPE_LABELS } from '@shared/venue';
+import {
+  FLOOR_MATERIALS,
+  FLOOR_MATERIAL_LABELS,
+  COURT_TYPES,
+  COURT_TYPE_LABELS,
+} from '@shared/venue';
 import type { VenueDetail } from '@shared/venue';
 import type { EditVenueScreenNavigationProp, EditVenueScreenRouteProp } from '@/navigation/types';
 
@@ -20,7 +25,9 @@ export function EditVenueScreen() {
   const [floorMaterial, setFloorMaterial] = useState(venue.floorMaterial);
   const [courtType, setCourtType] = useState(venue.courtType);
   const [lighting, setLighting] = useState(venue.lighting || '');
-  const [turnoverTime, setTurnoverTime] = useState(venue.turnoverTime ? String(venue.turnoverTime) : '');
+  const [turnoverTime, setTurnoverTime] = useState(
+    venue.turnoverTime ? String(venue.turnoverTime) : '',
+  );
 
   const [ventilation, setVentilation] = useState(venue.ventilation ?? false);
   const [bigFan, setBigFan] = useState(venue.bigFan ?? false);

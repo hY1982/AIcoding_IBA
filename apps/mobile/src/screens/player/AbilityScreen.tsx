@@ -42,7 +42,8 @@ export function AbilityScreen({ ability }: AbilityScreenProps) {
             matchAdjustValue >= 0 ? styles.positiveValue : styles.negativeValue,
           ]}
         >
-          {adjustSign}{matchAdjustValue.toFixed(1)}
+          {adjustSign}
+          {matchAdjustValue.toFixed(1)}
         </Text>
         <Text style={styles.scoreDescription}>
           根据其他球员对您赛后反馈计算得出的调节值，范围 -50 ~ +50
@@ -51,14 +52,11 @@ export function AbilityScreen({ ability }: AbilityScreenProps) {
 
       <View style={[styles.scoreCard, styles.totalCard]} accessibilityLabel="综合能力值">
         <Text style={styles.scoreLabel}>综合能力值</Text>
-        <Text style={[styles.scoreValue, styles.totalValue]}>
-          {totalAbilityScore.toFixed(1)}
-        </Text>
-        <Text style={styles.scoreDescription}>
-          基础能力值 + 比赛调节值 = 综合能力值
-        </Text>
+        <Text style={[styles.scoreValue, styles.totalValue]}>{totalAbilityScore.toFixed(1)}</Text>
+        <Text style={styles.scoreDescription}>基础能力值 + 比赛调节值 = 综合能力值</Text>
         <Text style={styles.formula}>
-          {baseAbilityScore.toFixed(1)} {adjustSign}{matchAdjustValue.toFixed(1)} = {totalAbilityScore.toFixed(1)}
+          {baseAbilityScore.toFixed(1)} {adjustSign}
+          {matchAdjustValue.toFixed(1)} = {totalAbilityScore.toFixed(1)}
         </Text>
       </View>
 

@@ -13,8 +13,10 @@ const pathAliases = {
   '@': path.resolve(__dirname, 'src'),
 };
 
+// Merge with Expo's default watch folders
+const defaultWatchFolders = config.watchFolders || [];
 config.watchFolders = [
-  __dirname,
+  ...defaultWatchFolders,
   path.resolve(__dirname, '../../shared'),
 ];
 

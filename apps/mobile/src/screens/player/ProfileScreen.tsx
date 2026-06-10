@@ -39,14 +39,15 @@ export function ProfileScreen() {
     useCallback(() => {
       setIsLoading(true);
       loadProfile();
-    }, [loadProfile])
+    }, [loadProfile]),
   );
 
   const onRefresh = () => {
     setRefreshing(true);
     setIsLoading(true);
     setError(undefined);
-    playerService.getProfile()
+    playerService
+      .getProfile()
       .then((data) => {
         setProfile(data);
         setIsLoading(false);
@@ -91,11 +92,7 @@ export function ProfileScreen() {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={onRefresh}
-          accessibilityLabel="重试"
-        >
+        <TouchableOpacity style={styles.retryButton} onPress={onRefresh} accessibilityLabel="重试">
           <Text style={styles.retryButtonText}>重试</Text>
         </TouchableOpacity>
       </View>
@@ -113,9 +110,7 @@ export function ProfileScreen() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.header}>
         <View style={styles.avatar} accessibilityLabel={profile.avatarUrl ? '头像' : '默认头像'}>

@@ -65,9 +65,15 @@ class AuthService {
     }
   }
 
-  async sendSmsCode(dto: SendSmsCodeDto): Promise<{ success: boolean; requestId: string; expiresIn: number }> {
+  async sendSmsCode(
+    dto: SendSmsCodeDto,
+  ): Promise<{ success: boolean; requestId: string; expiresIn: number }> {
     try {
-      const response = await apiClient.post<{ success: boolean; requestId: string; expiresIn: number }>('/auth/sms-code', dto);
+      const response = await apiClient.post<{
+        success: boolean;
+        requestId: string;
+        expiresIn: number;
+      }>('/auth/sms-code', dto);
       return response.data;
     } catch (error) {
       const userMessage = extractErrorMessage(error);

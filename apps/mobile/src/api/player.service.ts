@@ -19,7 +19,8 @@ function extractErrorMessage(error: unknown): string {
   return '网络错误，请稍后重试';
 }
 
-export type UpdateProfileDto = Partial<PlayerAttributes> & Partial<Pick<PlayerAbility, 'baseAbilityScore' | 'matchAdjustValue'>>;
+export type UpdateProfileDto = Partial<PlayerAttributes> &
+  Partial<Pick<PlayerAbility, 'baseAbilityScore' | 'matchAdjustValue'>>;
 
 class PlayerService {
   async getProfile(): Promise<PlayerProfile> {

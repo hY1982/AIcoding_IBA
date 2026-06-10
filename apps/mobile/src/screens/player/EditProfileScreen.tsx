@@ -4,7 +4,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ValidatedTextInput } from '@/components/form/ValidatedTextInput';
 import { FormContainer } from '@/components/form/FormContainer';
 import { playerService } from '@/api/player.service';
-import { validatePlayerAge, validateHeight, validatePositions, validateOptionalPositiveNumber } from '@/utils/validation';
+import {
+  validatePlayerAge,
+  validateHeight,
+  validatePositions,
+  validateOptionalPositiveNumber,
+} from '@/utils/validation';
 import { BASKETBALL_POSITIONS, POSITION_LABELS, GENDERS, GENDER_LABELS } from '@shared/player';
 import type {
   EditProfileScreenNavigationProp,
@@ -22,7 +27,9 @@ export function EditProfileScreen() {
   const [gender, setGender] = useState<Gender>(profile.gender);
   const [height, setHeight] = useState(String(profile.height));
   const [weight, setWeight] = useState(profile.weight !== undefined ? String(profile.weight) : '');
-  const [wingspan, setWingspan] = useState(profile.wingspan !== undefined ? String(profile.wingspan) : '');
+  const [wingspan, setWingspan] = useState(
+    profile.wingspan !== undefined ? String(profile.wingspan) : '',
+  );
   const [standingReach, setStandingReach] = useState(
     profile.standingReach !== undefined ? String(profile.standingReach) : '',
   );
@@ -59,10 +66,20 @@ export function EditProfileScreen() {
     const ageErr = validatePlayerAge(Number(age));
     const heightErr = validateHeight(Number(height));
     const weightErr = validateOptionalPositiveNumber(weight ? Number(weight) : undefined, '体重');
-    const wingspanErr = validateOptionalPositiveNumber(wingspan ? Number(wingspan) : undefined, '臂展');
-    const standingReachErr = validateOptionalPositiveNumber(standingReach ? Number(standingReach) : undefined, '站立摸高');
-    const jumpingReachErr = validateOptionalPositiveNumber(jumpingReach ? Number(jumpingReach) : undefined, '起跳摸高');
-    const positionsErr = positions.length === 0 ? '请至少选择一个位置' : validatePositions(positions);
+    const wingspanErr = validateOptionalPositiveNumber(
+      wingspan ? Number(wingspan) : undefined,
+      '臂展',
+    );
+    const standingReachErr = validateOptionalPositiveNumber(
+      standingReach ? Number(standingReach) : undefined,
+      '站立摸高',
+    );
+    const jumpingReachErr = validateOptionalPositiveNumber(
+      jumpingReach ? Number(jumpingReach) : undefined,
+      '起跳摸高',
+    );
+    const positionsErr =
+      positions.length === 0 ? '请至少选择一个位置' : validatePositions(positions);
     setAgeError(ageErr || undefined);
     setHeightError(heightErr || undefined);
     setWeightError(weightErr || undefined);
@@ -70,7 +87,15 @@ export function EditProfileScreen() {
     setStandingReachError(standingReachErr || undefined);
     setJumpingReachError(jumpingReachErr || undefined);
     setPositionsError(positionsErr || undefined);
-    return !ageErr && !heightErr && !weightErr && !wingspanErr && !standingReachErr && !jumpingReachErr && !positionsErr;
+    return (
+      !ageErr &&
+      !heightErr &&
+      !weightErr &&
+      !wingspanErr &&
+      !standingReachErr &&
+      !jumpingReachErr &&
+      !positionsErr
+    );
   };
 
   const handleSubmit = async () => {

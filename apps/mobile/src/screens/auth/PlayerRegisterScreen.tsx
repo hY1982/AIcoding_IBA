@@ -46,7 +46,8 @@ export function PlayerRegisterScreen() {
   const validateForm = (): boolean => {
     const ageErr = validatePlayerAge(Number(age));
     const heightErr = validateHeight(Number(height));
-    const positionsErr = positions.length === 0 ? '请至少选择一个位置' : validatePositions(positions);
+    const positionsErr =
+      positions.length === 0 ? '请至少选择一个位置' : validatePositions(positions);
     setAgeError(ageErr || undefined);
     setHeightError(heightErr || undefined);
     setPositionsError(positionsErr || undefined);

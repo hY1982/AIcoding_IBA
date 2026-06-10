@@ -40,14 +40,15 @@ export function VenueManagerProfileScreen() {
     useCallback(() => {
       setIsLoading(true);
       loadProfile();
-    }, [loadProfile])
+    }, [loadProfile]),
   );
 
   const onRefresh = () => {
     setRefreshing(true);
     setIsLoading(true);
     setError(undefined);
-    venueManagerService.getProfile()
+    venueManagerService
+      .getProfile()
       .then((data) => {
         setProfile(data);
         setIsLoading(false);
@@ -88,11 +89,7 @@ export function VenueManagerProfileScreen() {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={onRefresh}
-          accessibilityLabel="重试"
-        >
+        <TouchableOpacity style={styles.retryButton} onPress={onRefresh} accessibilityLabel="重试">
           <Text style={styles.retryButtonText}>重试</Text>
         </TouchableOpacity>
       </View>
@@ -110,9 +107,7 @@ export function VenueManagerProfileScreen() {
   return (
     <ScrollView
       style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.header}>
         <View style={styles.avatar} accessibilityLabel={profile.avatarUrl ? '头像' : '默认头像'}>
@@ -127,15 +122,9 @@ export function VenueManagerProfileScreen() {
         <Text style={styles.sectionTitle}>基本信息</Text>
         <InfoRow label="手机号" value={profile.phone} />
         <InfoRow label="真实姓名" value={profile.realName} />
-        {profile.companyName && (
-          <InfoRow label="公司名称" value={profile.companyName} />
-        )}
-        {profile.contactName && (
-          <InfoRow label="联系人" value={profile.contactName} />
-        )}
-        {profile.contactPhone && (
-          <InfoRow label="联系电话" value={profile.contactPhone} />
-        )}
+        {profile.companyName && <InfoRow label="公司名称" value={profile.companyName} />}
+        {profile.contactName && <InfoRow label="联系人" value={profile.contactName} />}
+        {profile.contactPhone && <InfoRow label="联系电话" value={profile.contactPhone} />}
       </View>
 
       <View style={styles.section}>
@@ -163,7 +152,12 @@ export function VenueManagerProfileScreen() {
             >
               <View style={styles.venueCardHeader}>
                 <Text style={styles.venueName}>{venue.name}</Text>
-                <View style={[styles.statusBadge, venue.status === 'active' ? styles.statusActive : styles.statusInactive]}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    venue.status === 'active' ? styles.statusActive : styles.statusInactive,
+                  ]}
+                >
                   <Text style={styles.statusBadgeText}>{VENUE_STATUS_LABELS[venue.status]}</Text>
                 </View>
               </View>

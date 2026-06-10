@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  TextInputProps,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, TextInputProps } from 'react-native';
 
-interface ValidatedTextInputProps extends Omit<TextInputProps, 'value' | 'onChangeText' | 'editable'> {
+interface ValidatedTextInputProps extends Omit<
+  TextInputProps,
+  'value' | 'onChangeText' | 'editable'
+> {
   label: string;
   value: string;
   onChangeText: (text: string) => void;
@@ -36,7 +32,11 @@ export function ValidatedTextInput({
       <Text style={styles.label}>{label}</Text>
       <View style={styles.inputRow}>
         <TextInput
-          style={[styles.input, error ? styles.inputError : null, disabled ? styles.inputDisabled : null]}
+          style={[
+            styles.input,
+            error ? styles.inputError : null,
+            disabled ? styles.inputDisabled : null,
+          ]}
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={isSecure}

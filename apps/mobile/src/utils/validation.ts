@@ -74,14 +74,17 @@ export function validatePositions(positions: string[]): string | null {
   }
   const validPositions = new Set(BASKETBALL_POSITIONS);
   for (const pos of positions) {
-    if (!validPositions.has(pos as typeof BASKETBALL_POSITIONS[number])) {
+    if (!validPositions.has(pos as (typeof BASKETBALL_POSITIONS)[number])) {
       return '位置必须是 PG, SG, SF, PF, C 之一';
     }
   }
   return null;
 }
 
-export function validateOptionalPositiveNumber(value: number | undefined, fieldName: string): string | null {
+export function validateOptionalPositiveNumber(
+  value: number | undefined,
+  fieldName: string,
+): string | null {
   if (value === undefined || value === null) return null;
   if (Number.isNaN(value)) return `${fieldName}必须是有效数字`;
   if (value <= 0) return `${fieldName}必须大于0`;

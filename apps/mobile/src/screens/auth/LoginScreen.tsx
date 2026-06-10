@@ -51,7 +51,12 @@ export function LoginScreen() {
   };
 
   return (
-    <FormContainer onSubmit={handleLogin} submitLabel="登录" isLoading={isLoading} error={globalError}>
+    <FormContainer
+      onSubmit={handleLogin}
+      submitLabel="登录"
+      isLoading={isLoading}
+      error={globalError}
+    >
       <ValidatedTextInput
         label="手机号"
         value={phone}

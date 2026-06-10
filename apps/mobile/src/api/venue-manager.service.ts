@@ -22,7 +22,8 @@ function extractErrorMessage(error: unknown): string {
 class VenueManagerService {
   async getProfile(): Promise<VenueManagerProfile> {
     try {
-      const response = await apiClient.get<ApiResponse<VenueManagerProfile>>('/venue-managers/profile');
+      const response =
+        await apiClient.get<ApiResponse<VenueManagerProfile>>('/venue-managers/profile');
       return response.data.data;
     } catch (error) {
       const userMessage = extractErrorMessage(error);
@@ -32,7 +33,10 @@ class VenueManagerService {
 
   async updateProfile(dto: UpdateVenueManagerProfileDto): Promise<VenueManagerProfile> {
     try {
-      const response = await apiClient.put<ApiResponse<VenueManagerProfile>>('/venue-managers/profile', dto);
+      const response = await apiClient.put<ApiResponse<VenueManagerProfile>>(
+        '/venue-managers/profile',
+        dto,
+      );
       return response.data.data;
     } catch (error) {
       const userMessage = extractErrorMessage(error);
