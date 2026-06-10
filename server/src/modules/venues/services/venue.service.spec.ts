@@ -393,6 +393,58 @@ describe('VenueService', () => {
     });
   });
 
+  // ==================== FIND BY MANAGER ID ====================
+
+  describe('findByManagerId', () => {
+    it('should return venues for a specific manager', async () => {
+      const managerId = 10;
+      const mockVenues = [
+        createMockVenue({ id: 1, managerId, name: 'Court A' }),
+        createMockVenue({ id: 2, managerId, name: 'Court B' }),
+      ];
+
+      venueRepo.find!.mockResolvedValue(mockVenues);
+
+      const result = await service.findByManagerId(managerId);
+
+      expect(venueRepo.find).toHaveBeenCalledWith({
+        where: { managerId },
+        order: { createdAt: 'DESC' },
+      });
+      expect(result).toHaveLength(2);
+      expect(result[0].name).toBe('Court A');
+      expect(result[1].name).toBe('Court B');
+    });
+
+    it('should return empty array when manager has no venues', async () => {
+      const managerId = 10;
+
+      venueRepo.find!.mockResolvedValue([]);
+
+      const result = await service.findByManagerId(managerId);
+
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
+
+    it('should filter by managerId in database layer', async () => {
+      const managerId = 10;
+      const mockVenues = [
+        createMockVenue({ id: 1, managerId, name: 'Court A' }),
+      ];
+
+      venueRepo.find!.mockResolvedValue(mockVenues);
+
+      await service.findByManagerId(managerId);
+
+      expect(venueRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { managerId },
+        }),
+      );
+    });
+  });
+
   // ==================== FIND BY ID ====================
 
   describe('findById', () => {
@@ -669,10 +721,14 @@ describe('VenueService', () => {
         createMockVenueTimeSlot({ id: 2, venueId, slotDate: '2026-06-16' }),
       ];
 
+      venueRepo.findOne!.mockResolvedValue({ id: venueId } as Venue);
       slotRepo.find!.mockResolvedValue(mockSlots);
 
       const result = await service.findTimeSlots(venueId);
 
+      expect(venueRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: venueId }, select: ['id'] }),
+      );
       expect(slotRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { venueId },
@@ -687,6 +743,7 @@ describe('VenueService', () => {
       const slotDate = '2026-06-15';
       const mockSlots = [createMockVenueTimeSlot({ id: 1, venueId, slotDate })];
 
+      venueRepo.findOne!.mockResolvedValue({ id: venueId } as Venue);
       slotRepo.find!.mockResolvedValue(mockSlots);
 
       const result = await service.findTimeSlots(venueId, slotDate);
@@ -698,6 +755,13 @@ describe('VenueService', () => {
         }),
       );
       expect(result).toHaveLength(1);
+    });
+
+    it('should throw NotFoundException when venue does not exist', async () => {
+      venueRepo.findOne!.mockResolvedValue(null);
+
+      await expect(service.findTimeSlots(999)).rejects.toThrow(NotFoundException);
+      expect(slotRepo.find).not.toHaveBeenCalled();
     });
   });
 

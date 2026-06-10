@@ -116,28 +116,23 @@ export class VenueService {
 
     const [venues, total] = await qb.getManyAndCount();
 
-    const list: VenueListItem[] = venues.map((v) => ({
-      id: v.id,
-      name: v.name,
-      address: v.address,
-      pricePerHour: Number(v.pricePerHour),
-      courtCount: v.courtCount,
-      floorMaterial: v.floorMaterial ?? undefined,
-      courtType: v.courtType ?? undefined,
-      ventilation: v.ventilation ?? undefined,
-      bigFan: v.bigFan ?? undefined,
-      airCondition: v.airCondition ?? undefined,
-      parking: v.parking ?? undefined,
-      restroom: v.restroom ?? undefined,
-      shower: v.shower ?? undefined,
-      lockerRoom: v.lockerRoom ?? undefined,
-      videoRecord: v.videoRecord ?? undefined,
-      status: v.status,
-      ratingAvg: v.ratingAvg ? Number(v.ratingAvg) : undefined,
-      ratingCount: v.ratingCount ?? 0,
-    }));
+    const list: VenueListItem[] = venues.map((v) => this.mapToVenueListItem(v));
 
     return { page, pageSize, total, list };
+  }
+
+  /**
+   * 按场地方ID查询场地列表（数据库层过滤）
+   *
+   * 替代内存过滤，避免大数据量时的性能问题。
+   */
+  async findByManagerId(managerId: number): Promise<VenueListItem[]> {
+    const venues = await this.venueRepo.find({
+      where: { managerId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return venues.map((v) => this.mapToVenueListItem(v));
   }
 
   /**
@@ -277,6 +272,12 @@ export class VenueService {
     venueId: number,
     slotDate?: string,
   ): Promise<VenueTimeSlotType[]> {
+    // 轻量检查场地是否存在（避免 findById 的 leftJoinAndSelect 开销）
+    const venue = await this.venueRepo.findOne({ where: { id: venueId }, select: ['id'] });
+    if (!venue) {
+      throw new NotFoundException(`场地不存在: venueId=${venueId}`);
+    }
+
     const where: Record<string, unknown> = { venueId };
     if (slotDate) {
       where.slotDate = slotDate;
@@ -291,6 +292,32 @@ export class VenueService {
   }
 
   // ==================== Private Helpers ====================
+
+  /**
+   * 将 Venue 实体映射为 VenueListItem
+   */
+  private mapToVenueListItem(v: Venue): VenueListItem {
+    return {
+      id: v.id,
+      name: v.name,
+      address: v.address,
+      pricePerHour: Number(v.pricePerHour),
+      courtCount: v.courtCount,
+      floorMaterial: v.floorMaterial ?? undefined,
+      courtType: v.courtType ?? undefined,
+      ventilation: v.ventilation ?? undefined,
+      bigFan: v.bigFan ?? undefined,
+      airCondition: v.airCondition ?? undefined,
+      parking: v.parking ?? undefined,
+      restroom: v.restroom ?? undefined,
+      shower: v.shower ?? undefined,
+      lockerRoom: v.lockerRoom ?? undefined,
+      videoRecord: v.videoRecord ?? undefined,
+      status: v.status,
+      ratingAvg: v.ratingAvg ? Number(v.ratingAvg) : undefined,
+      ratingCount: v.ratingCount ?? 0,
+    };
+  }
 
   /**
    * 验证创建场地的 DTO
