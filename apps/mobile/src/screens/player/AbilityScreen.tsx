@@ -28,7 +28,7 @@ export function AbilityScreen({ ability }: AbilityScreenProps) {
 
       <View style={styles.scoreCard} accessibilityLabel="基础能力值">
         <Text style={styles.scoreLabel}>基础能力值</Text>
-        <Text style={styles.scoreValue}>{baseAbilityScore.toFixed(1)}</Text>
+        <Text style={styles.scoreValue}>{String(baseAbilityScore.toFixed(1))}</Text>
         <Text style={styles.scoreDescription}>
           根据您的身体属性（身高、体重、臂展等）计算得出的百分位评分
         </Text>
@@ -43,7 +43,7 @@ export function AbilityScreen({ ability }: AbilityScreenProps) {
           ]}
         >
           {adjustSign}
-          {matchAdjustValue.toFixed(1)}
+          {String(matchAdjustValue.toFixed(1))}
         </Text>
         <Text style={styles.scoreDescription}>
           根据其他球员对您赛后反馈计算得出的调节值，范围 -50 ~ +50
@@ -52,11 +52,11 @@ export function AbilityScreen({ ability }: AbilityScreenProps) {
 
       <View style={[styles.scoreCard, styles.totalCard]} accessibilityLabel="综合能力值">
         <Text style={styles.scoreLabel}>综合能力值</Text>
-        <Text style={[styles.scoreValue, styles.totalValue]}>{totalAbilityScore.toFixed(1)}</Text>
+        <Text style={[styles.scoreValue, styles.totalValue]}>{String(totalAbilityScore.toFixed(1))}</Text>
         <Text style={styles.scoreDescription}>基础能力值 + 比赛调节值 = 综合能力值</Text>
         <Text style={styles.formula}>
-          {baseAbilityScore.toFixed(1)} {adjustSign}
-          {matchAdjustValue.toFixed(1)} = {totalAbilityScore.toFixed(1)}
+          {String(baseAbilityScore.toFixed(1))} {adjustSign}
+          {String(matchAdjustValue.toFixed(1))} = {String(totalAbilityScore.toFixed(1))}
         </Text>
       </View>
 

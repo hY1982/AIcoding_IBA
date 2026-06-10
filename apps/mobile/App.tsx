@@ -139,7 +139,10 @@ export default function App() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'I Basketball' }}
+          options={{
+            title: 'I Basketball',
+            headerTitleStyle: { fontSize: 18 },
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>
