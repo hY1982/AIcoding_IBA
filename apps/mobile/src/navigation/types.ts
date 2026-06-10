@@ -15,6 +15,7 @@ export type RootStackParamList = {
   Ability: { ability: PlayerAbility };
   VenueManagerProfile: undefined;
   EditVenueManagerProfile: { profile: VenueManagerProfile };
+  CreateVenue: undefined;
 };
 
 // Navigation prop types for type-safe navigation.navigate()
@@ -30,6 +31,7 @@ export type EditProfileScreenNavigationProp = NativeStackNavigationProp<RootStac
 export type AbilityScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Ability'>;
 export type VenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'VenueManagerProfile'>;
 export type EditVenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditVenueManagerProfile'>;
+export type CreateVenueScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateVenue'>;
 
 // Route prop types for type-safe route.params
 export type RegisterScreenRouteProp = RouteProp<RootStackParamList, 'Register'>;

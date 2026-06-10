@@ -7,11 +7,12 @@ import { User } from '@modules/users/entities/user.entity';
 import { VenueService } from './services/venue.service';
 import { VenueManagerProfileService } from './services/venue-manager-profile.service';
 import { VenueManagerProfileController } from './controllers/venue-manager-profile.controller';
+import { VenueController } from './controllers/venue.controller';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Venue, VenueTimeSlot, VenueManager, User])],
   providers: [VenueService, VenueManagerProfileService],
-  controllers: [VenueManagerProfileController],
+  controllers: [VenueManagerProfileController, VenueController],
   exports: [VenueService, TypeOrmModule],
 })
 export class VenuesModule {}

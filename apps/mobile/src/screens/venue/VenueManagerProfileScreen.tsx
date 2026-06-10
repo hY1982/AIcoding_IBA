@@ -65,6 +65,10 @@ export function VenueManagerProfileScreen() {
     }
   };
 
+  const handleCreateVenue = () => {
+    navigation.navigate('CreateVenue');
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer} accessibilityLabel="加载中">
@@ -129,7 +133,17 @@ export function VenueManagerProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>我的场地</Text>
+        <View style={styles.venueSectionHeader}>
+          <Text style={styles.sectionTitle}>我的场地</Text>
+          <TouchableOpacity
+            style={styles.addVenueButton}
+            onPress={handleCreateVenue}
+            accessibilityLabel="新建场地"
+            accessibilityRole="button"
+          >
+            <Text style={styles.addVenueButtonText}>+ 新建场地</Text>
+          </TouchableOpacity>
+        </View>
         {profile.venues.length === 0 ? (
           <Text style={styles.emptyVenueText}>暂无场地</Text>
         ) : (
@@ -265,6 +279,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     fontWeight: '500',
+  },
+  venueSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addVenueButton: {
+    backgroundColor: '#27ae60',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  addVenueButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   emptyVenueText: {
     fontSize: 14,

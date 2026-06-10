@@ -14,6 +14,7 @@ import { EditProfileScreen } from './src/screens/player/EditProfileScreen';
 import { AbilityScreenContainer } from './src/screens/player/AbilityScreen';
 import { VenueManagerProfileScreen } from './src/screens/venue/VenueManagerProfileScreen';
 import { EditVenueManagerProfileScreen } from './src/screens/venue/EditVenueManagerProfileScreen';
+import { CreateVenueScreen } from './src/screens/venue/CreateVenueScreen';
 import { useAppStore } from './src/stores';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -99,6 +100,11 @@ export default function App() {
           name="EditVenueManagerProfile"
           component={EditVenueManagerProfileScreen}
           options={{ title: '编辑资料' }}
+        />
+        <Stack.Screen
+          name="CreateVenue"
+          component={CreateVenueScreen}
+          options={{ title: '新建场地' }}
         />
         <Stack.Screen
           name="Home"
