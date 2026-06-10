@@ -89,6 +89,11 @@ export class Player {
     scale: 2,
     nullable: false,
     default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: number | string | null) =>
+        value === null ? 0 : typeof value === 'string' ? parseFloat(value) : value,
+    },
   })
   baseAbilityScore!: number;
 
@@ -119,6 +124,11 @@ export class Player {
     nullable: false,
     generatedType: 'STORED',
     asExpression: 'base_ability_score + match_adjust_value',
+    transformer: {
+      to: (value: number) => value,
+      from: (value: number | string | null) =>
+        value === null ? 0 : typeof value === 'string' ? parseFloat(value) : value,
+    },
   })
   totalAbilityScore!: number;
 

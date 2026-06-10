@@ -4,6 +4,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -53,6 +54,8 @@ const REDIS_KEY_REFRESH_TOKEN = 'refresh';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly dataSource: DataSource,
     private readonly jwtService: JwtService,
@@ -381,6 +384,9 @@ export class AuthService {
     };
     const baseAbilityScore =
       this.abilityCalcService.calculateBaseAbility(playerAttributes);
+    this.logger.log(
+      `注册时计算能力值: userId=${userId}, baseAbilityScore=${baseAbilityScore}, attributes=${JSON.stringify(playerAttributes)}`,
+    );
 
     const player = manager.create(Player, {
       userId,
