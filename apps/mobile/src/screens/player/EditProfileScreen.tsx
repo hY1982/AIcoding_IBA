@@ -29,7 +29,9 @@ export function EditProfileScreen() {
   const [jumpingReach, setJumpingReach] = useState(
     profile.jumpingReach !== undefined ? String(profile.jumpingReach) : '',
   );
-  const [positions, setPositions] = useState<BasketballPosition[]>(profile.positions);
+  const [positions, setPositions] = useState<BasketballPosition[]>(
+    profile.positions.map((p) => p.position),
+  );
 
   const [ageError, setAgeError] = useState<string | undefined>();
   const [heightError, setHeightError] = useState<string | undefined>();
