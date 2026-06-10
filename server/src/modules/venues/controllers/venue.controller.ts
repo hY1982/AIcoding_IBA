@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
+import { Public } from '@modules/auth/decorators/public.decorator';
 import {
   ApiTags,
   ApiOperation,
@@ -238,8 +239,10 @@ export class VenueController {
   /**
    * GET /api/v1/venues
    * 查询场地列表（分页、地区筛选、状态筛选）
+   * 公开接口：无需登录即可浏览
    */
   @Get()
+  @Public()
   @ApiOperation({ summary: '查询场地列表' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: '页码，默认1' })
   @ApiQuery({ name: 'pageSize', required: false, type: Number, description: '每页数量，默认10' })
@@ -361,8 +364,10 @@ export class VenueController {
   /**
    * GET /api/v1/venues/:id/slots
    * 查询场地可预订时段
+   * 公开接口：无需登录即可查看
    */
   @Get(':id/slots')
+  @Public()
   @ApiOperation({ summary: '查询场地可预订时段' })
   @ApiParam({ name: 'id', description: '场地ID' })
   @ApiQuery({ name: 'slotDate', required: false, type: String, description: '日期 YYYY-MM-DD' })
