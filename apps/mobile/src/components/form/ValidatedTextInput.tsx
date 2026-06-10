@@ -90,6 +90,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     textAlign: 'left',
     includeFontPadding: false,
+    paddingRight: 16,
   },
   inputError: {
     borderColor: '#e74c3c',

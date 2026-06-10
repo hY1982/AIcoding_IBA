@@ -128,6 +128,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 8,
+    paddingRight: 4,
   },
   positiveValue: {
     color: '#27ae60',
@@ -149,6 +150,7 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 8,
     fontWeight: '500',
+    paddingRight: 4,
   },
   infoSection: {
     backgroundColor: '#fff',

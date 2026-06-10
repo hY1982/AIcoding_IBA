@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { VenueDetail, VenueListItem, VenueTimeSlot } from '@shared/venue';
+import type { VenueDetail, VenueListItem, VenueTimeSlot, VenueDisplaySlot } from '@shared/venue';
 import type { ApiResponse, PaginatedResponse } from '@shared/common';
 
 export class VenueServiceError extends Error {
@@ -79,6 +79,25 @@ class VenueService {
         `/venues/${venueId}/slots`,
         {
           params: slotDate ? { slotDate } : {},
+        },
+      );
+      return response.data.data;
+    } catch (error) {
+      const userMessage = extractErrorMessage(error);
+      throw new VenueServiceError(userMessage);
+    }
+  }
+
+  /**
+   * 获取场地展示时段（连续时间轴，含可预订/不可预订/已占用）
+   * 新系统接口，slotDate 必填
+   */
+  async getVenueDisplaySlots(venueId: number, slotDate: string): Promise<VenueDisplaySlot[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<VenueDisplaySlot[]>>(
+        `/venues/${venueId}/slots`,
+        {
+          params: { slotDate },
         },
       );
       return response.data.data;

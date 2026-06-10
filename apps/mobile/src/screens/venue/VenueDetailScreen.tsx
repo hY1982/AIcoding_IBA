@@ -12,33 +12,28 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { venueService } from '@/api/venue.service';
 import { useAppStore } from '@/stores';
-import type { VenueDetail, VenueTimeSlot } from '@shared/venue';
+import type { VenueDetail, VenueDisplaySlot } from '@shared/venue';
 import { FLOOR_MATERIAL_LABELS, COURT_TYPE_LABELS, VENUE_STATUS_LABELS } from '@shared/venue';
 import type {
   VenueDetailScreenNavigationProp,
   VenueDetailScreenRouteProp,
 } from '@/navigation/types';
 
-interface TimeSlotGroup {
-  date: string;
-  slots: VenueTimeSlot[];
+/**
+ * 生成未来 N 天的日期列表
+ */
+function generateDateRange(days: number): string[] {
+  const dates: string[] = [];
+  const today = new Date();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    dates.push(d.toISOString().split('T')[0]);
+  }
+  return dates;
 }
 
-function groupTimeSlotsByDate(slots: VenueTimeSlot[]): TimeSlotGroup[] {
-  const groups: Record<string, VenueTimeSlot[]> = {};
-  for (const slot of slots) {
-    if (!groups[slot.slotDate]) {
-      groups[slot.slotDate] = [];
-    }
-    groups[slot.slotDate].push(slot);
-  }
-  return Object.entries(groups)
-    .map(([date, slots]) => ({
-      date,
-      slots: slots.sort((a, b) => a.startTime.localeCompare(b.startTime)),
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
+const DATE_RANGE_DAYS = 7;
 
 export function VenueDetailScreen() {
   const navigation = useNavigation<VenueDetailScreenNavigationProp>();
@@ -47,22 +42,33 @@ export function VenueDetailScreen() {
   const user = useAppStore((state) => state.user);
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
-  const [timeSlots, setTimeSlots] = useState<VenueTimeSlot[]>([]);
+  const [displaySlots, setDisplaySlots] = useState<Record<string, VenueDisplaySlot[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [refreshing, setRefreshing] = useState(false);
 
   const isManager = user?.userType === 'venue_manager';
+  const dateRange = generateDateRange(DATE_RANGE_DAYS);
 
   const loadData = useCallback(async () => {
     try {
       setError(undefined);
-      const [venueData, slotsData] = await Promise.all([
-        venueService.getVenueDetail(venueId),
-        venueService.getVenueTimeSlots(venueId),
-      ]);
+      const venueData = await venueService.getVenueDetail(venueId);
       setVenue(venueData);
-      setTimeSlots(slotsData);
+
+      // 并行加载未来 N 天的展示时段
+      const slotsMap: Record<string, VenueDisplaySlot[]> = {};
+      await Promise.all(
+        dateRange.map(async (date) => {
+          try {
+            const slots = await venueService.getVenueDisplaySlots(venueId, date);
+            slotsMap[date] = slots;
+          } catch {
+            slotsMap[date] = [];
+          }
+        }),
+      );
+      setDisplaySlots(slotsMap);
     } catch (err) {
       const message = err instanceof Error ? err.message : '加载失败';
       setError(message);
@@ -139,8 +145,6 @@ export function VenueDetailScreen() {
     );
   }
 
-  const groupedSlots = groupTimeSlotsByDate(timeSlots);
-
   return (
     <ScrollView
       style={styles.container}
@@ -185,6 +189,9 @@ export function VenueDetailScreen() {
         <InfoRow label="地址" value={venue.address} />
         <InfoRow label="价格" value={`¥${venue.pricePerHour}/小时`} />
         <InfoRow label="球场数量" value={`${venue.courtCount}个`} />
+        {venue.openTime && venue.closeTime && (
+          <InfoRow label="营业时间" value={`${venue.openTime}-${venue.closeTime}`} />
+        )}
         {venue.floorMaterial && (
           <InfoRow label="地面材质" value={FLOOR_MATERIAL_LABELS[venue.floorMaterial]} />
         )}
@@ -210,41 +217,55 @@ export function VenueDetailScreen() {
         </View>
       </View>
 
-      {/* 可预订时段 */}
+      {/* 可预订时段 - 新系统：连续时间轴展示 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>可预订时段</Text>
-        {groupedSlots.length === 0 ? (
-          <Text style={styles.emptySlotsText}>暂无可用时段</Text>
-        ) : (
-          <View accessibilityLabel="时段列表">
-            {groupedSlots.map((group) => (
-              <View key={group.date} style={styles.dateGroup}>
-                <Text style={styles.dateLabel}>{group.date}</Text>
-                {group.slots.map((slot) => (
-                  <View
-                    key={slot.id}
-                    style={[styles.slotRow, slot.isBooked && styles.slotRowBooked]}
-                  >
-                    <Text style={styles.slotTime}>
-                      {slot.startTime} - {slot.endTime}
-                    </Text>
-                    <View style={styles.slotStatus}>
-                      {slot.isBooked ? (
-                        <Text style={styles.slotBooked} accessibilityLabel="时段-已预订">
-                          已预订
-                        </Text>
-                      ) : (
-                        <Text style={styles.slotAvailable} accessibilityLabel="时段-可预订">
-                          可预订
-                        </Text>
-                      )}
+        <View accessibilityLabel="时段列表">
+          {dateRange.map((date) => {
+            const slots = displaySlots[date] || [];
+            return (
+              <View key={date} style={styles.dateGroup}>
+                <Text style={styles.dateLabel}>{date}</Text>
+                {slots.length === 0 ? (
+                  <Text style={styles.emptySlotsText}>加载中...</Text>
+                ) : (
+                  slots.map((slot, index) => (
+                    <View
+                      key={`${date}-${index}`}
+                      style={[
+                        styles.slotRow,
+                        slot.status === 'available' && styles.slotRowAvailable,
+                        slot.status === 'unavailable' && styles.slotRowUnavailable,
+                        slot.status === 'booked' && styles.slotRowBooked,
+                      ]}
+                    >
+                      <Text style={styles.slotTime}>
+                        {slot.startTime} - {slot.endTime}
+                      </Text>
+                      <View style={styles.slotStatus}>
+                        {slot.status === 'available' && (
+                          <Text style={styles.slotAvailable} accessibilityLabel="时段-可预订">
+                            可预订
+                          </Text>
+                        )}
+                        {slot.status === 'unavailable' && (
+                          <Text style={styles.slotUnavailable} accessibilityLabel="时段-不可预订">
+                            {slot.reason || '不可预订'}
+                          </Text>
+                        )}
+                        {slot.status === 'booked' && (
+                          <Text style={styles.slotBooked} accessibilityLabel="时段-已占用">
+                            已占用
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                ))}
+                  ))
+                )}
               </View>
-            ))}
-          </View>
-        )}
+            );
+          })}
+        </View>
       </View>
 
       {/* 操作按钮 - 根据角色显示不同内容 */}
@@ -464,8 +485,14 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginBottom: 6,
   },
+  slotRowAvailable: {
+    backgroundColor: '#e8f5e9',
+  },
+  slotRowUnavailable: {
+    backgroundColor: '#f5f5f5',
+  },
   slotRowBooked: {
-    backgroundColor: '#fff0f0',
+    backgroundColor: '#ffebee',
   },
   slotTime: {
     fontSize: 14,
@@ -473,13 +500,18 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   slotStatus: {
-    minWidth: 60,
+    minWidth: 80,
     alignItems: 'flex-end',
   },
   slotAvailable: {
     fontSize: 13,
     color: '#27ae60',
     fontWeight: '600',
+  },
+  slotUnavailable: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '500',
   },
   slotBooked: {
     fontSize: 13,

@@ -28,16 +28,19 @@ import {
   ApiProperty,
 } from '@nestjs/swagger';
 import { VenueService } from '../services/venue.service';
+import { UnavailableSlotService } from '../services/unavailable-slot.service';
 import { VenueManagerProfileService } from '../services/venue-manager-profile.service';
 import { CreateVenueDto } from '../dto/create-venue.dto';
 import { UpdateVenueDto } from '../dto/update-venue.dto';
 import { QueryVenueDto } from '../dto/query-venue.dto';
 import { CreateTimeSlotDto } from '../dto/create-time-slot.dto';
 import { CreateTimeSlotsDto } from '../dto/create-time-slots.dto';
+import { CreateUnavailableSlotsDto } from '../dto/create-unavailable-slot.dto';
 import {
   VenueDetail,
   VenueListItem,
   VenueTimeSlot,
+  VenueDisplaySlot,
   FLOOR_MATERIALS,
   FloorMaterial,
   COURT_TYPES,
@@ -165,6 +168,12 @@ class VenueDetailResponse extends VenueListItemResponse implements VenueDetail {
 
   @ApiProperty({ type: [VenueTimeSlotResponse], required: false, description: '可预订时段列表' })
   timeSlots?: VenueTimeSlotResponse[];
+
+  @ApiProperty({ required: false, description: '营业时间（开始）HH:mm' })
+  openTime?: string;
+
+  @ApiProperty({ required: false, description: '营业时间（结束）HH:mm' })
+  closeTime?: string;
 }
 
 class VenueListResponse implements PaginatedResponse<VenueListItem> {
@@ -192,9 +201,24 @@ class VenueListResponse implements PaginatedResponse<VenueListItem> {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('venues')
+class VenueDisplaySlotResponse implements VenueDisplaySlot {
+  @ApiProperty({ description: '开始时间 HH:mm' })
+  startTime!: string;
+
+  @ApiProperty({ description: '结束时间 HH:mm' })
+  endTime!: string;
+
+  @ApiProperty({ enum: ['available', 'unavailable', 'booked'], description: '时段状态' })
+  status!: 'available' | 'unavailable' | 'booked';
+
+  @ApiProperty({ required: false, description: '状态原因（如维护、包场、非营业时间）' })
+  reason?: string;
+}
+
 export class VenueController {
   constructor(
     private readonly venueService: VenueService,
+    private readonly unavailableSlotService: UnavailableSlotService,
     private readonly venueManagerProfileService: VenueManagerProfileService,
   ) {}
 
@@ -363,44 +387,139 @@ export class VenueController {
 
   /**
    * GET /api/v1/venues/:id/slots
-   * 查询场地可预订时段
+   * 查询场地展示时段（连续时间轴，含可预订/不可预订/已占用）
    * 公开接口：无需登录即可查看
    */
   @Get(':id/slots')
   @Public()
-  @ApiOperation({ summary: '查询场地可预订时段' })
+  @ApiOperation({ summary: '查询场地展示时段' })
+  @ApiParam({ name: 'id', description: '场地ID' })
+  @ApiQuery({ name: 'slotDate', required: true, type: String, description: '日期 YYYY-MM-DD' })
+  @ApiResponse({
+    status: 200,
+    description: '查询成功，返回连续时段列表',
+    type: [VenueDisplaySlotResponse],
+  })
+  @ApiResponse({ status: 400, description: '参数校验失败' })
+  @ApiResponse({ status: 404, description: '场地不存在' })
+  async findTimeSlots(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('slotDate') slotDate: string,
+  ): Promise<VenueDisplaySlot[]> {
+    // 校验日期格式
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(slotDate)) {
+      throw new BadRequestException('slotDate 格式必须为 YYYY-MM-DD');
+    }
+
+    // 校验日期有效性
+    const [year, month, day] = slotDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    if (
+      date.getFullYear() !== year ||
+      date.getMonth() !== month - 1 ||
+      date.getDate() !== day
+    ) {
+      throw new BadRequestException('slotDate 不是有效日期');
+    }
+
+    return this.unavailableSlotService.getDisplaySlots(id, slotDate);
+  }
+
+  /**
+   * POST /api/v1/venues/:id/unavailable-slots
+   * 创建不可预订时段（仅限场地方角色且为所有者）
+   */
+  @Post(':id/unavailable-slots')
+  @ApiOperation({ summary: '创建不可预订时段' })
+  @ApiParam({ name: 'id', description: '场地ID' })
+  @ApiBody({ description: '不可预订时段列表', type: CreateUnavailableSlotsDto })
+  @ApiResponse({
+    status: 201,
+    description: '创建成功，返回不可预订时段列表',
+    type: [VenueTimeSlotResponse],
+  })
+  @ApiResponse({ status: 400, description: '参数校验失败或时段重叠' })
+  @ApiResponse({ status: 401, description: '未登录或Token无效' })
+  @ApiResponse({ status: 403, description: '无权操作该场地' })
+  @ApiResponse({ status: 404, description: '场地不存在' })
+  async createUnavailableSlots(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: CreateUnavailableSlotsDto,
+  ): Promise<VenueTimeSlot[]> {
+    this.assertVenueManagerRole(req);
+
+    const profile = await this.venueManagerProfileService.findByUserId(req.user.userId);
+    if (!profile) {
+      throw new NotFoundException('场地方资料不存在');
+    }
+
+    return this.unavailableSlotService.createUnavailableSlots(
+      id,
+      profile.id,
+      dto.slots,
+    ) as unknown as VenueTimeSlot[];
+  }
+
+  /**
+   * GET /api/v1/venues/:id/unavailable-slots
+   * 查询不可预订时段列表（场地方管理用）
+   */
+  @Get(':id/unavailable-slots')
+  @ApiOperation({ summary: '查询不可预订时段列表' })
   @ApiParam({ name: 'id', description: '场地ID' })
   @ApiQuery({ name: 'slotDate', required: false, type: String, description: '日期 YYYY-MM-DD' })
   @ApiResponse({
     status: 200,
-    description: '查询成功，返回时段列表',
+    description: '查询成功，返回不可预订时段列表',
     type: [VenueTimeSlotResponse],
   })
   @ApiResponse({ status: 401, description: '未登录或Token无效' })
+  @ApiResponse({ status: 403, description: '无权操作' })
   @ApiResponse({ status: 404, description: '场地不存在' })
-  async findTimeSlots(
+  async findUnavailableSlots(
+    @Req() req: RequestWithUser,
     @Param('id', ParseIntPipe) id: number,
     @Query('slotDate') slotDate?: string,
   ): Promise<VenueTimeSlot[]> {
-    // 校验日期格式
-    if (slotDate && !/^\d{4}-\d{2}-\d{2}$/.test(slotDate)) {
-      throw new BadRequestException('slotDate 格式必须为 YYYY-MM-DD');
+    this.assertVenueManagerRole(req);
+
+    const profile = await this.venueManagerProfileService.findByUserId(req.user.userId);
+    if (!profile) {
+      throw new NotFoundException('场地方资料不存在');
     }
 
-    // 校验日期有效性（严格校验，拒绝如 2026-02-30 这样的无效日期）
-    if (slotDate) {
-      const [year, month, day] = slotDate.split('-').map(Number);
-      const date = new Date(year, month - 1, day);
-      if (
-        date.getFullYear() !== year ||
-        date.getMonth() !== month - 1 ||
-        date.getDate() !== day
-      ) {
-        throw new BadRequestException('slotDate 不是有效日期');
-      }
+    // 校验归属
+    await this.venueService.findById(id);
+
+    return this.unavailableSlotService.findUnavailableSlots(id, slotDate) as unknown as VenueTimeSlot[];
+  }
+
+  /**
+   * DELETE /api/v1/venues/:id/unavailable-slots/:slotId
+   * 删除不可预订时段（仅限场地方角色且为所有者）
+   */
+  @Delete(':id/unavailable-slots/:slotId')
+  @ApiOperation({ summary: '删除不可预订时段' })
+  @ApiParam({ name: 'id', description: '场地ID' })
+  @ApiParam({ name: 'slotId', description: '时段ID' })
+  @ApiResponse({ status: 200, description: '删除成功' })
+  @ApiResponse({ status: 401, description: '未登录或Token无效' })
+  @ApiResponse({ status: 403, description: '无权操作该场地' })
+  @ApiResponse({ status: 404, description: '场地或时段不存在' })
+  async deleteUnavailableSlot(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Param('slotId', ParseIntPipe) slotId: number,
+  ): Promise<void> {
+    this.assertVenueManagerRole(req);
+
+    const profile = await this.venueManagerProfileService.findByUserId(req.user.userId);
+    if (!profile) {
+      throw new NotFoundException('场地方资料不存在');
     }
 
-    return this.venueService.findTimeSlots(id, slotDate);
+    return this.unavailableSlotService.deleteUnavailableSlot(slotId, id, profile.id);
   }
 
   /**

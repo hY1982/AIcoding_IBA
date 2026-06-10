@@ -7,6 +7,7 @@ import {
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { VenueController } from './venue.controller';
 import { VenueService } from '../services/venue.service';
+import { UnavailableSlotService } from '../services/unavailable-slot.service';
 import { VenueManagerProfileService } from '../services/venue-manager-profile.service';
 import { CreateVenueDto } from '../dto/create-venue.dto';
 import { UpdateVenueDto } from '../dto/update-venue.dto';
@@ -20,6 +21,10 @@ import { AuthenticatedUser } from '@modules/auth/strategies/jwt.strategy';
 // ==================== Mock Types ====================
 
 type MockVenueService = Partial<Record<keyof VenueService, jest.Mock>>;
+
+type MockUnavailableSlotService = Partial<
+  Record<keyof UnavailableSlotService, jest.Mock>
+>;
 
 type MockVenueManagerProfileService = Partial<
   Record<keyof VenueManagerProfileService, jest.Mock>
@@ -90,6 +95,7 @@ function createMockRequest(user: AuthenticatedUser): any {
 describe('VenueController', () => {
   let controller: VenueController;
   let venueService: MockVenueService;
+  let unavailableSlotService: MockUnavailableSlotService;
   let venueManagerProfileService: MockVenueManagerProfileService;
 
   beforeEach(async () => {
@@ -104,6 +110,15 @@ describe('VenueController', () => {
       createTimeSlots: jest.fn(),
     };
 
+    unavailableSlotService = {
+      getDisplaySlots: jest.fn(),
+      createUnavailableSlots: jest.fn(),
+      findUnavailableSlots: jest.fn(),
+      deleteUnavailableSlot: jest.fn(),
+      invalidateCache: jest.fn(),
+      invalidateAllCacheForVenue: jest.fn(),
+    };
+
     venueManagerProfileService = {
       findByUserId: jest.fn(),
     };
@@ -112,6 +127,7 @@ describe('VenueController', () => {
       controllers: [VenueController],
       providers: [
         { provide: VenueService, useValue: venueService },
+        { provide: UnavailableSlotService, useValue: unavailableSlotService },
         { provide: VenueManagerProfileService, useValue: venueManagerProfileService },
       ],
     })
