@@ -18,6 +18,7 @@ import { CreateVenueScreen } from './src/screens/venue/CreateVenueScreen';
 import { VenueDetailScreen } from './src/screens/venue/VenueDetailScreen';
 import { VenueListScreen } from './src/screens/venue/VenueListScreen';
 import { EditVenueScreen } from './src/screens/venue/EditVenueScreen';
+import { UnavailableSlotsScreen } from './src/screens/venue/UnavailableSlotsScreen';
 import { useAppStore } from './src/stores';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -135,6 +136,11 @@ export default function App() {
           name="EditVenue"
           component={EditVenueScreen}
           options={{ title: '编辑场地' }}
+        />
+        <Stack.Screen
+          name="UnavailableSlots"
+          component={UnavailableSlotsScreen}
+          options={{ title: '不可预订时段' }}
         />
         <Stack.Screen
           name="Home"

@@ -23,6 +23,8 @@ export function CreateVenueScreen() {
   const [courtType, setCourtType] = useState<CreateVenueDto['courtType']>(undefined);
   const [lighting, setLighting] = useState('');
   const [turnoverTime, setTurnoverTime] = useState('');
+  const [openTime, setOpenTime] = useState('08:00');
+  const [closeTime, setCloseTime] = useState('22:00');
 
   const [ventilation, setVentilation] = useState(false);
   const [bigFan, setBigFan] = useState(false);
@@ -90,6 +92,8 @@ export function CreateVenueScreen() {
         courtType,
         lighting: lighting.trim() || undefined,
         turnoverTime: turnoverTime ? Number(turnoverTime) : undefined,
+        openTime: openTime || undefined,
+        closeTime: closeTime || undefined,
         ventilation,
         bigFan,
         airCondition,
@@ -223,6 +227,20 @@ export function CreateVenueScreen() {
         placeholder="请输入翻场时间"
         keyboardType="numeric"
         accessibilityLabel="翻场时间输入框"
+      />
+      <ValidatedTextInput
+        label="营业时间（开始）"
+        value={openTime}
+        onChangeText={setOpenTime}
+        placeholder="例如：08:00"
+        accessibilityLabel="营业时间开始输入框"
+      />
+      <ValidatedTextInput
+        label="营业时间（结束）"
+        value={closeTime}
+        onChangeText={setCloseTime}
+        placeholder="例如：22:00"
+        accessibilityLabel="营业时间结束输入框"
       />
 
       <Text style={styles.sectionLabel}>配套设施</Text>

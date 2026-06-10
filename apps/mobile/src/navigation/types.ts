@@ -20,6 +20,7 @@ export type RootStackParamList = {
   VenueList: undefined;
   VenueDetail: { venueId: number };
   EditVenue: { venue: VenueDetail };
+  UnavailableSlots: { venueId: number; venueName: string };
 };
 
 // Navigation prop types for type-safe navigation.navigate()
@@ -72,6 +73,10 @@ export type EditVenueScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'EditVenue'
 >;
+export type UnavailableSlotsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'UnavailableSlots'
+>;
 
 // Route prop types for type-safe route.params
 export type RegisterScreenRouteProp = RouteProp<RootStackParamList, 'Register'>;
@@ -88,3 +93,4 @@ export type EditVenueManagerProfileScreenRouteProp = RouteProp<
 >;
 export type VenueDetailScreenRouteProp = RouteProp<RootStackParamList, 'VenueDetail'>;
 export type EditVenueScreenRouteProp = RouteProp<RootStackParamList, 'EditVenue'>;
+export type UnavailableSlotsScreenRouteProp = RouteProp<RootStackParamList, 'UnavailableSlots'>;

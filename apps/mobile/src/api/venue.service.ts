@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { VenueDetail, VenueListItem, VenueTimeSlot, VenueDisplaySlot } from '@shared/venue';
+import type { VenueDetail, VenueListItem, VenueTimeSlot, VenueDisplaySlot, VenueUnavailableSlot } from '@shared/venue';
 import type { ApiResponse, PaginatedResponse } from '@shared/common';
 
 export class VenueServiceError extends Error {
@@ -39,6 +39,8 @@ export interface CreateVenueDto {
   bigFan?: boolean;
   airCondition?: boolean;
   turnoverTime?: number;
+  openTime?: string;
+  closeTime?: string;
   parking?: boolean;
   restroom?: boolean;
   shower?: boolean;
@@ -140,6 +142,53 @@ class VenueService {
   async deleteVenue(venueId: number): Promise<void> {
     try {
       await apiClient.delete<ApiResponse<void>>(`/venues/${venueId}`);
+    } catch (error) {
+      const userMessage = extractErrorMessage(error);
+      throw new VenueServiceError(userMessage);
+    }
+  }
+
+  /**
+   * 获取场地的不可预订时段列表（场地方管理用）
+   */
+  async getUnavailableSlots(venueId: number, slotDate: string): Promise<VenueUnavailableSlot[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<VenueUnavailableSlot[]>>(
+        `/venues/${venueId}/unavailable-slots`,
+        { params: { slotDate } },
+      );
+      return response.data.data;
+    } catch (error) {
+      const userMessage = extractErrorMessage(error);
+      throw new VenueServiceError(userMessage);
+    }
+  }
+
+  /**
+   * 创建不可预订时段（场地方）
+   */
+  async createUnavailableSlot(
+    venueId: number,
+    dto: { slotDate: string; startTime: string; endTime: string; reason?: string },
+  ): Promise<VenueUnavailableSlot> {
+    try {
+      const response = await apiClient.post<ApiResponse<VenueUnavailableSlot>>(
+        `/venues/${venueId}/unavailable-slots`,
+        dto,
+      );
+      return response.data.data;
+    } catch (error) {
+      const userMessage = extractErrorMessage(error);
+      throw new VenueServiceError(userMessage);
+    }
+  }
+
+  /**
+   * 删除不可预订时段（场地方）
+   */
+  async deleteUnavailableSlot(venueId: number, slotId: number): Promise<void> {
+    try {
+      await apiClient.delete<ApiResponse<void>>(`/venues/${venueId}/unavailable-slots/${slotId}`);
     } catch (error) {
       const userMessage = extractErrorMessage(error);
       throw new VenueServiceError(userMessage);

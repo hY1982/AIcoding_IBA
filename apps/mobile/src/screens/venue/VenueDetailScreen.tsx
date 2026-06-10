@@ -94,6 +94,10 @@ export function VenueDetailScreen() {
     }
   };
 
+  const handleManageUnavailableSlots = () => {
+    navigation.navigate('UnavailableSlots', { venueId, venueName: venue?.name || '' });
+  };
+
   const handleDelete = () => {
     Alert.alert('确认删除', `确定要删除场地 "${venue?.name}" 吗？此操作不可恢复。`, [
       { text: '取消', style: 'cancel' },
@@ -278,6 +282,13 @@ export function VenueDetailScreen() {
               accessibilityLabel="编辑场地"
             >
               <Text style={styles.primaryButtonText}>编辑场地</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={handleManageUnavailableSlots}
+              accessibilityLabel="管理不可预订时段"
+            >
+              <Text style={styles.secondaryButtonText}>管理不可预订时段</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.dangerButton}
