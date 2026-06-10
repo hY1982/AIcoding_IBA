@@ -2,6 +2,7 @@ import { DataSource, Repository } from 'typeorm';
 import { VenueService } from './venue.service';
 import { Venue } from '../entities/venue.entity';
 import { VenueTimeSlot } from '../entities/venue-time-slot.entity';
+import { VenueUnavailableSlot } from '../entities/venue-unavailable-slot.entity';
 import { User } from '@modules/users/entities/user.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { Player } from '@modules/players/entities/player.entity';
@@ -49,6 +50,7 @@ describe('Venue Integration Tests', () => {
         PlayerPosition,
         Venue,
         VenueTimeSlot,
+        VenueUnavailableSlot,
         Format,
         Intention,
         IntentionVenue,

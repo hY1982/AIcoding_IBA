@@ -4,6 +4,7 @@ import { Venue } from './venue.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { User } from '@modules/users/entities/user.entity';
 import { VenueTimeSlot } from './venue-time-slot.entity';
+import { VenueUnavailableSlot } from './venue-unavailable-slot.entity';
 import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
 import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
@@ -61,6 +62,7 @@ describe('Venue Entity', () => {
         Player,
         Venue,
         VenueTimeSlot,
+        VenueUnavailableSlot,
         Format,
         Intention,
         IntentionVenue,

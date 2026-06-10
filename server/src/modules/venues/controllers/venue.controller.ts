@@ -62,6 +62,20 @@ interface RequestWithUser extends Request {
 // 注：以下响应类定义在 Controller 同文件内，符合现有项目模式。
 // 未来若需复用，可抽取到 dto/response/ 目录。
 
+class VenueDisplaySlotResponse implements VenueDisplaySlot {
+  @ApiProperty({ description: '开始时间 HH:mm' })
+  startTime!: string;
+
+  @ApiProperty({ description: '结束时间 HH:mm' })
+  endTime!: string;
+
+  @ApiProperty({ enum: ['available', 'unavailable', 'booked'], description: '时段状态' })
+  status!: 'available' | 'unavailable' | 'booked';
+
+  @ApiProperty({ required: false, description: '状态原因（如维护、包场、非营业时间）' })
+  reason?: string;
+}
+
 class VenueTimeSlotResponse implements VenueTimeSlot {
   @ApiProperty({ description: '时段ID' })
   id!: number;
@@ -201,20 +215,6 @@ class VenueListResponse implements PaginatedResponse<VenueListItem> {
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('venues')
-class VenueDisplaySlotResponse implements VenueDisplaySlot {
-  @ApiProperty({ description: '开始时间 HH:mm' })
-  startTime!: string;
-
-  @ApiProperty({ description: '结束时间 HH:mm' })
-  endTime!: string;
-
-  @ApiProperty({ enum: ['available', 'unavailable', 'booked'], description: '时段状态' })
-  status!: 'available' | 'unavailable' | 'booked';
-
-  @ApiProperty({ required: false, description: '状态原因（如维护、包场、非营业时间）' })
-  reason?: string;
-}
-
 export class VenueController {
   constructor(
     private readonly venueService: VenueService,

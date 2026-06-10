@@ -12,6 +12,7 @@ import {
 } from 'typeorm';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { VenueTimeSlot } from './venue-time-slot.entity';
+import { VenueUnavailableSlot } from './venue-unavailable-slot.entity';
 import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
 import {
   FloorMaterial,
@@ -209,6 +210,11 @@ export class Venue {
     cascade: true,
   })
   timeSlots!: VenueTimeSlot[];
+
+  @OneToMany(() => VenueUnavailableSlot, (slot) => slot.venue, {
+    cascade: true,
+  })
+  unavailableSlots!: VenueUnavailableSlot[];
 
   @OneToMany(() => IntentionVenue, (iv) => iv.venue, { lazy: true })
   intentionVenues!: Promise<IntentionVenue[]>;

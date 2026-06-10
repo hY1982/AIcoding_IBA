@@ -2,6 +2,7 @@
 import { DataSource, Repository } from 'typeorm';
 import { VenueTimeSlot } from './venue-time-slot.entity';
 import { Venue } from './venue.entity';
+import { VenueUnavailableSlot } from './venue-unavailable-slot.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { User } from '@modules/users/entities/user.entity';
 import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
@@ -60,6 +61,7 @@ describe('VenueTimeSlot Entity', () => {
         Player,
         Venue,
         VenueTimeSlot,
+        VenueUnavailableSlot,
         Format,
         Intention,
         IntentionVenue,

@@ -474,31 +474,17 @@ describe('VenueController', () => {
   // ==================== GET /venues/:id/slots ====================
 
   describe('findTimeSlots', () => {
-    it('should return time slots for venue', async () => {
-      const mockSlots: VenueTimeSlot[] = [
-        createMockVenueTimeSlot({ id: 1, venueId: 1 }),
-        createMockVenueTimeSlot({ id: 2, venueId: 1 }),
+    it('should return display slots for venue', async () => {
+      const mockSlots = [
+        { startTime: '08:00', endTime: '22:00', status: 'available' as const },
       ];
 
-      venueService.findTimeSlots!.mockResolvedValue(mockSlots);
-
-      const result = await controller.findTimeSlots(1);
-
-      expect(venueService.findTimeSlots).toHaveBeenCalledWith(1, undefined);
-      expect(result).toEqual(mockSlots);
-      expect(result).toHaveLength(2);
-    });
-
-    it('should filter time slots by date', async () => {
-      const mockSlots: VenueTimeSlot[] = [
-        createMockVenueTimeSlot({ id: 1, venueId: 1, slotDate: '2026-06-15' }),
-      ];
-
-      venueService.findTimeSlots!.mockResolvedValue(mockSlots);
+      unavailableSlotService.getDisplaySlots!.mockResolvedValue(mockSlots);
 
       const result = await controller.findTimeSlots(1, '2026-06-15');
 
-      expect(venueService.findTimeSlots).toHaveBeenCalledWith(1, '2026-06-15');
+      expect(unavailableSlotService.getDisplaySlots).toHaveBeenCalledWith(1, '2026-06-15');
+      expect(result).toEqual(mockSlots);
       expect(result).toHaveLength(1);
     });
 
@@ -506,23 +492,29 @@ describe('VenueController', () => {
       await expect(controller.findTimeSlots(1, '06-15-2026')).rejects.toThrow(
         BadRequestException,
       );
-      expect(venueService.findTimeSlots).not.toHaveBeenCalled();
+      expect(unavailableSlotService.getDisplaySlots).not.toHaveBeenCalled();
     });
 
     it('should reject invalid slotDate (non-existent date)', async () => {
       await expect(controller.findTimeSlots(1, '2026-02-30')).rejects.toThrow(
         BadRequestException,
       );
-      expect(venueService.findTimeSlots).not.toHaveBeenCalled();
+      expect(unavailableSlotService.getDisplaySlots).not.toHaveBeenCalled();
     });
 
     it('should propagate NotFoundException when venue does not exist', async () => {
-      venueService.findTimeSlots!.mockRejectedValue(
+      unavailableSlotService.getDisplaySlots!.mockRejectedValue(
         new NotFoundException('场地不存在'),
       );
 
-      await expect(controller.findTimeSlots(999)).rejects.toThrow(
+      await expect(controller.findTimeSlots(999, '2026-06-15')).rejects.toThrow(
         NotFoundException,
+      );
+    });
+
+    it('should reject missing slotDate', async () => {
+      await expect(controller.findTimeSlots(1, '')).rejects.toThrow(
+        BadRequestException,
       );
     });
   });

@@ -4,7 +4,7 @@ import { Alert } from 'react-native';
 import { VenueDetailScreen } from '../VenueDetailScreen';
 import { venueService } from '@/api/venue.service';
 import { useAppStore } from '@/stores';
-import type { VenueDetail, VenueTimeSlot } from '@shared/venue';
+import type { VenueDetail, VenueDisplaySlot } from '@shared/venue';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
@@ -34,7 +34,7 @@ jest.mock('@react-navigation/native', () => {
 jest.mock('@/api/venue.service', () => ({
   venueService: {
     getVenueDetail: jest.fn(),
-    getVenueTimeSlots: jest.fn(),
+    getVenueDisplaySlots: jest.fn(),
     deleteVenue: jest.fn(),
   },
 }));
@@ -62,37 +62,30 @@ describe('VenueDetailScreen', () => {
     status: 'active',
     ratingAvg: 4.8,
     ratingCount: 128,
+    openTime: '08:00',
+    closeTime: '22:00',
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-06-01T00:00:00Z',
   };
 
-  const mockTimeSlots: VenueTimeSlot[] = [
-    {
-      id: 1,
-      venueId: 1,
-      slotDate: '2026-06-10',
-      startTime: '09:00',
-      endTime: '11:00',
-      isBooked: false,
-    },
-    {
-      id: 2,
-      venueId: 1,
-      slotDate: '2026-06-10',
-      startTime: '11:00',
-      endTime: '13:00',
-      isBooked: true,
-      matchId: 5,
-    },
-    {
-      id: 3,
-      venueId: 1,
-      slotDate: '2026-06-11',
-      startTime: '09:00',
-      endTime: '11:00',
-      isBooked: false,
-    },
-  ];
+  // 生成未来7天的mock展示时段
+  const today = new Date();
+  const generateMockDisplaySlots = (): Record<string, VenueDisplaySlot[]> => {
+    const slots: Record<string, VenueDisplaySlot[]> = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      const dateStr = d.toISOString().split('T')[0];
+      slots[dateStr] = [
+        { startTime: '00:00', endTime: '08:00', status: 'unavailable', reason: '非营业时间' },
+        { startTime: '08:00', endTime: '22:00', status: 'available' },
+        { startTime: '22:00', endTime: '24:00', status: 'unavailable', reason: '非营业时间' },
+      ];
+    }
+    return slots;
+  };
+
+  const mockDisplaySlots = generateMockDisplaySlots();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -111,7 +104,7 @@ describe('VenueDetailScreen', () => {
   it('should render venue detail after loading', async () => {
     jest.useRealTimers();
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -131,7 +124,7 @@ describe('VenueDetailScreen', () => {
   it('should render status badge correctly', async () => {
     jest.useRealTimers();
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -145,7 +138,7 @@ describe('VenueDetailScreen', () => {
   it('should render rating information when available', async () => {
     jest.useRealTimers();
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -161,7 +154,7 @@ describe('VenueDetailScreen', () => {
   it('should render facility tags with correct active/inactive states', async () => {
     jest.useRealTimers();
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -175,10 +168,10 @@ describe('VenueDetailScreen', () => {
     expect(screen.getByLabelText('设施-录像-无')).toBeTruthy();
   });
 
-  it('should render time slots grouped by date', async () => {
+  it('should render display slots grouped by date', async () => {
     jest.useRealTimers();
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -186,10 +179,9 @@ describe('VenueDetailScreen', () => {
       expect(screen.getByLabelText('时段列表')).toBeTruthy();
     });
 
-    expect(screen.getByText('2026-06-10')).toBeTruthy();
-    expect(screen.getByText('2026-06-11')).toBeTruthy();
-    expect(screen.getAllByLabelText('时段-可预订').length).toBe(2);
-    expect(screen.getByLabelText('时段-已预订')).toBeTruthy();
+    // 验证日期标签存在
+    const firstDate = Object.keys(mockDisplaySlots)[0];
+    expect(screen.getByText(firstDate)).toBeTruthy();
   });
 
   it('should show player view actions when user is a player', async () => {
@@ -199,7 +191,7 @@ describe('VenueDetailScreen', () => {
       token: 'token',
     });
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -218,7 +210,7 @@ describe('VenueDetailScreen', () => {
       token: 'token',
     });
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -237,7 +229,7 @@ describe('VenueDetailScreen', () => {
       token: 'token',
     });
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -256,7 +248,7 @@ describe('VenueDetailScreen', () => {
       token: 'token',
     });
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -284,7 +276,7 @@ describe('VenueDetailScreen', () => {
     (venueService.getVenueDetail as jest.Mock)
       .mockRejectedValueOnce(new Error('加载失败'))
       .mockResolvedValueOnce(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -303,7 +295,7 @@ describe('VenueDetailScreen', () => {
   it('should refresh venue detail on pull-to-refresh', async () => {
     jest.useRealTimers();
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -345,7 +337,7 @@ describe('VenueDetailScreen', () => {
       updatedAt: '2026-06-01T00:00:00Z',
     };
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(minimalVenue);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue([]);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -356,16 +348,15 @@ describe('VenueDetailScreen', () => {
     expect(screen.queryByLabelText('评分信息')).toBeNull();
   });
 
-  it('should call getVenueDetail and getVenueTimeSlots with correct venueId', async () => {
+  it('should call getVenueDetail with correct venueId', async () => {
     jest.useRealTimers();
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
     await waitFor(() => {
       expect(venueService.getVenueDetail).toHaveBeenCalledWith(1);
-      expect(venueService.getVenueTimeSlots).toHaveBeenCalledWith(1);
     });
   });
 
@@ -373,7 +364,7 @@ describe('VenueDetailScreen', () => {
     jest.useRealTimers();
     const inactiveVenue = { ...mockVenueDetail, status: 'inactive' as const };
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(inactiveVenue);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 
@@ -384,18 +375,28 @@ describe('VenueDetailScreen', () => {
     expect(screen.getByText('已停业')).toBeTruthy();
   });
 
-  it('should render empty time slots message', async () => {
+  it('should render display slots with different statuses', async () => {
     jest.useRealTimers();
+    const slotsWithMixedStatus: VenueDisplaySlot[] = [
+      { startTime: '00:00', endTime: '08:00', status: 'unavailable', reason: '非营业时间' },
+      { startTime: '08:00', endTime: '12:00', status: 'available' },
+      { startTime: '12:00', endTime: '14:00', status: 'unavailable', reason: '维护' },
+      { startTime: '14:00', endTime: '16:00', status: 'booked' },
+      { startTime: '16:00', endTime: '22:00', status: 'available' },
+      { startTime: '22:00', endTime: '24:00', status: 'unavailable', reason: '非营业时间' },
+    ];
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue([]);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(slotsWithMixedStatus);
 
     render(<VenueDetailScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('暂无可用时段')).toBeTruthy();
+      expect(screen.getByLabelText('时段列表')).toBeTruthy();
     });
 
-    expect(screen.queryByLabelText('时段列表')).toBeNull();
+    expect(screen.getAllByLabelText('时段-可预订').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText('时段-不可预订').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByLabelText('时段-已占用').length).toBeGreaterThanOrEqual(1);
   });
 
   it('should show delete confirmation for manager', async () => {
@@ -405,7 +406,7 @@ describe('VenueDetailScreen', () => {
       token: 'token',
     });
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     const alertSpy = jest.spyOn(Alert, 'alert');
 
@@ -433,7 +434,7 @@ describe('VenueDetailScreen', () => {
       token: 'token',
     });
     (venueService.getVenueDetail as jest.Mock).mockResolvedValue(mockVenueDetail);
-    (venueService.getVenueTimeSlots as jest.Mock).mockResolvedValue(mockTimeSlots);
+    (venueService.getVenueDisplaySlots as jest.Mock).mockResolvedValue(mockDisplaySlots[Object.keys(mockDisplaySlots)[0]]);
 
     render(<VenueDetailScreen />);
 

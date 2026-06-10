@@ -86,9 +86,11 @@ export class UnavailableSlotService {
 
       for (const slot of slots) {
         const effectiveEndTime = this.addMinutes(slot.endTime, turnoverTime);
+        const endTimeMinutes = this.parseMinutes(slot.endTime);
+        const effectiveEndMinutes = this.parseMinutes(effectiveEndTime);
 
-        if (effectiveEndTime <= slot.endTime) {
-          // 未跨天（或翻场时间为0）
+        if (effectiveEndMinutes > endTimeMinutes) {
+          // 未跨天（effectiveEndTime 在同一天内）
           entities.push(
             manager.create(VenueUnavailableSlot, {
               venueId,
