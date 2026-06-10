@@ -48,7 +48,7 @@ describe('RoleSelectScreen', () => {
   it('should render page title and description', () => {
     render(<RoleSelectScreen />);
 
-    expect(screen.getByText('篮球匹配平台')).toBeTruthy();
+    expect(screen.getByText('I Basketball')).toBeTruthy();
     expect(screen.getByText('请选择您的角色')).toBeTruthy();
   });
 });

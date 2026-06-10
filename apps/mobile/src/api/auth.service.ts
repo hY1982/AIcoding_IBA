@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { secureStorage } from '@/utils/secureStorage';
 import { apiClient } from './client';
 import type {
   LoginDto,
@@ -76,19 +76,19 @@ class AuthService {
   }
 
   async saveTokens(accessToken: string, refreshToken: string): Promise<void> {
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    await SecureStore.setItemAsync('refreshToken', refreshToken);
+    await secureStorage.setItemAsync('accessToken', accessToken);
+    await secureStorage.setItemAsync('refreshToken', refreshToken);
   }
 
   async getTokens(): Promise<{ accessToken: string | null; refreshToken: string | null }> {
-    const accessToken = await SecureStore.getItemAsync('accessToken');
-    const refreshToken = await SecureStore.getItemAsync('refreshToken');
+    const accessToken = await secureStorage.getItemAsync('accessToken');
+    const refreshToken = await secureStorage.getItemAsync('refreshToken');
     return { accessToken, refreshToken };
   }
 
   async clearTokens(): Promise<void> {
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('refreshToken');
+    await secureStorage.deleteItemAsync('accessToken');
+    await secureStorage.deleteItemAsync('refreshToken');
   }
 }
 

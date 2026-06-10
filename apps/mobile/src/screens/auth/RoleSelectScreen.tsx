@@ -8,7 +8,7 @@ export function RoleSelectScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>篮球匹配平台</Text>
+      <Text style={styles.title}>I Basketball</Text>
       <Text style={styles.subtitle}>请选择您的角色</Text>
 
       <TouchableOpacity

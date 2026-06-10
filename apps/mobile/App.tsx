@@ -16,7 +16,7 @@ import { AbilityScreenContainer } from './src/screens/player/AbilityScreen';
 function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Basketball Match</Text>
+      <Text style={styles.title}>I Basketball</Text>
       <Text style={styles.subtitle}>Find your perfect game</Text>
     </View>
   );
@@ -71,7 +71,7 @@ export default function App() {
         <Stack.Screen
           name="Home"
           component={HomeScreen}
-          options={{ title: 'Basketball Match' }}
+          options={{ title: 'I Basketball' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
