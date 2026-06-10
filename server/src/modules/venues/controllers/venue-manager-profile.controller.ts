@@ -18,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { VenueManagerProfileService } from '../services/venue-manager-profile.service';
 import { VenueManagerProfile, UpdateVenueManagerProfileDto } from '@shared/venue-manager';
+import { FloorMaterial, CourtType, VenueStatus } from '@shared/venue';
 import { AuthenticatedUser } from '@modules/auth/strategies/jwt.strategy';
 
 /**
@@ -46,6 +47,17 @@ class VenueManagerProfileResponse implements VenueManagerProfile {
     address: string;
     pricePerHour: number;
     courtCount: number;
+    floorMaterial?: FloorMaterial;
+    courtType?: CourtType;
+    ventilation?: boolean;
+    bigFan?: boolean;
+    airCondition?: boolean;
+    parking?: boolean;
+    restroom?: boolean;
+    shower?: boolean;
+    lockerRoom?: boolean;
+    videoRecord?: boolean;
+    status: VenueStatus;
     ratingAvg?: number;
     ratingCount: number;
   }>;

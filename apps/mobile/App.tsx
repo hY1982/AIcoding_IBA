@@ -15,6 +15,8 @@ import { AbilityScreenContainer } from './src/screens/player/AbilityScreen';
 import { VenueManagerProfileScreen } from './src/screens/venue/VenueManagerProfileScreen';
 import { EditVenueManagerProfileScreen } from './src/screens/venue/EditVenueManagerProfileScreen';
 import { CreateVenueScreen } from './src/screens/venue/CreateVenueScreen';
+import { VenueDetailScreen } from './src/screens/venue/VenueDetailScreen';
+import { EditVenueScreen } from './src/screens/venue/EditVenueScreen';
 import { useAppStore } from './src/stores';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -105,6 +107,16 @@ export default function App() {
           name="CreateVenue"
           component={CreateVenueScreen}
           options={{ title: '新建场地' }}
+        />
+        <Stack.Screen
+          name="VenueDetail"
+          component={VenueDetailScreen}
+          options={{ title: '场地详情' }}
+        />
+        <Stack.Screen
+          name="EditVenue"
+          component={EditVenueScreen}
+          options={{ title: '编辑场地' }}
         />
         <Stack.Screen
           name="Home"

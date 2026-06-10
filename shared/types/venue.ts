@@ -72,13 +72,24 @@ export interface VenueTimeSlot {
   matchId?: number;
 }
 
-// 场地列表项（简化）
+// 场地列表项（含主要展示字段）
 export interface VenueListItem {
   id: number;
   name: string;
   address: string;
   pricePerHour: number;
   courtCount: number;
+  floorMaterial?: FloorMaterial;
+  courtType?: CourtType;
+  ventilation?: boolean;
+  bigFan?: boolean;
+  airCondition?: boolean;
+  parking?: boolean;
+  restroom?: boolean;
+  shower?: boolean;
+  lockerRoom?: boolean;
+  videoRecord?: boolean;
+  status: VenueStatus;
   ratingAvg?: number;
   ratingCount?: number;
 }

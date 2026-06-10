@@ -2,6 +2,7 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { PlayerProfile, PlayerAbility } from '@shared/player';
 import type { VenueManagerProfile } from '@shared/venue-manager';
+import type { VenueDetail } from '@shared/venue';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -16,6 +17,8 @@ export type RootStackParamList = {
   VenueManagerProfile: undefined;
   EditVenueManagerProfile: { profile: VenueManagerProfile };
   CreateVenue: undefined;
+  VenueDetail: { venueId: number };
+  EditVenue: { venue: VenueDetail };
 };
 
 // Navigation prop types for type-safe navigation.navigate()
@@ -32,6 +35,8 @@ export type AbilityScreenNavigationProp = NativeStackNavigationProp<RootStackPar
 export type VenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'VenueManagerProfile'>;
 export type EditVenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditVenueManagerProfile'>;
 export type CreateVenueScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'CreateVenue'>;
+export type VenueDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'VenueDetail'>;
+export type EditVenueScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditVenue'>;
 
 // Route prop types for type-safe route.params
 export type RegisterScreenRouteProp = RouteProp<RootStackParamList, 'Register'>;
@@ -40,3 +45,5 @@ export type VenueManagerRegisterScreenRouteProp = RouteProp<RootStackParamList, 
 export type EditProfileScreenRouteProp = RouteProp<RootStackParamList, 'EditProfile'>;
 export type AbilityScreenRouteProp = RouteProp<RootStackParamList, 'Ability'>;
 export type EditVenueManagerProfileScreenRouteProp = RouteProp<RootStackParamList, 'EditVenueManagerProfile'>;
+export type VenueDetailScreenRouteProp = RouteProp<RootStackParamList, 'VenueDetail'>;
+export type EditVenueScreenRouteProp = RouteProp<RootStackParamList, 'EditVenue'>;

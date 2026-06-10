@@ -11,6 +11,8 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { venueManagerService } from '@/api/venue-manager.service';
 import type { VenueManagerProfile } from '@shared/venue-manager';
+import type { VenueListItem } from '@shared/venue';
+import { FLOOR_MATERIAL_LABELS, COURT_TYPE_LABELS, VENUE_STATUS_LABELS } from '@shared/venue';
 import type { VenueManagerProfileScreenNavigationProp } from '@/navigation/types';
 
 export function VenueManagerProfileScreen() {
@@ -67,6 +69,10 @@ export function VenueManagerProfileScreen() {
 
   const handleCreateVenue = () => {
     navigation.navigate('CreateVenue');
+  };
+
+  const handleVenuePress = (venue: VenueListItem) => {
+    navigation.navigate('VenueDetail', { venueId: venue.id });
   };
 
   if (isLoading) {
@@ -148,18 +154,42 @@ export function VenueManagerProfileScreen() {
           <Text style={styles.emptyVenueText}>暂无场地</Text>
         ) : (
           profile.venues.map((venue) => (
-            <View key={venue.id} style={styles.venueCard}>
-              <Text style={styles.venueName}>{venue.name}</Text>
+            <TouchableOpacity
+              key={venue.id}
+              style={styles.venueCard}
+              onPress={() => handleVenuePress(venue)}
+              accessibilityLabel={`场地: ${venue.name}`}
+              accessibilityRole="button"
+            >
+              <View style={styles.venueCardHeader}>
+                <Text style={styles.venueName}>{venue.name}</Text>
+                <View style={[styles.statusBadge, venue.status === 'active' ? styles.statusActive : styles.statusInactive]}>
+                  <Text style={styles.statusBadgeText}>{VENUE_STATUS_LABELS[venue.status]}</Text>
+                </View>
+              </View>
               <Text style={styles.venueAddress}>{venue.address}</Text>
               <View style={styles.venueInfoRow}>
-                <Text style={styles.venueInfo}>
-                  {venue.courtCount}个球场
-                </Text>
-                <Text style={styles.venueInfo}>
-                  ¥{venue.pricePerHour}/小时
-                </Text>
+                <Text style={styles.venueInfo}>¥{venue.pricePerHour}/小时</Text>
+                <Text style={styles.venueInfo}>{venue.courtCount}个球场</Text>
+                {venue.courtType && (
+                  <Text style={styles.venueInfo}>{COURT_TYPE_LABELS[venue.courtType]}</Text>
+                )}
+                {venue.floorMaterial && (
+                  <Text style={styles.venueInfo}>{FLOOR_MATERIAL_LABELS[venue.floorMaterial]}</Text>
+                )}
               </View>
-            </View>
+              <View style={styles.facilityRow}>
+                {venue.ventilation && <Text style={styles.facilityTag}>通风</Text>}
+                {venue.bigFan && <Text style={styles.facilityTag}>大风扇</Text>}
+                {venue.airCondition && <Text style={styles.facilityTag}>空调</Text>}
+                {venue.parking && <Text style={styles.facilityTag}>停车场</Text>}
+                {venue.restroom && <Text style={styles.facilityTag}>洗手间</Text>}
+                {venue.shower && <Text style={styles.facilityTag}>淋浴</Text>}
+                {venue.lockerRoom && <Text style={styles.facilityTag}>更衣室</Text>}
+                {venue.videoRecord && <Text style={styles.facilityTag}>录像</Text>}
+              </View>
+              <Text style={styles.tapHint}>点击查看详情/编辑</Text>
+            </TouchableOpacity>
           ))
         )}
       </View>
@@ -330,6 +360,48 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#3498db',
     fontWeight: '500',
+  },
+  venueCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  statusActive: {
+    backgroundColor: '#27ae60',
+  },
+  statusInactive: {
+    backgroundColor: '#e74c3c',
+  },
+  statusBadgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  facilityRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  facilityTag: {
+    fontSize: 11,
+    color: '#666',
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  tapHint: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'right',
   },
   buttonSection: {
     paddingHorizontal: 16,
