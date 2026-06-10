@@ -41,7 +41,7 @@ export function LoginScreen() {
         nickname: response.user.nickname,
         userType: response.user.userType,
       });
-      navigation.navigate('Home');
+      navigation.navigate('Profile');
     } catch (error) {
       const message = error instanceof Error ? error.message : '登录失败';
       setGlobalError(message);
