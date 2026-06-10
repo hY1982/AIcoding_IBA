@@ -16,6 +16,7 @@ import { VenueManagerProfileScreen } from './src/screens/venue/VenueManagerProfi
 import { EditVenueManagerProfileScreen } from './src/screens/venue/EditVenueManagerProfileScreen';
 import { CreateVenueScreen } from './src/screens/venue/CreateVenueScreen';
 import { VenueDetailScreen } from './src/screens/venue/VenueDetailScreen';
+import { VenueListScreen } from './src/screens/venue/VenueListScreen';
 import { EditVenueScreen } from './src/screens/venue/EditVenueScreen';
 import { useAppStore } from './src/stores';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -31,6 +32,10 @@ function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<Root
     }
   };
 
+  const handleVenuePress = () => {
+    navigation.navigate('VenueList');
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>I Basketball</Text>
@@ -42,6 +47,14 @@ function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<Root
         accessibilityRole="button"
       >
         <Text style={styles.profileButtonText}>我的资料</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.venueButton}
+        onPress={handleVenuePress}
+        accessibilityLabel="浏览场地"
+        accessibilityRole="button"
+      >
+        <Text style={styles.venueButtonText}>浏览场地</Text>
       </TouchableOpacity>
     </View>
   );
@@ -109,6 +122,11 @@ export default function App() {
           options={{ title: '新建场地' }}
         />
         <Stack.Screen
+          name="VenueList"
+          component={VenueListScreen}
+          options={{ title: '场地列表' }}
+        />
+        <Stack.Screen
           name="VenueDetail"
           component={VenueDetailScreen}
           options={{ title: '场地详情' }}
@@ -154,7 +172,14 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
   },
-  profileButtonText: {
+  venueButton: {
+    marginTop: 16,
+    backgroundColor: '#27ae60',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  venueButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
