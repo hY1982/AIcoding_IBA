@@ -33,6 +33,28 @@ export class UpdatePlayerDto extends PartialType(CreatePlayerDto) {
   @ArrayMaxSize(3)
   positions?: BasketballPosition[];
 
+  // ===== MVP 基础属性（显式重定义以保留 @Type 装饰器） =====
+
+  /**
+   * 站立摸高（cm）
+   */
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(400)
+  @Type(() => Number)
+  standingReach?: number;
+
+  /**
+   * 起跳摸高（cm）
+   */
+  @IsInt()
+  @IsOptional()
+  @Min(100)
+  @Max(500)
+  @Type(() => Number)
+  jumpingReach?: number;
+
   // ===== P1 扩展属性 =====
 
   /**

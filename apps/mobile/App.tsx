@@ -12,16 +12,29 @@ import { VenueManagerRegisterScreen } from './src/screens/auth/VenueManagerRegis
 import { ProfileScreen } from './src/screens/player/ProfileScreen';
 import { EditProfileScreen } from './src/screens/player/EditProfileScreen';
 import { AbilityScreenContainer } from './src/screens/player/AbilityScreen';
+import { VenueManagerProfileScreen } from './src/screens/venue/VenueManagerProfileScreen';
+import { EditVenueManagerProfileScreen } from './src/screens/venue/EditVenueManagerProfileScreen';
+import { useAppStore } from './src/stores';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<RootStackParamList> }) {
+  const user = useAppStore((state) => state.user);
+
+  const handleProfilePress = () => {
+    if (user?.userType === 'venue_manager') {
+      navigation.navigate('VenueManagerProfile');
+    } else {
+      navigation.navigate('Profile');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>I Basketball</Text>
       <Text style={styles.subtitle}>Find your perfect game</Text>
       <TouchableOpacity
         style={styles.profileButton}
-        onPress={() => navigation.navigate('Profile')}
+        onPress={handleProfilePress}
         accessibilityLabel="我的资料"
         accessibilityRole="button"
       >
@@ -76,6 +89,16 @@ export default function App() {
           name="Ability"
           component={AbilityScreenContainer}
           options={{ title: '能力值详情' }}
+        />
+        <Stack.Screen
+          name="VenueManagerProfile"
+          component={VenueManagerProfileScreen}
+          options={{ title: '我的资料' }}
+        />
+        <Stack.Screen
+          name="EditVenueManagerProfile"
+          component={EditVenueManagerProfileScreen}
+          options={{ title: '编辑资料' }}
         />
         <Stack.Screen
           name="Home"

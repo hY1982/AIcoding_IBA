@@ -1,6 +1,7 @@
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { PlayerProfile, PlayerAbility } from '@shared/player';
+import type { VenueManagerProfile } from '@shared/venue-manager';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -12,6 +13,8 @@ export type RootStackParamList = {
   Profile: undefined;
   EditProfile: { profile: PlayerProfile };
   Ability: { ability: PlayerAbility };
+  VenueManagerProfile: undefined;
+  EditVenueManagerProfile: { profile: VenueManagerProfile };
 };
 
 // Navigation prop types for type-safe navigation.navigate()
@@ -25,6 +28,8 @@ export type VenueManagerRegisterScreenNavigationProp = NativeStackNavigationProp
 export type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
 export type EditProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditProfile'>;
 export type AbilityScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Ability'>;
+export type VenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'VenueManagerProfile'>;
+export type EditVenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'EditVenueManagerProfile'>;
 
 // Route prop types for type-safe route.params
 export type RegisterScreenRouteProp = RouteProp<RootStackParamList, 'Register'>;
@@ -32,3 +37,4 @@ export type PlayerRegisterScreenRouteProp = RouteProp<RootStackParamList, 'Playe
 export type VenueManagerRegisterScreenRouteProp = RouteProp<RootStackParamList, 'VenueManagerRegister'>;
 export type EditProfileScreenRouteProp = RouteProp<RootStackParamList, 'EditProfile'>;
 export type AbilityScreenRouteProp = RouteProp<RootStackParamList, 'Ability'>;
+export type EditVenueManagerProfileScreenRouteProp = RouteProp<RootStackParamList, 'EditVenueManagerProfile'>;

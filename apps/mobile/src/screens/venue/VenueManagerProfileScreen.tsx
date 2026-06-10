@@ -9,14 +9,13 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { playerService } from '@/api/player.service';
-import { POSITION_LABELS, GENDER_LABELS } from '@shared/player';
-import type { PlayerProfile } from '@shared/player';
-import type { ProfileScreenNavigationProp } from '@/navigation/types';
+import { venueManagerService } from '@/api/venue-manager.service';
+import type { VenueManagerProfile } from '@shared/venue-manager';
+import type { VenueManagerProfileScreenNavigationProp } from '@/navigation/types';
 
-export function ProfileScreen() {
-  const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+export function VenueManagerProfileScreen() {
+  const navigation = useNavigation<VenueManagerProfileScreenNavigationProp>();
+  const [profile, setProfile] = useState<VenueManagerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [refreshing, setRefreshing] = useState(false);
@@ -24,7 +23,7 @@ export function ProfileScreen() {
   const loadProfile = useCallback(async () => {
     try {
       setError(undefined);
-      const data = await playerService.getProfile();
+      const data = await venueManagerService.getProfile();
       setProfile(data);
     } catch (err) {
       const message = err instanceof Error ? err.message : '加载失败';
@@ -46,7 +45,7 @@ export function ProfileScreen() {
     setRefreshing(true);
     setIsLoading(true);
     setError(undefined);
-    playerService.getProfile()
+    venueManagerService.getProfile()
       .then((data) => {
         setProfile(data);
         setIsLoading(false);
@@ -62,19 +61,7 @@ export function ProfileScreen() {
 
   const handleEdit = () => {
     if (profile) {
-      navigation.navigate('EditProfile', { profile });
-    }
-  };
-
-  const handleViewAbility = () => {
-    if (profile) {
-      navigation.navigate('Ability', {
-        ability: {
-          baseAbilityScore: profile.baseAbilityScore,
-          matchAdjustValue: profile.matchAdjustValue,
-          totalAbilityScore: profile.totalAbilityScore,
-        },
-      });
+      navigation.navigate('EditVenueManagerProfile', { profile });
     }
   };
 
@@ -130,51 +117,37 @@ export function ProfileScreen() {
         <Text style={styles.sectionTitle}>基本信息</Text>
         <InfoRow label="手机号" value={profile.phone} />
         <InfoRow label="真实姓名" value={profile.realName} />
-        <InfoRow label="性别" value={GENDER_LABELS[profile.gender]} />
-        <InfoRow label="年龄" value={`${profile.age}岁`} />
-        <InfoRow label="球龄" value={`${profile.basketballAge}年`} />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>身体属性</Text>
-        <InfoRow label="身高" value={`${profile.height}cm`} />
-        {profile.weight !== undefined && <InfoRow label="体重" value={`${profile.weight}kg`} />}
-        {profile.wingspan !== undefined && <InfoRow label="臂展" value={`${profile.wingspan}cm`} />}
-        {profile.standingReach !== undefined && (
-          <InfoRow label="站立摸高" value={`${profile.standingReach}cm`} />
+        {profile.companyName && (
+          <InfoRow label="公司名称" value={profile.companyName} />
         )}
-        {profile.jumpingReach !== undefined && (
-          <InfoRow label="起跳摸高" value={`${profile.jumpingReach}cm`} />
+        {profile.contactName && (
+          <InfoRow label="联系人" value={profile.contactName} />
+        )}
+        {profile.contactPhone && (
+          <InfoRow label="联系电话" value={profile.contactPhone} />
         )}
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>位置</Text>
-        <View style={styles.positionsRow} accessibilityLabel="位置">
-          {profile.positions.map((pos) => (
-            <View key={pos.position} style={styles.positionChip}>
-              <Text style={styles.positionChipText}>{POSITION_LABELS[pos.position]}</Text>
+        <Text style={styles.sectionTitle}>我的场地</Text>
+        {profile.venues.length === 0 ? (
+          <Text style={styles.emptyVenueText}>暂无场地</Text>
+        ) : (
+          profile.venues.map((venue) => (
+            <View key={venue.id} style={styles.venueCard}>
+              <Text style={styles.venueName}>{venue.name}</Text>
+              <Text style={styles.venueAddress}>{venue.address}</Text>
+              <View style={styles.venueInfoRow}>
+                <Text style={styles.venueInfo}>
+                  {venue.courtCount}个球场
+                </Text>
+                <Text style={styles.venueInfo}>
+                  ¥{venue.pricePerHour}/小时
+                </Text>
+              </View>
             </View>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>能力值</Text>
-        <View style={styles.abilityRow}>
-          <View style={styles.abilityItem}>
-            <Text style={styles.abilityLabel} accessibilityLabel="基础能力值">
-              基础能力值
-            </Text>
-            <Text style={styles.abilityValue}>{profile.baseAbilityScore}</Text>
-          </View>
-          <View style={styles.abilityItem}>
-            <Text style={styles.abilityLabel} accessibilityLabel="综合能力值">
-              综合能力值
-            </Text>
-            <Text style={styles.abilityValue}>{profile.totalAbilityScore}</Text>
-          </View>
-        </View>
+          ))
+        )}
       </View>
 
       <View style={styles.buttonSection}>
@@ -185,15 +158,6 @@ export function ProfileScreen() {
           accessibilityRole="button"
         >
           <Text style={styles.primaryButtonText}>编辑资料</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleViewAbility}
-          accessibilityLabel="查看能力值详情"
-          accessibilityRole="button"
-        >
-          <Text style={styles.secondaryButtonText}>查看能力值详情</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -302,43 +266,43 @@ const styles = StyleSheet.create({
     color: '#333',
     fontWeight: '500',
   },
-  positionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  positionChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#3498db',
-  },
-  positionChipText: {
-    color: '#fff',
+  emptyVenueText: {
     fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 16,
+  },
+  venueCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  venueName: {
+    fontSize: 16,
     fontWeight: '600',
-  },
-  abilityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  abilityItem: {
-    alignItems: 'center',
-  },
-  abilityLabel: {
-    fontSize: 12,
-    color: '#666',
+    color: '#333',
     marginBottom: 4,
   },
-  abilityValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  venueAddress: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 8,
+  },
+  venueInfoRow: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  venueInfo: {
+    fontSize: 13,
     color: '#3498db',
+    fontWeight: '500',
   },
   buttonSection: {
     paddingHorizontal: 16,
     paddingVertical: 16,
-    gap: 12,
   },
   primaryButton: {
     backgroundColor: '#3498db',
@@ -348,19 +312,6 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#3498db',
-  },
-  secondaryButtonText: {
-    color: '#3498db',
     fontSize: 16,
     fontWeight: '600',
   },

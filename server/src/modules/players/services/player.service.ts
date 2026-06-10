@@ -203,6 +203,9 @@ export class PlayerService {
         }
       });
 
+      // 手动递增版本号（QueryBuilder.update 不会自动处理 @VersionColumn）
+      (updateData as any).version = existingPlayer.version + 1;
+
       // 使用 UpdateQueryBuilder + 版本号进行乐观锁更新
       const updateResult = await manager
         .createQueryBuilder()
@@ -412,7 +415,9 @@ export class PlayerService {
       regionCode: player.regionCode ?? undefined,
       baseAbilityScore: player.baseAbilityScore,
       matchAdjustValue: player.matchAdjustValue,
-      totalAbilityScore: player.totalAbilityScore,
+      // totalAbilityScore 是数据库生成列(base_ability_score + match_adjust_value)，
+      // 在事务内立即查询可能拿到旧值，因此手动计算确保准确性
+      totalAbilityScore: Math.round((player.baseAbilityScore + player.matchAdjustValue) * 100) / 100,
       phone: user?.phone ? maskPhone(user.phone) : '',
       nickname: user?.nickname || '',
       realName: user?.realName ? maskRealName(user.realName) : '',

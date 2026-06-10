@@ -3,7 +3,10 @@ WORKDIR /app
 
 # 1. Copy dependency definitions first — leverage layer caching
 COPY package*.json ./
-RUN npm ci
+# Install ALL dependencies (including devDependencies) for development
+# Note: In a monorepo workspace, we use npm install instead of npm ci
+# because individual packages don't have their own package-lock.json
+RUN npm install
 
 # 2. Copy source code — changes here reuse the cached dependency layer above
 COPY . .
