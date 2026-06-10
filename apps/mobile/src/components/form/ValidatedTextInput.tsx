@@ -88,6 +88,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 16,
     backgroundColor: '#fff',
+    textAlign: 'left',
+    includeFontPadding: false,
   },
   inputError: {
     borderColor: '#e74c3c',

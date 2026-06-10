@@ -40,6 +40,8 @@ export interface Venue {
   regionCode?: string;
   ratingAvg?: number;
   ratingCount?: number;
+  openTime?: string;   // HH:mm, 默认 08:00
+  closeTime?: string;  // HH:mm, 默认 22:00
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +61,25 @@ export interface VenueDetail extends Venue {
   lockerRoom?: boolean;
   videoRecord?: boolean;
   timeSlots?: VenueTimeSlot[];
+  displaySlots?: Record<string, VenueDisplaySlot[]>; // 按日期分组的连续展示时段
+}
+
+// 新增：不可预订时段
+export interface VenueUnavailableSlot {
+  id: number;
+  venueId: number;
+  slotDate: string;  // YYYY-MM-DD
+  startTime: string; // HH:mm（15分钟粒度）
+  endTime: string;   // HH:mm（15分钟粒度）
+  reason?: string;
+}
+
+// 新增：展示时段（连续时间轴）
+export interface VenueDisplaySlot {
+  startTime: string; // HH:mm
+  endTime: string;   // HH:mm
+  status: 'available' | 'unavailable' | 'booked';
+  reason?: string;   // unavailable/booked 时显示原因
 }
 
 // 场地可预订时段

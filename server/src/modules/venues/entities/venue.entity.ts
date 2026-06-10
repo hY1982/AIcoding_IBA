@@ -128,6 +128,14 @@ export class Venue {
   @Column({ name: 'turnover_time', type: 'int', nullable: true })
   turnoverTime!: number | null;
 
+  /** Business opening time (default 08:00) */
+  @Column({ name: 'open_time', type: 'time', nullable: true, default: '08:00:00' })
+  openTime!: string | null;
+
+  /** Business closing time (default 22:00) */
+  @Column({ name: 'close_time', type: 'time', nullable: true, default: '22:00:00' })
+  closeTime!: string | null;
+
   @Column({ type: 'boolean', nullable: true, default: false })
   parking!: boolean | null;
 

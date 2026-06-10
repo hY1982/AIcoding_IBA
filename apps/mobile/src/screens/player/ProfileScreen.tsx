@@ -268,6 +268,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     color: '#333',
+    includeFontPadding: false,
   },
   section: {
     backgroundColor: '#fff',
@@ -296,6 +297,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     fontWeight: '500',
+    includeFontPadding: false,
   },
   positionsRow: {
     flexDirection: 'row',
