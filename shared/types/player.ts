@@ -56,9 +56,11 @@ export interface PlayerAbility extends PlayerAbilityInput {
  * 包含球员属性、能力值、用户信息（脱敏后）和时间戳。
  * 用于 PlayerService 查询响应，所有敏感字段已脱敏。
  */
-export interface PlayerProfile extends PlayerAttributes, PlayerAbility, Timestamps {
+export interface PlayerProfile extends Omit<PlayerAttributes, 'positions'>, PlayerAbility, Timestamps {
   id: number;
   userId: number;
+  // 覆盖父接口：API 返回带优先级的位置对象数组
+  positions: PlayerPosition[];
   // 用户信息（已脱敏）
   phone: string;        // 脱敏手机号，如 "138****5678"
   nickname: string;

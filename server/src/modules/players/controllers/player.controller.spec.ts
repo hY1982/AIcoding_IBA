@@ -27,7 +27,10 @@ describe('PlayerController', () => {
     wingspan: 190,
     standingReach: 230,
     jumpingReach: 310,
-    positions: ['PG', 'SG'],
+    positions: [
+      { position: 'PG', priority: 1 },
+      { position: 'SG', priority: 2 },
+    ],
     regionCode: 'shenzhen_futian',
     baseAbilityScore: 62.5,
     matchAdjustValue: 0,

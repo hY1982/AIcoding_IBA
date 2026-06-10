@@ -101,12 +101,17 @@ describe('Auth Integration Tests', () => {
       }),
     };
 
+    const mockAbilityCalcService = {
+      calculateBaseAbility: jest.fn().mockReturnValue(62.5),
+    };
+
     authService = new AuthService(
       dataSource,
       jwtService,
       configService,
       redisService,
       mockSmsService as any,
+      mockAbilityCalcService as any,
     );
   });
 

@@ -17,6 +17,7 @@ import { PlayerPosition } from '@modules/players/entities/player-position.entity
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { hashForQuery } from '@common/utils/encrypt.util';
 import { RedisService } from '@common/services/redis.service';
+import { AbilityCalculationService } from '@modules/players/services/ability-calculation.service';
 import {
   PlayerRegisterDto,
   VenueManagerRegisterDto,
@@ -141,6 +142,12 @@ describe('AuthService', () => {
               requestId: 'mock-request-id',
               expiresIn: 300,
             }),
+          },
+        },
+        {
+          provide: AbilityCalculationService,
+          useValue: {
+            calculateBaseAbility: jest.fn().mockReturnValue(62.5),
           },
         },
       ],

@@ -156,8 +156,8 @@ export function ProfileScreen() {
         <Text style={styles.sectionTitle}>位置</Text>
         <View style={styles.positionsRow} accessibilityLabel="位置">
           {profile.positions.map((pos) => (
-            <View key={pos} style={styles.positionChip}>
-              <Text style={styles.positionChipText}>{POSITION_LABELS[pos]}</Text>
+            <View key={pos.position} style={styles.positionChip}>
+              <Text style={styles.positionChipText}>{POSITION_LABELS[pos.position]}</Text>
             </View>
           ))}
         </View>

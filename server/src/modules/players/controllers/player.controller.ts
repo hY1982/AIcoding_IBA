@@ -23,7 +23,7 @@ import { PlayerService } from '../services/player.service';
 import { ShootingService } from '../services/shooting.service';
 import { UpdatePlayerDto } from '../dto/update-player.dto';
 import { CreateShootingRecordDto } from '../dto/create-shooting-record.dto';
-import { PlayerProfile, ShootingStats, BasketballPosition } from '@shared/player';
+import { PlayerProfile, ShootingStats, PlayerPosition } from '@shared/player';
 import { PlayerShootingRecord } from '../entities/player-shooting-record.entity';
 import { AuthenticatedUser } from '@modules/auth/strategies/jwt.strategy';
 
@@ -48,7 +48,7 @@ class PlayerProfileResponse implements PlayerProfile {
   wingspan?: number;
   standingReach?: number;
   jumpingReach?: number;
-  positions!: BasketballPosition[];
+  positions!: PlayerPosition[];
   regionCode?: string;
   baseAbilityScore!: number;
   matchAdjustValue!: number;

@@ -14,6 +14,7 @@ import { User } from '@modules/users/entities/user.entity';
 import { Player } from '@modules/players/entities/player.entity';
 import { PlayerPosition } from '@modules/players/entities/player-position.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
+import { AbilityCalculationService } from '@modules/players/services/ability-calculation.service';
 import { hashForQuery } from '@common/utils/encrypt.util';
 import { maskPhone } from '@common/utils/privacy.util';
 import { RedisService } from '@common/services/redis.service';
@@ -59,6 +60,7 @@ export class AuthService {
     private readonly redisService: RedisService,
     @Inject(SMS_SERVICE_TOKEN)
     private readonly smsService: SmsService,
+    private readonly abilityCalcService: AbilityCalculationService,
   ) {}
 
   /**
@@ -365,6 +367,21 @@ export class AuthService {
     userId: number,
     dto: PlayerRegisterDto,
   ): Promise<void> {
+    // 计算基础能力值
+    const playerAttributes = {
+      age: dto.age,
+      basketballAge: dto.basketballAge,
+      gender: dto.gender,
+      height: dto.height,
+      weight: dto.weight,
+      wingspan: dto.wingspan,
+      standingReach: dto.standingReach,
+      jumpingReach: dto.jumpingReach,
+      positions: dto.positions || [],
+    };
+    const baseAbilityScore =
+      this.abilityCalcService.calculateBaseAbility(playerAttributes);
+
     const player = manager.create(Player, {
       userId,
       age: dto.age,
@@ -375,7 +392,7 @@ export class AuthService {
       wingspan: dto.wingspan ?? null,
       standingReach: dto.standingReach ?? null,
       jumpingReach: dto.jumpingReach ?? null,
-      baseAbilityScore: 0,
+      baseAbilityScore,
       matchAdjustValue: 0,
       regionCode: dto.regionCode || null,
     });
