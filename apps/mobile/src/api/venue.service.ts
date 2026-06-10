@@ -1,6 +1,6 @@
 import { apiClient } from './client';
-import type { VenueDetail, VenueListItem } from '@shared/venue';
-import type { ApiResponse } from '@shared/common';
+import type { VenueDetail, VenueListItem, VenueTimeSlot } from '@shared/venue';
+import type { ApiResponse, PaginatedResponse } from '@shared/common';
 
 export class VenueServiceError extends Error {
   constructor(message: string) {
@@ -17,6 +17,12 @@ function extractErrorMessage(error: unknown): string {
     }
   }
   return '网络错误，请稍后重试';
+}
+
+export interface GetVenuesParams {
+  page: number;
+  pageSize: number;
+  regionCode?: string;
 }
 
 export interface CreateVenueDto {
@@ -45,6 +51,36 @@ class VenueService {
   async createVenue(dto: CreateVenueDto): Promise<VenueDetail> {
     try {
       const response = await apiClient.post<ApiResponse<VenueDetail>>('/venues', dto);
+      return response.data.data;
+    } catch (error) {
+      const userMessage = extractErrorMessage(error);
+      throw new VenueServiceError(userMessage);
+    }
+  }
+
+  async getVenues(params: GetVenuesParams): Promise<PaginatedResponse<VenueListItem>> {
+    try {
+      const response = await apiClient.get<ApiResponse<PaginatedResponse<VenueListItem>>>(
+        '/venues',
+        {
+          params,
+        },
+      );
+      return response.data.data;
+    } catch (error) {
+      const userMessage = extractErrorMessage(error);
+      throw new VenueServiceError(userMessage);
+    }
+  }
+
+  async getVenueTimeSlots(venueId: number, slotDate?: string): Promise<VenueTimeSlot[]> {
+    try {
+      const response = await apiClient.get<ApiResponse<VenueTimeSlot[]>>(
+        `/venues/${venueId}/slots`,
+        {
+          params: slotDate ? { slotDate } : {},
+        },
+      );
       return response.data.data;
     } catch (error) {
       const userMessage = extractErrorMessage(error);

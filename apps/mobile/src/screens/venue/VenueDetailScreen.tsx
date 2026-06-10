@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,31 +9,60 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { venueService } from '@/api/venue.service';
-import type { VenueDetail } from '@shared/venue';
-import {
-  FLOOR_MATERIAL_LABELS,
-  COURT_TYPE_LABELS,
-  VENUE_STATUS_LABELS,
-} from '@shared/venue';
-import type { VenueDetailScreenNavigationProp, VenueDetailScreenRouteProp } from '@/navigation/types';
+import { useAppStore } from '@/stores';
+import type { VenueDetail, VenueTimeSlot } from '@shared/venue';
+import { FLOOR_MATERIAL_LABELS, COURT_TYPE_LABELS, VENUE_STATUS_LABELS } from '@shared/venue';
+import type {
+  VenueDetailScreenNavigationProp,
+  VenueDetailScreenRouteProp,
+} from '@/navigation/types';
+
+interface TimeSlotGroup {
+  date: string;
+  slots: VenueTimeSlot[];
+}
+
+function groupTimeSlotsByDate(slots: VenueTimeSlot[]): TimeSlotGroup[] {
+  const groups: Record<string, VenueTimeSlot[]> = {};
+  for (const slot of slots) {
+    if (!groups[slot.slotDate]) {
+      groups[slot.slotDate] = [];
+    }
+    groups[slot.slotDate].push(slot);
+  }
+  return Object.entries(groups)
+    .map(([date, slots]) => ({
+      date,
+      slots: slots.sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
 
 export function VenueDetailScreen() {
   const navigation = useNavigation<VenueDetailScreenNavigationProp>();
   const route = useRoute<VenueDetailScreenRouteProp>();
   const { venueId } = route.params;
+  const user = useAppStore((state) => state.user);
 
   const [venue, setVenue] = useState<VenueDetail | null>(null);
+  const [timeSlots, setTimeSlots] = useState<VenueTimeSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | undefined>();
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadVenue = useCallback(async () => {
+  const isManager = user?.userType === 'venue_manager';
+
+  const loadData = useCallback(async () => {
     try {
       setError(undefined);
-      const data = await venueService.getVenueDetail(venueId);
-      setVenue(data);
+      const [venueData, slotsData] = await Promise.all([
+        venueService.getVenueDetail(venueId),
+        venueService.getVenueTimeSlots(venueId),
+      ]);
+      setVenue(venueData);
+      setTimeSlots(slotsData);
     } catch (err) {
       const message = err instanceof Error ? err.message : '加载失败';
       setError(message);
@@ -43,16 +72,14 @@ export function VenueDetailScreen() {
     }
   }, [venueId]);
 
-  useFocusEffect(
-    useCallback(() => {
-      setIsLoading(true);
-      loadVenue();
-    }, [loadVenue])
-  );
+  useEffect(() => {
+    setIsLoading(true);
+    loadData();
+  }, [venueId, loadData]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadVenue();
+    loadData();
   };
 
   const handleEdit = () => {
@@ -62,26 +89,26 @@ export function VenueDetailScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      '确认删除',
-      `确定要删除场地 "${venue?.name}" 吗？此操作不可恢复。`,
-      [
-        { text: '取消', style: 'cancel' },
-        {
-          text: '删除',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await venueService.deleteVenue(venueId);
-              navigation.goBack();
-            } catch (err) {
-              const message = err instanceof Error ? err.message : '删除失败';
-              Alert.alert('删除失败', message);
-            }
-          },
+    Alert.alert('确认删除', `确定要删除场地 "${venue?.name}" 吗？此操作不可恢复。`, [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '删除',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await venueService.deleteVenue(venueId);
+            navigation.goBack();
+          } catch (err) {
+            const message = err instanceof Error ? err.message : '删除失败';
+            Alert.alert('删除失败', message);
+          }
         },
-      ]
-    );
+      },
+    ]);
+  };
+
+  const handleGoBack = () => {
+    navigation.goBack();
   };
 
   if (isLoading) {
@@ -97,7 +124,7 @@ export function VenueDetailScreen() {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
+        <TouchableOpacity style={styles.retryButton} onPress={onRefresh} accessibilityLabel="重试">
           <Text style={styles.retryButtonText}>重试</Text>
         </TouchableOpacity>
       </View>
@@ -112,24 +139,45 @@ export function VenueDetailScreen() {
     );
   }
 
-  const FacilityItem = ({ label, active }: { label: string; active?: boolean }) => (
-    <View style={[styles.facilityItem, active ? styles.facilityActive : styles.facilityInactive]}>
-      <Text style={active ? styles.facilityTextActive : styles.facilityText}>{label}</Text>
-    </View>
-  );
+  const groupedSlots = groupTimeSlotsByDate(timeSlots);
 
   return (
     <ScrollView
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      accessibilityLabel="场地详情滚动区"
     >
       {/* 头部信息 */}
       <View style={styles.header}>
         <Text style={styles.venueName}>{venue.name}</Text>
-        <View style={[styles.statusBadge, venue.status === 'active' ? styles.statusActive : styles.statusInactive]}>
+        <View
+          style={[
+            styles.statusBadge,
+            venue.status === 'active' ? styles.statusActive : styles.statusInactive,
+          ]}
+          accessibilityLabel="场地状态"
+        >
           <Text style={styles.statusBadgeText}>{VENUE_STATUS_LABELS[venue.status]}</Text>
         </View>
       </View>
+
+      {/* 评分信息 */}
+      {venue.ratingAvg !== undefined && (
+        <View style={styles.section} accessibilityLabel="评分信息">
+          <View style={styles.ratingRow}>
+            <Text style={styles.ratingStar}>
+              <Text>★ </Text>
+              <Text>{venue.ratingAvg}</Text>
+              <Text>分</Text>
+            </Text>
+            <Text style={styles.ratingCount}>
+              <Text>(</Text>
+              <Text>{venue.ratingCount || 0}</Text>
+              <Text>人评价)</Text>
+            </Text>
+          </View>
+        </View>
+      )}
 
       {/* 基本信息 */}
       <View style={styles.section}>
@@ -140,9 +188,7 @@ export function VenueDetailScreen() {
         {venue.floorMaterial && (
           <InfoRow label="地面材质" value={FLOOR_MATERIAL_LABELS[venue.floorMaterial]} />
         )}
-        {venue.courtType && (
-          <InfoRow label="场地类型" value={COURT_TYPE_LABELS[venue.courtType]} />
-        )}
+        {venue.courtType && <InfoRow label="场地类型" value={COURT_TYPE_LABELS[venue.courtType]} />}
         {venue.lighting && <InfoRow label="照明" value={venue.lighting} />}
         {venue.turnoverTime !== undefined && (
           <InfoRow label="翻场时间" value={`${venue.turnoverTime}分钟`} />
@@ -152,7 +198,7 @@ export function VenueDetailScreen() {
       {/* 配套设施 */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>配套设施</Text>
-        <View style={styles.facilityGrid}>
+        <View style={styles.facilityGrid} accessibilityLabel="配套设施">
           <FacilityItem label="通风" active={venue.ventilation} />
           <FacilityItem label="大风扇" active={venue.bigFan} />
           <FacilityItem label="空调" active={venue.airCondition} />
@@ -164,23 +210,71 @@ export function VenueDetailScreen() {
         </View>
       </View>
 
-      {/* 评分信息 */}
-      {venue.ratingAvg !== undefined && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>评分</Text>
-          <InfoRow label="平均评分" value={`${venue.ratingAvg}分`} />
-          <InfoRow label="评分人数" value={`${venue.ratingCount || 0}人`} />
-        </View>
-      )}
+      {/* 可预订时段 */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>可预订时段</Text>
+        {groupedSlots.length === 0 ? (
+          <Text style={styles.emptySlotsText}>暂无可用时段</Text>
+        ) : (
+          <View accessibilityLabel="时段列表">
+            {groupedSlots.map((group) => (
+              <View key={group.date} style={styles.dateGroup}>
+                <Text style={styles.dateLabel}>{group.date}</Text>
+                {group.slots.map((slot) => (
+                  <View
+                    key={slot.id}
+                    style={[styles.slotRow, slot.isBooked && styles.slotRowBooked]}
+                  >
+                    <Text style={styles.slotTime}>
+                      {slot.startTime} - {slot.endTime}
+                    </Text>
+                    <View style={styles.slotStatus}>
+                      {slot.isBooked ? (
+                        <Text style={styles.slotBooked} accessibilityLabel="时段-已预订">
+                          已预订
+                        </Text>
+                      ) : (
+                        <Text style={styles.slotAvailable} accessibilityLabel="时段-可预订">
+                          可预订
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
-      {/* 操作按钮 */}
+      {/* 操作按钮 - 根据角色显示不同内容 */}
       <View style={styles.buttonSection}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleEdit}>
-          <Text style={styles.primaryButtonText}>编辑场地</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.dangerButton} onPress={handleDelete}>
-          <Text style={styles.dangerButtonText}>删除场地</Text>
-        </TouchableOpacity>
+        {isManager ? (
+          <>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleEdit}
+              accessibilityLabel="编辑场地"
+            >
+              <Text style={styles.primaryButtonText}>编辑场地</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={handleDelete}
+              accessibilityLabel="删除场地"
+            >
+              <Text style={styles.dangerButtonText}>删除场地</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={handleGoBack}
+            accessibilityLabel="返回列表"
+          >
+            <Text style={styles.secondaryButtonText}>返回列表</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </ScrollView>
   );
@@ -190,7 +284,20 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={styles.infoValue} accessibilityLabel={`${label}值`}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function FacilityItem({ label, active }: { label: string; active?: boolean }) {
+  return (
+    <View
+      style={[styles.facilityItem, active ? styles.facilityActive : styles.facilityInactive]}
+      accessibilityLabel={`设施-${label}-${active ? '有' : '无'}`}
+    >
+      <Text style={active ? styles.facilityTextActive : styles.facilityText}>{label}</Text>
     </View>
   );
 }
@@ -264,6 +371,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingStar: {
+    fontSize: 16,
+    color: '#f39c12',
+    fontWeight: 'bold',
+  },
+  ratingCount: {
+    fontSize: 13,
+    color: '#999',
+    marginLeft: 8,
+  },
   section: {
     backgroundColor: '#fff',
     marginTop: 12,
@@ -319,6 +440,58 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
+  dateGroup: {
+    marginBottom: 16,
+  },
+  dateLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  slotRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  slotRowBooked: {
+    backgroundColor: '#fff0f0',
+  },
+  slotTime: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  slotStatus: {
+    minWidth: 60,
+    alignItems: 'flex-end',
+  },
+  slotAvailable: {
+    fontSize: 13,
+    color: '#27ae60',
+    fontWeight: '600',
+  },
+  slotBooked: {
+    fontSize: 13,
+    color: '#e74c3c',
+    fontWeight: '600',
+  },
+  emptySlotsText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
   buttonSection: {
     padding: 16,
     gap: 12,
@@ -333,6 +506,19 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3498db',
+  },
+  secondaryButtonText: {
+    color: '#3498db',
     fontSize: 16,
     fontWeight: '600',
   },
