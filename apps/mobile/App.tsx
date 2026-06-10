@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { registerRootComponent } from 'expo';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -12,12 +12,21 @@ import { VenueManagerRegisterScreen } from './src/screens/auth/VenueManagerRegis
 import { ProfileScreen } from './src/screens/player/ProfileScreen';
 import { EditProfileScreen } from './src/screens/player/EditProfileScreen';
 import { AbilityScreenContainer } from './src/screens/player/AbilityScreen';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-function HomeScreen() {
+function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<RootStackParamList> }) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>I Basketball</Text>
       <Text style={styles.subtitle}>Find your perfect game</Text>
+      <TouchableOpacity
+        style={styles.profileButton}
+        onPress={() => navigation.navigate('Profile')}
+        accessibilityLabel="我的资料"
+        accessibilityRole="button"
+      >
+        <Text style={styles.profileButtonText}>我的资料</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -96,5 +105,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     marginTop: 8,
+  },
+  profileButton: {
+    marginTop: 32,
+    backgroundColor: '#3498db',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  profileButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
