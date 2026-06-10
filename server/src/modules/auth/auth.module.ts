@@ -12,11 +12,13 @@ import { User } from '@modules/users/entities/user.entity';
 import { Player } from '@modules/players/entities/player.entity';
 import { PlayerPosition } from '@modules/players/entities/player-position.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
+import { PlayersModule } from '@modules/players/players.module';
 import { SMS_SERVICE_TOKEN } from './interfaces/sms-service.interface';
 
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
+    PlayersModule,
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => {
         const secret = configService.get<string>('JWT_SECRET');
