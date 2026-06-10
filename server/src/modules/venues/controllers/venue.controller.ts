@@ -151,7 +151,11 @@ export class VenueController {
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateVenueDto,
   ): Promise<VenueDetail> {
-    return this.venueService.update(id, req.user.userId, dto);
+    const profile = await this.venueManagerProfileService.findByUserId(req.user.userId);
+    if (!profile) {
+      throw new NotFoundException('场地方资料不存在');
+    }
+    return this.venueService.update(id, profile.id, dto);
   }
 
   /**
@@ -169,6 +173,10 @@ export class VenueController {
     @Req() req: RequestWithUser,
     @Param('id', ParseIntPipe) id: number,
   ): Promise<void> {
-    return this.venueService.remove(id, req.user.userId);
+    const profile = await this.venueManagerProfileService.findByUserId(req.user.userId);
+    if (!profile) {
+      throw new NotFoundException('场地方资料不存在');
+    }
+    return this.venueService.remove(id, profile.id);
   }
 }
