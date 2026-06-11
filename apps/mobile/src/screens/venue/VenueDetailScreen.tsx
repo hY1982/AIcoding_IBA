@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { venueService } from '@/api/venue.service';
@@ -99,22 +100,30 @@ export function VenueDetailScreen() {
   };
 
   const handleDelete = () => {
-    Alert.alert('确认删除', `确定要删除场地 "${venue?.name}" 吗？此操作不可恢复。`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await venueService.deleteVenue(venueId);
-            navigation.goBack();
-          } catch (err) {
-            const message = err instanceof Error ? err.message : '删除失败';
-            Alert.alert('删除失败', message);
-          }
-        },
-      },
-    ]);
+    console.log('[VenueDetail] handleDelete called, venueId:', venueId, 'isManager:', isManager);
+    const doDelete = async () => {
+      console.log('[VenueDetail] delete confirmed');
+      try {
+        await venueService.deleteVenue(venueId);
+        console.log('[VenueDetail] delete success');
+        navigation.goBack();
+      } catch (err) {
+        console.error('[VenueDetail] delete error:', err);
+        const message = err instanceof Error ? err.message : '删除失败';
+        Alert.alert('删除失败', message);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(`确定要删除场地 "${venue?.name}" 吗？此操作不可恢复。`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('确认删除', `确定要删除场地 "${venue?.name}" 吗？此操作不可恢复。`, [
+        { text: '取消', style: 'cancel' },
+        { text: '删除', style: 'destructive', onPress: doDelete },
+      ]);
+    }
   };
 
   const handleGoBack = () => {

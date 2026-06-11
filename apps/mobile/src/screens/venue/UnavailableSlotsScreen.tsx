@@ -144,22 +144,30 @@ export function UnavailableSlotsScreen() {
   };
 
   const handleDelete = (slot: VenueUnavailableSlot) => {
-    Alert.alert('确认删除', `确定要删除 ${slot.startTime}-${slot.endTime} 的不可预订时段吗？`, [
-      { text: '取消', style: 'cancel' },
-      {
-        text: '删除',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await venueService.deleteUnavailableSlot(venueId, slot.id);
-            await loadSlots();
-          } catch (err) {
-            const message = err instanceof Error ? err.message : '删除失败';
-            Alert.alert('删除失败', message);
-          }
-        },
-      },
-    ]);
+    console.log('[UnavailableSlots] handleDelete called, slot:', slot, 'venueId:', venueId);
+    const doDelete = async () => {
+      console.log('[UnavailableSlots] delete confirmed');
+      try {
+        await venueService.deleteUnavailableSlot(venueId, slot.id);
+        console.log('[UnavailableSlots] delete success');
+        await loadSlots();
+      } catch (err) {
+        console.error('[UnavailableSlots] delete error:', err);
+        const message = err instanceof Error ? err.message : '删除失败';
+        Alert.alert('删除失败', message);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(`确定要删除 ${slot.startTime}-${slot.endTime} 的不可预订时段吗？`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('确认删除', `确定要删除 ${slot.startTime}-${slot.endTime} 的不可预订时段吗？`, [
+        { text: '取消', style: 'cancel' },
+        { text: '删除', style: 'destructive', onPress: doDelete },
+      ]);
+    }
   };
 
   return (

@@ -22,7 +22,6 @@ import { Venue } from './venue.entity';
  */
 @Entity('venue_unavailable_slots')
 @Index(['venueId', 'slotDate'])
-@Unique(['venueId', 'slotDate', 'startTime'])
 export class VenueUnavailableSlot {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id!: number;
