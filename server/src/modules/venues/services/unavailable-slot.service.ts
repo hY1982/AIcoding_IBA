@@ -87,9 +87,11 @@ export class UnavailableSlotService {
       for (const slot of slots) {
         const effectiveEndTime = this.addMinutes(slot.endTime, turnoverTime);
         const endTimeMinutes = this.parseMinutes(slot.endTime);
-        const effectiveEndMinutes = this.parseMinutes(effectiveEndTime);
+        // 使用 parseTotalMinutes 正确判断跨天：effectiveEndTime 的绝对分钟数是否超过 endTime 的绝对分钟数
+        const effectiveEndMinutes = this.parseTotalMinutes(effectiveEndTime);
+        const endTimeAbsoluteMinutes = this.parseTotalMinutes(slot.endTime);
 
-        if (effectiveEndMinutes > endTimeMinutes) {
+        if (effectiveEndMinutes > endTimeAbsoluteMinutes) {
           // 未跨天（effectiveEndTime 在同一天内）
           entities.push(
             manager.create(VenueUnavailableSlot, {
@@ -468,6 +470,14 @@ export class UnavailableSlotService {
     const newH = Math.floor(totalMinutes / 60) % 24;
     const newM = totalMinutes % 60;
     return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  /**
+   * 将时间转换为从当天 00:00 开始的总分钟数（支持跨天，可能超过 1440）
+   */
+  private parseTotalMinutes(time: string, baseMinutes: number = 0): number {
+    const [h, m] = time.split(':').map(Number);
+    return baseMinutes + h * 60 + m;
   }
 
   /**
