@@ -1,4 +1,5 @@
-import { IsString, IsOptional, Matches, IsNotEmpty } from 'class-validator';
+import { IsString, IsOptional, Matches, IsNotEmpty, IsArray, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateUnavailableSlotDto {
@@ -28,5 +29,8 @@ export class CreateUnavailableSlotDto {
 
 export class CreateUnavailableSlotsDto {
   @ApiProperty({ description: '不可预订时段列表', type: [CreateUnavailableSlotDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateUnavailableSlotDto)
   slots!: CreateUnavailableSlotDto[];
 }
