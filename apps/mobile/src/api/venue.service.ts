@@ -172,11 +172,11 @@ class VenueService {
     dto: { slotDate: string; startTime: string; endTime: string; reason?: string },
   ): Promise<VenueUnavailableSlot> {
     try {
-      const response = await apiClient.post<ApiResponse<VenueUnavailableSlot>>(
+      const response = await apiClient.post<ApiResponse<VenueUnavailableSlot[]>>(
         `/venues/${venueId}/unavailable-slots`,
-        dto,
+        { slots: [dto] },
       );
-      return response.data.data;
+      return response.data.data[0];
     } catch (error) {
       const userMessage = extractErrorMessage(error);
       throw new VenueServiceError(userMessage);
