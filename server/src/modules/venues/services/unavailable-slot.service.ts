@@ -85,13 +85,12 @@ export class UnavailableSlotService {
       const entities: VenueUnavailableSlot[] = [];
 
       for (const slot of slots) {
-        const effectiveEndTime = this.addMinutes(slot.endTime, turnoverTime);
-        const endTimeMinutes = this.parseMinutes(slot.endTime);
-        // 使用 parseTotalMinutes 正确判断跨天：effectiveEndTime 的绝对分钟数是否超过 endTime 的绝对分钟数
-        const effectiveEndMinutes = this.parseTotalMinutes(effectiveEndTime);
-        const endTimeAbsoluteMinutes = this.parseTotalMinutes(slot.endTime);
+        const { time: effectiveEndTime, days: overflowDays } = this.addMinutesWithOverflow(
+          slot.endTime,
+          turnoverTime,
+        );
 
-        if (effectiveEndMinutes > endTimeAbsoluteMinutes) {
+        if (overflowDays === 0) {
           // 未跨天（effectiveEndTime 在同一天内）
           entities.push(
             manager.create(VenueUnavailableSlot, {
@@ -103,7 +102,7 @@ export class UnavailableSlotService {
             }),
           );
         } else {
-          // 跨天：拆分为两条记录
+          // 跨天：拆分为多条记录（支持跨多天）
           // 当天部分
           entities.push(
             manager.create(VenueUnavailableSlot, {
@@ -114,12 +113,25 @@ export class UnavailableSlotService {
               reason: slot.reason ?? null,
             }),
           );
-          // 次日部分
-          const nextDate = this.addDays(slot.slotDate, 1);
+          // 中间完整天数
+          for (let d = 1; d < overflowDays; d++) {
+            const midDate = this.addDays(slot.slotDate, d);
+            entities.push(
+              manager.create(VenueUnavailableSlot, {
+                venueId,
+                slotDate: midDate,
+                startTime: '00:00:00',
+                endTime: '23:59:59',
+                reason: slot.reason ?? null,
+              }),
+            );
+          }
+          // 最后一天的剩余部分
+          const lastDate = this.addDays(slot.slotDate, overflowDays);
           entities.push(
             manager.create(VenueUnavailableSlot, {
               venueId,
-              slotDate: nextDate,
+              slotDate: lastDate,
               startTime: '00:00:00',
               endTime: effectiveEndTime,
               reason: slot.reason ?? null,
@@ -473,11 +485,19 @@ export class UnavailableSlotService {
   }
 
   /**
-   * 将时间转换为从当天 00:00 开始的总分钟数（支持跨天，可能超过 1440）
+   * 将 HH:mm:ss 时间加上若干分钟，返回结果和是否跨天
    */
-  private parseTotalMinutes(time: string, baseMinutes: number = 0): number {
-    const [h, m] = time.split(':').map(Number);
-    return baseMinutes + h * 60 + m;
+  private addMinutesWithOverflow(time: string, minutes: number): { time: string; days: number } {
+    const [h, m, s = 0] = time.split(':').map(Number);
+    const totalMinutes = h * 60 + m + minutes;
+    const days = Math.floor(totalMinutes / 1440);
+    const remainingMinutes = totalMinutes % 1440;
+    const newH = Math.floor(remainingMinutes / 60);
+    const newM = remainingMinutes % 60;
+    return {
+      time: `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:${String(s).padStart(2, '0')}`,
+      days,
+    };
   }
 
   /**
