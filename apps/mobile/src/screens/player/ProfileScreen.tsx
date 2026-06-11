@@ -121,6 +121,43 @@ export function ProfileScreen() {
         </Text>
       </View>
 
+      <View style={styles.buttonSection}>
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={handleEdit}
+          accessibilityLabel="编辑资料"
+          accessibilityRole="button"
+        >
+          <Text style={styles.primaryButtonText}>编辑资料</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>能力值</Text>
+        <View style={styles.abilityRow}>
+          <View style={styles.abilityItem}>
+            <Text style={styles.abilityLabel} accessibilityLabel="基础能力值">
+              基础能力值
+            </Text>
+            <Text style={styles.abilityValue}>{profile.baseAbilityScore}</Text>
+          </View>
+          <View style={styles.abilityItem}>
+            <Text style={styles.abilityLabel} accessibilityLabel="综合能力值">
+              综合能力值
+            </Text>
+            <Text style={styles.abilityValue}>{profile.totalAbilityScore}</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={[styles.secondaryButton, { marginTop: 16 }]}
+          onPress={handleViewAbility}
+          accessibilityLabel="查看能力值详情"
+          accessibilityRole="button"
+        >
+          <Text style={styles.secondaryButtonText}>查看能力值详情</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>基本信息</Text>
         <InfoRow label="手机号" value={profile.phone} />
@@ -154,44 +191,6 @@ export function ProfileScreen() {
             </View>
           ))}
         </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>能力值</Text>
-        <View style={styles.abilityRow}>
-          <View style={styles.abilityItem}>
-            <Text style={styles.abilityLabel} accessibilityLabel="基础能力值">
-              基础能力值
-            </Text>
-            <Text style={styles.abilityValue}>{profile.baseAbilityScore}</Text>
-          </View>
-          <View style={styles.abilityItem}>
-            <Text style={styles.abilityLabel} accessibilityLabel="综合能力值">
-              综合能力值
-            </Text>
-            <Text style={styles.abilityValue}>{profile.totalAbilityScore}</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.buttonSection}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={handleEdit}
-          accessibilityLabel="编辑资料"
-          accessibilityRole="button"
-        >
-          <Text style={styles.primaryButtonText}>编辑资料</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleViewAbility}
-          accessibilityLabel="查看能力值详情"
-          accessibilityRole="button"
-        >
-          <Text style={styles.secondaryButtonText}>查看能力值详情</Text>
-        </TouchableOpacity>
       </View>
     </ScrollView>
   );
