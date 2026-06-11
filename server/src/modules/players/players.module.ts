@@ -13,6 +13,7 @@ import { DefaultWeightsProvider } from './providers/default-weights.provider';
 import { SystemParamWeightsProvider } from './providers/system-param-weights.provider';
 import { ABILITY_WEIGHTS_PROVIDER } from './interfaces/ability-weights.provider';
 import { PlayerController } from './controllers/player.controller';
+import { PlayerAgeScheduler } from './services/player-age.scheduler';
 
 /**
  * 球员模块
@@ -37,6 +38,7 @@ import { PlayerController } from './controllers/player.controller';
     ShootingService,
     AbilityCalculationService,
     DefaultWeightsProvider,
+    PlayerAgeScheduler,
     {
       provide: ABILITY_WEIGHTS_PROVIDER,
       useClass: SystemParamWeightsProvider,

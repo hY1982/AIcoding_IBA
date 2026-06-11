@@ -152,8 +152,8 @@ describe('Auth Integration Tests', () => {
         password: 'Test1234',
         nickname: 'TestPlayer',
         userType: 'player',
-        age: 25,
-        basketballAge: 5,
+        birthDate: '1999-06-10',
+        startPlayingDate: '2019-03',
         gender: 'male',
         height: 180,
       };
@@ -199,8 +199,8 @@ describe('Auth Integration Tests', () => {
         password: 'Test1234',
         nickname: 'TestPlayer',
         userType: 'player',
-        age: 25,
-        basketballAge: 5,
+        birthDate: '1999-06-10',
+        startPlayingDate: '2019-03',
         gender: 'male',
         height: 180,
       };
@@ -224,8 +224,8 @@ describe('Auth Integration Tests', () => {
         password,
         nickname: 'TestPlayer',
         userType: 'player',
-        age: 25,
-        basketballAge: 5,
+        birthDate: '1999-06-10',
+        startPlayingDate: '2019-03',
         gender: 'male',
         height: 180,
       };
@@ -288,8 +288,8 @@ describe('Auth Integration Tests', () => {
         password: 'Test1234',
         nickname: 'TestPlayer',
         userType: 'player',
-        age: 25,
-        basketballAge: 5,
+        birthDate: '1999-06-10',
+        startPlayingDate: '2019-03',
         gender: 'male',
         height: 180,
       };

@@ -9,6 +9,7 @@ import {
   Req,
   NotFoundException,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
@@ -191,5 +192,37 @@ export class PlayerController {
   ): Promise<ShootingStats[]> {
     const profile = await this.getCurrentPlayer(req);
     return this.shootingService.getShootingStats(profile.id);
+  }
+
+  /**
+   * POST /api/v1/players/admin/recalculate-ages
+   * 手动触发年龄/球龄重算（管理员接口）
+   */
+  @Post('admin/recalculate-ages')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: '手动触发年龄/球龄重算（管理员）' })
+  @ApiResponse({
+    status: 200,
+    description: '重算完成，返回统计信息',
+    schema: {
+      type: 'object',
+      properties: {
+        updated: { type: 'number' },
+        recalculated: { type: 'number' },
+        total: { type: 'number' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: '未登录或Token无效' })
+  @ApiResponse({ status: 403, description: '权限不足' })
+  async recalculateAges(
+    @Req() req: RequestWithUser,
+  ): Promise<{ updated: number; recalculated: number; total: number }> {
+    // MVP 阶段简化权限检查：仅允许 userId=1 的管理员触发
+    // TODO: 后续接入 RBAC 权限系统
+    if (req.user.userId !== 1) {
+      throw new ForbiddenException('权限不足，仅管理员可触发');
+    }
+    return this.playerService.recalculateAllAges();
   }
 }

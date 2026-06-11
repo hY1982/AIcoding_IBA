@@ -68,17 +68,13 @@ export class PlayerRegisterDto extends BaseRegisterDto {
   @IsEnum(USER_TYPES)
   userType: UserType = 'player';
 
-  @IsInt()
-  @Min(1)
-  @Max(120)
-  @Type(() => Number)
-  age!: number;
+  @IsString()
+  @IsNotEmpty()
+  birthDate!: string; // YYYY-MM-DD
 
-  @IsInt()
-  @Min(0)
-  @Max(100)
-  @Type(() => Number)
-  basketballAge!: number;
+  @IsString()
+  @IsNotEmpty()
+  startPlayingDate!: string; // YYYY-MM
 
   @IsEnum(GENDERS)
   gender!: Gender;
@@ -180,19 +176,13 @@ export class RegisterDto {
   userType!: UserType;
 
   // Player fields (optional at validation level, checked in service)
-  @IsInt()
-  @Min(1)
-  @Max(120)
-  @Type(() => Number)
+  @IsString()
   @IsOptional()
-  age?: number;
+  birthDate?: string; // YYYY-MM-DD
 
-  @IsInt()
-  @Min(0)
-  @Max(100)
-  @Type(() => Number)
+  @IsString()
   @IsOptional()
-  basketballAge?: number;
+  startPlayingDate?: string; // YYYY-MM
 
   @IsEnum(GENDERS)
   @IsOptional()

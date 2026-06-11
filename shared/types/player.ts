@@ -29,6 +29,8 @@ export interface PlayerPosition {
 export interface PlayerAttributes {
   age: number;
   basketballAge: number; // 球龄，年
+  birthDate?: string; // 生日 YYYY-MM-DD（原始事实数据）
+  startPlayingDate?: string; // 开始打球年月 YYYY-MM（原始事实数据）
   gender: Gender;
   height: number; // cm
   weight?: number; // kg

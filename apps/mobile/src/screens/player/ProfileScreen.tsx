@@ -126,7 +126,9 @@ export function ProfileScreen() {
         <InfoRow label="手机号" value={profile.phone} />
         <InfoRow label="真实姓名" value={profile.realName} />
         <InfoRow label="性别" value={GENDER_LABELS[profile.gender]} />
+        <InfoRow label="生日" value={profile.birthDate || '未设置'} />
         <InfoRow label="年龄" value={`${profile.age}岁`} />
+        <InfoRow label="开始打球" value={profile.startPlayingDate || '未设置'} />
         <InfoRow label="球龄" value={`${profile.basketballAge}年`} />
       </View>
 

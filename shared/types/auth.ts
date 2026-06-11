@@ -11,8 +11,8 @@ interface BaseRegisterDto {
 
 export interface PlayerRegisterDto extends BaseRegisterDto {
   userType: 'player';
-  age: number;
-  basketballAge: number;
+  birthDate: string; // 生日 YYYY-MM-DD
+  startPlayingDate: string; // 开始打球年月 YYYY-MM
   gender: Gender;
   height: number;
   weight?: number;

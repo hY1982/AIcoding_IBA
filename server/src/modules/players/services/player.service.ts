@@ -20,14 +20,18 @@ import {
   PlayerPosition as PlayerPositionType,
 } from '@shared/player';
 import { maskPhone, maskRealName } from '@common/utils/privacy.util';
+import {
+  calculateAge,
+  calculateBasketballAge,
+} from '../utils/age-calculation.util';
 
 /**
  * 影响基础能力值计算的字段集合
  * 当 UpdatePlayerDto 中包含这些字段的任意一个时，需要重新计算 baseAbilityScore
  */
 const ABILITY_RELATED_FIELDS: (keyof UpdatePlayerDto)[] = [
-  'age',
-  'basketballAge',
+  'birthDate',
+  'startPlayingDate',
   'gender',
   'height',
   'weight',
@@ -91,8 +95,12 @@ export class PlayerService {
       throw new ConflictException('该用户已存在球员资料');
     }
 
+    // 根据日期计算年龄和球龄
+    const age = calculateAge(dto.birthDate);
+    const basketballAge = calculateBasketballAge(dto.startPlayingDate);
+
     // 计算基础能力值
-    const playerAttributes = this.buildPlayerAttributesFromDto(dto);
+    const playerAttributes = this.buildPlayerAttributesFromDto(dto, age, basketballAge);
     const baseAbilityScore =
       this.abilityCalcService.calculateBaseAbility(playerAttributes);
 
@@ -101,8 +109,10 @@ export class PlayerService {
       // 创建 Player 记录
       const player = manager.create(Player, {
         userId,
-        age: dto.age,
-        basketballAge: dto.basketballAge,
+        age,
+        basketballAge,
+        birthDate: dto.birthDate,
+        startPlayingDate: dto.startPlayingDate + '-01', // YYYY-MM → YYYY-MM-01
         gender: dto.gender,
         height: dto.height,
         weight: dto.weight ?? null,
@@ -131,7 +141,7 @@ export class PlayerService {
     });
 
     this.logger.log(
-      `球员创建成功: playerId=${savedPlayer.id}, userId=${userId}, baseAbilityScore=${baseAbilityScore}`,
+      `球员创建成功: playerId=${savedPlayer.id}, userId=${userId}, age=${age}, basketballAge=${basketballAge}, baseAbilityScore=${baseAbilityScore}`,
     );
 
     // 返回完整的脱敏资料
@@ -176,10 +186,22 @@ export class PlayerService {
     const shouldRecalculate = this.shouldRecalculateAbility(dto);
     let baseAbilityScore = existingPlayer.baseAbilityScore;
 
+    // 如果日期变更，重新计算年龄和球龄
+    let newAge = existingPlayer.age;
+    let newBasketballAge = existingPlayer.basketballAge;
+    if (dto.birthDate !== undefined) {
+      newAge = calculateAge(dto.birthDate);
+    }
+    if (dto.startPlayingDate !== undefined) {
+      newBasketballAge = calculateBasketballAge(dto.startPlayingDate);
+    }
+
     if (shouldRecalculate) {
       const mergedAttributes = this.buildPlayerAttributesForUpdate(
         existingPlayer,
         dto,
+        newAge,
+        newBasketballAge,
       );
       baseAbilityScore =
         this.abilityCalcService.calculateBaseAbility(mergedAttributes);
@@ -191,10 +213,27 @@ export class PlayerService {
       // 注意：positions 是 PlayerPosition[] 关系属性，需单独处理，不能从 DTO 直接 spread
       const { positions: _positions, ...playerFields } = dto;
       const updateData: Partial<Player> = {
-        ...playerFields,
+        age: newAge,
+        basketballAge: newBasketballAge,
         baseAbilityScore,
         // matchAdjustValue 始终不变，不在这里设置即可保持原值
       };
+      // 复制其他字段（排除日期字段，单独处理类型转换）
+      if (dto.gender !== undefined) updateData.gender = dto.gender;
+      if (dto.height !== undefined) updateData.height = dto.height;
+      if (dto.weight !== undefined) updateData.weight = dto.weight ?? null;
+      if (dto.wingspan !== undefined) updateData.wingspan = dto.wingspan ?? null;
+      if (dto.standingReach !== undefined) updateData.standingReach = dto.standingReach ?? null;
+      if (dto.jumpingReach !== undefined) updateData.jumpingReach = dto.jumpingReach ?? null;
+      if (dto.regionCode !== undefined) updateData.regionCode = dto.regionCode || null;
+      // 如果 birthDate 变更
+      if (dto.birthDate !== undefined) {
+        (updateData as any).birthDate = dto.birthDate;
+      }
+      // 如果 startPlayingDate 变更，补全为完整日期格式
+      if (dto.startPlayingDate !== undefined) {
+        (updateData as any).startPlayingDate = dto.startPlayingDate + '-01';
+      }
 
       // 清理 undefined 字段，避免覆盖现有值
       Object.keys(updateData).forEach((key) => {
@@ -349,10 +388,16 @@ export class PlayerService {
   /**
    * 从 CreatePlayerDto 构建 PlayerAttributes（用于能力值计算）
    */
-  private buildPlayerAttributesFromDto(dto: CreatePlayerDto): PlayerAttributes {
+  private buildPlayerAttributesFromDto(
+    dto: CreatePlayerDto,
+    age: number,
+    basketballAge: number,
+  ): PlayerAttributes {
     return {
-      age: dto.age,
-      basketballAge: dto.basketballAge,
+      age,
+      basketballAge,
+      birthDate: dto.birthDate,
+      startPlayingDate: dto.startPlayingDate,
       gender: dto.gender,
       height: dto.height,
       weight: dto.weight,
@@ -369,10 +414,18 @@ export class PlayerService {
   private buildPlayerAttributesForUpdate(
     existing: Player,
     dto: UpdatePlayerDto,
+    age: number,
+    basketballAge: number,
   ): PlayerAttributes {
     return {
-      age: dto.age ?? existing.age,
-      basketballAge: dto.basketballAge ?? existing.basketballAge,
+      age,
+      basketballAge,
+      birthDate: dto.birthDate ?? existing.birthDate?.toISOString().split('T')[0],
+      startPlayingDate:
+        dto.startPlayingDate ??
+        (existing.startPlayingDate
+          ? existing.startPlayingDate.toISOString().slice(0, 7)
+          : undefined),
       gender: dto.gender ?? existing.gender,
       height: dto.height ?? existing.height,
       weight: dto.weight ?? existing.weight ?? undefined,
@@ -402,6 +455,12 @@ export class PlayerService {
       userId: player.userId,
       age: player.age,
       basketballAge: player.basketballAge,
+      birthDate: player.birthDate
+        ? (player.birthDate as Date).toISOString().split('T')[0]
+        : undefined,
+      startPlayingDate: player.startPlayingDate
+        ? (player.startPlayingDate as Date).toISOString().slice(0, 7)
+        : undefined,
       gender: player.gender,
       height: player.height,
       weight: player.weight ?? undefined,
@@ -425,5 +484,94 @@ export class PlayerService {
       createdAt: player.createdAt.toISOString(),
       updatedAt: player.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * 分批重算所有球员的年龄和球龄
+   *
+   * 使用基于 id 范围的游标分页，每批 1000 条，独立事务。
+   * 当年龄/球龄变化时，自动触发基础能力值重算。
+   *
+   * TODO(P3): 当球员规模增长时，可将此任务提交到 BullMQ 队列，
+   * 由 Worker 分批消费，避免阻塞主线程。
+   *
+   * @returns 重算统计信息
+   */
+  async recalculateAllAges(): Promise<{
+    updated: number;
+    recalculated: number;
+    total: number;
+  }> {
+    const BATCH_SIZE = 1000;
+    let updated = 0;
+    let recalculated = 0;
+    let total = 0;
+    let lastId = 0;
+
+    const today = new Date();
+
+    while (true) {
+      // 基于 id 范围的游标分页，避免 OFFSET 性能问题
+      const batch = await this.playerRepo.find({
+        where: { id: { $gt: lastId } as any },
+        order: { id: 'ASC' },
+        take: BATCH_SIZE,
+      });
+
+      if (batch.length === 0) break;
+
+      total += batch.length;
+      lastId = batch[batch.length - 1].id;
+
+      for (const player of batch) {
+        if (!player.birthDate || !player.startPlayingDate) {
+          continue;
+        }
+
+        const newAge = calculateAge(player.birthDate, today);
+        const newBasketballAge = calculateBasketballAge(
+          player.startPlayingDate,
+          today,
+        );
+
+        const ageChanged = newAge !== player.age;
+        const basketballAgeChanged = newBasketballAge !== player.basketballAge;
+
+        if (ageChanged || basketballAgeChanged) {
+          const playerAttributes: PlayerAttributes = {
+            age: newAge,
+            basketballAge: newBasketballAge,
+            birthDate: player.birthDate.toISOString().split('T')[0],
+            startPlayingDate: player.startPlayingDate.toISOString().slice(0, 7),
+            gender: player.gender,
+            height: player.height,
+            weight: player.weight ?? undefined,
+            wingspan: player.wingspan ?? undefined,
+            standingReach: player.standingReach ?? undefined,
+            jumpingReach: player.jumpingReach ?? undefined,
+            positions: [], // 位置不影响能力值计算中的 age/basketballAge
+          };
+          const newBaseAbilityScore =
+            this.abilityCalcService.calculateBaseAbility(playerAttributes);
+
+          await this.playerRepo.update(player.id, {
+            age: newAge,
+            basketballAge: newBasketballAge,
+            baseAbilityScore: newBaseAbilityScore,
+          });
+
+          updated++;
+          if (newBaseAbilityScore !== player.baseAbilityScore) {
+            recalculated++;
+          }
+        }
+      }
+    }
+
+    this.logger.log(
+      `年龄/球龄重算完成: total=${total}, updated=${updated}, recalculated=${recalculated}`,
+    );
+
+    return { updated, recalculated, total };
   }
 }

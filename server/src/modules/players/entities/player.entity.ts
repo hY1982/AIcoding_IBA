@@ -47,6 +47,30 @@ export class Player {
   basketballAge!: number;
 
   @Column({
+    name: 'birth_date',
+    type: 'date',
+    nullable: true,
+    transformer: {
+      to: (value: Date | string | null) => value,
+      from: (value: Date | string | null) =>
+        value === null ? null : typeof value === 'string' ? new Date(value + 'T00:00:00') : value,
+    },
+  })
+  birthDate!: Date | null;
+
+  @Column({
+    name: 'start_playing_date',
+    type: 'date',
+    nullable: true,
+    transformer: {
+      to: (value: Date | string | null) => value,
+      from: (value: Date | string | null) =>
+        value === null ? null : typeof value === 'string' ? new Date(value + 'T00:00:00') : value,
+    },
+  })
+  startPlayingDate!: Date | null;
+
+  @Column({
     type: 'enum',
     enum: GENDERS,
     nullable: false,

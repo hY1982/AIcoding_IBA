@@ -61,6 +61,8 @@ function createMockPlayer(overrides: Partial<Player> = {}): Player {
     user: {} as any,
     age: 25,
     basketballAge: 5,
+    birthDate: null,
+    startPlayingDate: null,
     gender: 'male',
     height: 180,
     weight: 75,

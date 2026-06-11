@@ -42,8 +42,8 @@ describe('PlayerRegisterScreen', () => {
   it('should render all input fields and register button', () => {
     render(<PlayerRegisterScreen />);
 
-    expect(screen.getByLabelText('年龄输入框')).toBeTruthy();
-    expect(screen.getByLabelText('球龄输入框')).toBeTruthy();
+    expect(screen.getByLabelText('生日输入框')).toBeTruthy();
+    expect(screen.getByLabelText('开始打球年月输入框')).toBeTruthy();
     expect(screen.getByLabelText('男')).toBeTruthy();
     expect(screen.getByLabelText('女')).toBeTruthy();
     expect(screen.getByLabelText('身高输入框')).toBeTruthy();
@@ -55,13 +55,13 @@ describe('PlayerRegisterScreen', () => {
   it('should allow typing in numeric fields', () => {
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '25');
-    fireEvent.changeText(screen.getByLabelText('球龄输入框'), '5');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-06-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-03');
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '180');
     fireEvent.changeText(screen.getByLabelText('体重输入框'), '75');
 
-    expect(screen.getByLabelText('年龄输入框').props.value).toBe('25');
-    expect(screen.getByLabelText('球龄输入框').props.value).toBe('5');
+    expect(screen.getByLabelText('生日输入框').props.value).toBe('1999-06-10');
+    expect(screen.getByLabelText('开始打球年月输入框').props.value).toBe('2019-03');
     expect(screen.getByLabelText('身高输入框').props.value).toBe('180');
     expect(screen.getByLabelText('体重输入框').props.value).toBe('75');
   });
@@ -95,10 +95,10 @@ describe('PlayerRegisterScreen', () => {
   it('should show validation error for invalid age', () => {
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '0');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), 'invalid');
     fireEvent.press(screen.getByLabelText('注册'));
 
-    expect(screen.getByText('年龄必须在1-120之间')).toBeTruthy();
+    expect(screen.getByText('生日格式不正确，应为 YYYY-MM-DD')).toBeTruthy();
   });
 
   it('should show validation error for invalid height', () => {
@@ -113,7 +113,8 @@ describe('PlayerRegisterScreen', () => {
   it('should show error when no position selected', () => {
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '25');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-06-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-03');
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '180');
     fireEvent.press(screen.getByLabelText('男'));
     fireEvent.press(screen.getByLabelText('注册'));
@@ -130,8 +131,8 @@ describe('PlayerRegisterScreen', () => {
 
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '25');
-    fireEvent.changeText(screen.getByLabelText('球龄输入框'), '5');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-06-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-03');
     fireEvent.press(screen.getByLabelText('男'));
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '180');
     fireEvent.changeText(screen.getByLabelText('体重输入框'), '75');
@@ -145,8 +146,8 @@ describe('PlayerRegisterScreen', () => {
           password: 'Password123',
           nickname: 'TestUser',
           userType: 'player',
-          age: 25,
-          basketballAge: 5,
+          birthDate: '1999-06-10',
+          startPlayingDate: '2019-03',
           gender: 'male',
           height: 180,
           weight: 75,
@@ -165,8 +166,8 @@ describe('PlayerRegisterScreen', () => {
 
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '25');
-    fireEvent.changeText(screen.getByLabelText('球龄输入框'), '5');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-06-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-03');
     fireEvent.press(screen.getByLabelText('男'));
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '180');
     fireEvent.press(screen.getByLabelText('控球后卫'));
@@ -185,8 +186,8 @@ describe('PlayerRegisterScreen', () => {
 
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '25');
-    fireEvent.changeText(screen.getByLabelText('球龄输入框'), '5');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-06-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-03');
     fireEvent.press(screen.getByLabelText('男'));
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '180');
     fireEvent.press(screen.getByLabelText('控球后卫'));
@@ -207,8 +208,8 @@ describe('PlayerRegisterScreen', () => {
 
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '25');
-    fireEvent.changeText(screen.getByLabelText('球龄输入框'), '5');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-06-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-03');
     fireEvent.press(screen.getByLabelText('男'));
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '180');
     fireEvent.press(screen.getByLabelText('控球后卫'));

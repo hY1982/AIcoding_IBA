@@ -188,6 +188,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
   },
+  profileButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   venueButtonText: {
     color: '#fff',
     fontSize: 16,

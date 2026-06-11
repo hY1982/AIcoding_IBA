@@ -5,7 +5,14 @@ import { ValidatedTextInput } from '@/components/form/ValidatedTextInput';
 import { FormContainer } from '@/components/form/FormContainer';
 import { authService } from '@/api/auth.service';
 import { useAppStore } from '@/stores';
-import { validatePlayerAge, validateHeight, validatePositions } from '@/utils/validation';
+import {
+  validateBirthDate,
+  validateStartPlayingDate,
+  validateHeight,
+  validatePositions,
+  computeAgeFromBirthDate,
+  computeBasketballAgeFromStartDate,
+} from '@/utils/validation';
 import { BASKETBALL_POSITIONS, POSITION_LABELS, GENDERS, GENDER_LABELS } from '@shared/player';
 import type {
   PlayerRegisterScreenNavigationProp,
@@ -20,13 +27,18 @@ export function PlayerRegisterScreen() {
   const setToken = useAppStore((state) => state.setToken);
   const setUser = useAppStore((state) => state.setUser);
 
-  const [age, setAge] = useState('');
-  const [basketballAge, setBasketballAge] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [startPlayingDate, setStartPlayingDate] = useState('');
+  const [displayAge, setDisplayAge] = useState(0);
+  const [displayBasketballAge, setDisplayBasketballAge] = useState(0);
   const [gender, setGender] = useState<Gender | undefined>(undefined);
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
   const [positions, setPositions] = useState<BasketballPosition[]>([]);
-  const [ageError, setAgeError] = useState<string | undefined>();
+  const [birthDateError, setBirthDateError] = useState<string | undefined>();
+  const [startPlayingDateError, setStartPlayingDateError] = useState<
+    string | undefined
+  >();
   const [heightError, setHeightError] = useState<string | undefined>();
   const [positionsError, setPositionsError] = useState<string | undefined>();
   const [globalError, setGlobalError] = useState<string | undefined>();
@@ -44,14 +56,18 @@ export function PlayerRegisterScreen() {
   };
 
   const validateForm = (): boolean => {
-    const ageErr = validatePlayerAge(Number(age));
+    const birthDateErr = validateBirthDate(birthDate);
+    const startPlayingDateErr = validateStartPlayingDate(startPlayingDate);
     const heightErr = validateHeight(Number(height));
     const positionsErr =
       positions.length === 0 ? '请至少选择一个位置' : validatePositions(positions);
-    setAgeError(ageErr || undefined);
+    setBirthDateError(birthDateErr || undefined);
+    setStartPlayingDateError(startPlayingDateErr || undefined);
     setHeightError(heightErr || undefined);
     setPositionsError(positionsErr || undefined);
-    return !ageErr && !heightErr && !positionsErr && !!gender;
+    return (
+      !birthDateErr && !startPlayingDateErr && !heightErr && !positionsErr && !!gender
+    );
   };
 
   const handleRegister = async () => {
@@ -65,8 +81,8 @@ export function PlayerRegisterScreen() {
         password,
         nickname,
         userType: 'player',
-        age: Number(age),
-        basketballAge: Number(basketballAge) || 0,
+        birthDate,
+        startPlayingDate,
         gender: gender!,
         height: Number(height),
         weight: weight ? Number(weight) : undefined,
@@ -96,25 +112,39 @@ export function PlayerRegisterScreen() {
       error={globalError}
     >
       <ValidatedTextInput
-        label="年龄"
-        value={age}
+        label="生日"
+        value={birthDate}
         onChangeText={(text) => {
-          setAge(text);
-          setAgeError(undefined);
+          setBirthDate(text);
+          setBirthDateError(undefined);
+          if (!validateBirthDate(text)) {
+            setDisplayAge(computeAgeFromBirthDate(text));
+          }
         }}
-        placeholder="请输入年龄"
-        keyboardType="numeric"
-        error={ageError}
-        accessibilityLabel="年龄输入框"
+        placeholder="YYYY-MM-DD，如 1995-06-15"
+        error={birthDateError}
+        accessibilityLabel="生日输入框"
       />
+      {birthDate && !birthDateError ? (
+        <Text style={styles.hintText}>当前年龄：{displayAge}岁</Text>
+      ) : null}
       <ValidatedTextInput
-        label="球龄（年）"
-        value={basketballAge}
-        onChangeText={setBasketballAge}
-        placeholder="请输入球龄"
-        keyboardType="numeric"
-        accessibilityLabel="球龄输入框"
+        label="开始打球年月"
+        value={startPlayingDate}
+        onChangeText={(text) => {
+          setStartPlayingDate(text);
+          setStartPlayingDateError(undefined);
+          if (!validateStartPlayingDate(text)) {
+            setDisplayBasketballAge(computeBasketballAgeFromStartDate(text));
+          }
+        }}
+        placeholder="YYYY-MM，如 2018-03"
+        error={startPlayingDateError}
+        accessibilityLabel="开始打球年月输入框"
       />
+      {startPlayingDate && !startPlayingDateError ? (
+        <Text style={styles.hintText}>球龄：{displayBasketballAge}年</Text>
+      ) : null}
 
       <Text style={styles.sectionLabel} accessibilityRole="header">
         性别
@@ -229,5 +259,12 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     fontSize: 12,
     marginBottom: 8,
+  },
+  hintText: {
+    color: '#3498db',
+    fontSize: 13,
+    marginTop: -4,
+    marginBottom: 8,
+    fontWeight: '500',
   },
 });

@@ -170,8 +170,8 @@ describe('PlayerService', () => {
   };
 
   const createValidDto = (): CreatePlayerDto => ({
-    age: 25,
-    basketballAge: 5,
+    birthDate: '1999-06-10',
+    startPlayingDate: '2019-03',
     gender: 'male',
     height: 180,
     weight: 75,
@@ -300,8 +300,8 @@ describe('PlayerService', () => {
     it('should handle missing optional fields by using defaults for ability calculation', async () => {
       const userId = 100;
       const dto = {
-        age: 25,
-        basketballAge: 5,
+        birthDate: '1999-06-10',
+        startPlayingDate: '2019-03',
         gender: 'male',
         height: 180,
       } as CreatePlayerDto;

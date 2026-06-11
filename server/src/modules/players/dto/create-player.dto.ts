@@ -30,17 +30,13 @@ import {
  * - CreatePlayerDto 仅包含球员属性，用于球员资料管理接口
  */
 export class CreatePlayerDto {
-  @IsInt()
-  @Min(1)
-  @Max(120)
-  @Type(() => Number)
-  age!: number;
+  @IsString()
+  @IsNotEmpty()
+  birthDate!: string; // YYYY-MM-DD
 
-  @IsInt()
-  @Min(0)
-  @Max(100)
-  @Type(() => Number)
-  basketballAge!: number;
+  @IsString()
+  @IsNotEmpty()
+  startPlayingDate!: string; // YYYY-MM
 
   @IsEnum(GENDERS)
   gender!: Gender;

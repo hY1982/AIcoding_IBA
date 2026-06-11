@@ -6,15 +6,15 @@ export class CreateUnavailableSlotsAndBusinessHours1716740000010 implements Migr
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1. Add business hours columns to venues table
     await queryRunner.query(
-      `ALTER TABLE "venues" ADD COLUMN "open_time" time without time zone DEFAULT '08:00:00'`,
+      `ALTER TABLE "venues" ADD COLUMN IF NOT EXISTS "open_time" time without time zone DEFAULT '08:00:00'`,
     );
     await queryRunner.query(
-      `ALTER TABLE "venues" ADD COLUMN "close_time" time without time zone DEFAULT '22:00:00'`,
+      `ALTER TABLE "venues" ADD COLUMN IF NOT EXISTS "close_time" time without time zone DEFAULT '22:00:00'`,
     );
 
     // 2. Create venue_unavailable_slots table
     await queryRunner.query(
-      `CREATE TABLE "venue_unavailable_slots" (
+      `CREATE TABLE IF NOT EXISTS "venue_unavailable_slots" (
         "id" BIGSERIAL NOT NULL,
         "venue_id" bigint NOT NULL,
         "slot_date" date NOT NULL,

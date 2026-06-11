@@ -5,10 +5,13 @@ import { ValidatedTextInput } from '@/components/form/ValidatedTextInput';
 import { FormContainer } from '@/components/form/FormContainer';
 import { playerService } from '@/api/player.service';
 import {
-  validatePlayerAge,
+  validateBirthDate,
+  validateStartPlayingDate,
   validateHeight,
   validatePositions,
   validateOptionalPositiveNumber,
+  computeAgeFromBirthDate,
+  computeBasketballAgeFromStartDate,
 } from '@/utils/validation';
 import { BASKETBALL_POSITIONS, POSITION_LABELS, GENDERS, GENDER_LABELS } from '@shared/player';
 import type {
@@ -22,8 +25,14 @@ export function EditProfileScreen() {
   const route = useRoute<EditProfileScreenRouteProp>();
   const { profile } = route.params;
 
-  const [age, setAge] = useState(String(profile.age));
-  const [basketballAge, setBasketballAge] = useState(String(profile.basketballAge));
+  const [birthDate, setBirthDate] = useState(profile.birthDate || '');
+  const [startPlayingDate, setStartPlayingDate] = useState(
+    profile.startPlayingDate || '',
+  );
+  const [displayAge, setDisplayAge] = useState(profile.age);
+  const [displayBasketballAge, setDisplayBasketballAge] = useState(
+    profile.basketballAge,
+  );
   const [gender, setGender] = useState<Gender>(profile.gender);
   const [height, setHeight] = useState(String(profile.height));
   const [weight, setWeight] = useState(profile.weight !== undefined ? String(profile.weight) : '');
@@ -40,7 +49,10 @@ export function EditProfileScreen() {
     profile.positions.map((p) => p.position),
   );
 
-  const [ageError, setAgeError] = useState<string | undefined>();
+  const [birthDateError, setBirthDateError] = useState<string | undefined>();
+  const [startPlayingDateError, setStartPlayingDateError] = useState<
+    string | undefined
+  >();
   const [heightError, setHeightError] = useState<string | undefined>();
   const [weightError, setWeightError] = useState<string | undefined>();
   const [wingspanError, setWingspanError] = useState<string | undefined>();
@@ -63,7 +75,8 @@ export function EditProfileScreen() {
   };
 
   const validateForm = (): boolean => {
-    const ageErr = validatePlayerAge(Number(age));
+    const birthDateErr = validateBirthDate(birthDate);
+    const startPlayingDateErr = validateStartPlayingDate(startPlayingDate);
     const heightErr = validateHeight(Number(height));
     const weightErr = validateOptionalPositiveNumber(weight ? Number(weight) : undefined, '体重');
     const wingspanErr = validateOptionalPositiveNumber(
@@ -80,7 +93,8 @@ export function EditProfileScreen() {
     );
     const positionsErr =
       positions.length === 0 ? '请至少选择一个位置' : validatePositions(positions);
-    setAgeError(ageErr || undefined);
+    setBirthDateError(birthDateErr || undefined);
+    setStartPlayingDateError(startPlayingDateErr || undefined);
     setHeightError(heightErr || undefined);
     setWeightError(weightErr || undefined);
     setWingspanError(wingspanErr || undefined);
@@ -88,7 +102,8 @@ export function EditProfileScreen() {
     setJumpingReachError(jumpingReachErr || undefined);
     setPositionsError(positionsErr || undefined);
     return (
-      !ageErr &&
+      !birthDateErr &&
+      !startPlayingDateErr &&
       !heightErr &&
       !weightErr &&
       !wingspanErr &&
@@ -106,8 +121,8 @@ export function EditProfileScreen() {
     setIsLoading(true);
     try {
       await playerService.updateProfile({
-        age: Number(age),
-        basketballAge: Number(basketballAge) || 0,
+        birthDate,
+        startPlayingDate,
         gender,
         height: Number(height),
         weight: weight ? Number(weight) : undefined,
@@ -135,25 +150,41 @@ export function EditProfileScreen() {
       success={successMessage}
     >
       <ValidatedTextInput
-        label="年龄"
-        value={age}
+        label="生日"
+        value={birthDate}
         onChangeText={(text) => {
-          setAge(text);
-          setAgeError(undefined);
+          setBirthDate(text);
+          setBirthDateError(undefined);
+          // 联动显示计算年龄
+          if (!validateBirthDate(text)) {
+            setDisplayAge(computeAgeFromBirthDate(text));
+          }
         }}
-        placeholder="请输入年龄"
-        keyboardType="numeric"
-        error={ageError}
-        accessibilityLabel="年龄输入框"
+        placeholder="YYYY-MM-DD，如 1995-06-15"
+        error={birthDateError}
+        accessibilityLabel="生日输入框"
       />
+      {birthDate && !birthDateError ? (
+        <Text style={styles.hintText}>当前年龄：{displayAge}岁</Text>
+      ) : null}
       <ValidatedTextInput
-        label="球龄（年）"
-        value={basketballAge}
-        onChangeText={setBasketballAge}
-        placeholder="请输入球龄"
-        keyboardType="numeric"
-        accessibilityLabel="球龄输入框"
+        label="开始打球年月"
+        value={startPlayingDate}
+        onChangeText={(text) => {
+          setStartPlayingDate(text);
+          setStartPlayingDateError(undefined);
+          // 联动显示计算球龄
+          if (!validateStartPlayingDate(text)) {
+            setDisplayBasketballAge(computeBasketballAgeFromStartDate(text));
+          }
+        }}
+        placeholder="YYYY-MM，如 2018-03"
+        error={startPlayingDateError}
+        accessibilityLabel="开始打球年月输入框"
       />
+      {startPlayingDate && !startPlayingDateError ? (
+        <Text style={styles.hintText}>球龄：{displayBasketballAge}年</Text>
+      ) : null}
 
       <Text style={styles.sectionLabel} accessibilityRole="header">
         性别
@@ -308,5 +339,12 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     fontSize: 12,
     marginBottom: 8,
+  },
+  hintText: {
+    color: '#3498db',
+    fontSize: 13,
+    marginTop: -4,
+    marginBottom: 8,
+    fontWeight: '500',
   },
 });

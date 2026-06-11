@@ -25,6 +25,10 @@ import {
   RegisterDto,
   USER_TYPES,
 } from '../dto/register.dto';
+import {
+  calculateAge,
+  calculateBasketballAge,
+} from '@modules/players/utils/age-calculation.util';
 
 // 类型守卫：判断是否为球员注册 DTO
 function isPlayerRegisterDto(dto: RegisterDto): dto is PlayerRegisterDto {
@@ -87,11 +91,17 @@ export class AuthService {
       }
     }
 
-    // Runtime validation: player 必须提供 age, basketballAge, gender, height
+    // Runtime validation: player 必须提供 birthDate, startPlayingDate, gender, height
     if (dto.userType === 'player') {
-      if (dto.age == null || dto.basketballAge == null || !dto.gender || dto.height == null) {
+      const playerDto = dto as PlayerRegisterDto;
+      if (
+        !playerDto.birthDate ||
+        !playerDto.startPlayingDate ||
+        !playerDto.gender ||
+        playerDto.height == null
+      ) {
         throw new BadRequestException(
-          '球员注册必须提供 age, basketballAge, gender, height',
+          '球员注册必须提供 birthDate, startPlayingDate, gender, height',
         );
       }
     }
@@ -370,10 +380,16 @@ export class AuthService {
     userId: number,
     dto: PlayerRegisterDto,
   ): Promise<void> {
+    // 根据日期计算年龄和球龄
+    const age = calculateAge(dto.birthDate);
+    const basketballAge = calculateBasketballAge(dto.startPlayingDate);
+
     // 计算基础能力值
     const playerAttributes = {
-      age: dto.age,
-      basketballAge: dto.basketballAge,
+      age,
+      basketballAge,
+      birthDate: dto.birthDate,
+      startPlayingDate: dto.startPlayingDate,
       gender: dto.gender,
       height: dto.height,
       weight: dto.weight,
@@ -385,13 +401,15 @@ export class AuthService {
     const baseAbilityScore =
       this.abilityCalcService.calculateBaseAbility(playerAttributes);
     this.logger.log(
-      `注册时计算能力值: userId=${userId}, baseAbilityScore=${baseAbilityScore}, attributes=${JSON.stringify(playerAttributes)}`,
+      `注册时计算能力值: userId=${userId}, age=${age}, basketballAge=${basketballAge}, baseAbilityScore=${baseAbilityScore}`,
     );
 
     const player = manager.create(Player, {
       userId,
-      age: dto.age,
-      basketballAge: dto.basketballAge,
+      age,
+      basketballAge,
+      birthDate: dto.birthDate,
+      startPlayingDate: dto.startPlayingDate + '-01',
       gender: dto.gender,
       height: dto.height,
       weight: dto.weight ?? null,

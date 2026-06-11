@@ -71,8 +71,8 @@ describe('Auth Flow Integration', () => {
     mockRouteParams = { phone: '13800138000', password: 'Password123', nickname: 'TestUser' };
     render(<PlayerRegisterScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '25');
-    fireEvent.changeText(screen.getByLabelText('球龄输入框'), '5');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-06-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-03');
     fireEvent.press(screen.getByLabelText('男'));
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '180');
     fireEvent.changeText(screen.getByLabelText('体重输入框'), '75');
@@ -87,8 +87,8 @@ describe('Auth Flow Integration', () => {
           password: 'Password123',
           nickname: 'TestUser',
           userType: 'player',
-          age: 25,
-          basketballAge: 5,
+          birthDate: '1999-06-10',
+          startPlayingDate: '2019-03',
           gender: 'male',
           height: 180,
           weight: 75,
