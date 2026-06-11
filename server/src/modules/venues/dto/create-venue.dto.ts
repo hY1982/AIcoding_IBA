@@ -94,6 +94,14 @@ export class CreateVenueDto {
   @Type(() => Number)
   turnoverTime?: number;
 
+  @IsString()
+  @IsOptional()
+  openTime?: string;
+
+  @IsString()
+  @IsOptional()
+  closeTime?: string;
+
   @IsBoolean()
   @IsOptional()
   @Type(() => Boolean)

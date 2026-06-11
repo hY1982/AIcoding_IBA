@@ -69,6 +69,8 @@ export class VenueService {
       bigFan: dto.bigFan ?? false,
       airCondition: dto.airCondition ?? false,
       turnoverTime: dto.turnoverTime ?? null,
+      openTime: dto.openTime ?? null,
+      closeTime: dto.closeTime ?? null,
       parking: dto.parking ?? false,
       restroom: dto.restroom ?? false,
       shower: dto.shower ?? false,
