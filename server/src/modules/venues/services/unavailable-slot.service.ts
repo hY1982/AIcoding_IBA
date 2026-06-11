@@ -402,10 +402,12 @@ export class UnavailableSlotService {
       throw new BadRequestException('时间分钟数必须是 15 的倍数（00, 15, 30, 45）');
     }
 
-    // 5. 在营业时间范围内
+    // 5. 在营业时间范围内（统一转换为 HH:mm:ss 格式后比较）
     const openTime = venue.openTime ?? '08:00:00';
     const closeTime = venue.closeTime ?? '22:00:00';
-    if (slot.startTime < openTime || slot.endTime > closeTime) {
+    const normalizedStart = slot.startTime.length === 5 ? `${slot.startTime}:00` : slot.startTime;
+    const normalizedEnd = slot.endTime.length === 5 ? `${slot.endTime}:00` : slot.endTime;
+    if (normalizedStart < openTime || normalizedEnd > closeTime) {
       throw new BadRequestException(
         `时段必须在营业时间 ${openTime.slice(0, 5)}-${closeTime.slice(0, 5)} 范围内`,
       );
