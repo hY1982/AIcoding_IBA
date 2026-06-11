@@ -234,6 +234,17 @@ export class IntentionService {
       );
     }
 
+    // 空 DTO 校验：至少提供一个更新字段
+    const hasAnyField =
+      dto.startTime !== undefined ||
+      dto.durationMinutes !== undefined ||
+      dto.acceptableWaitMinutes !== undefined ||
+      dto.venueIds !== undefined ||
+      dto.formatIds !== undefined;
+    if (!hasAnyField) {
+      throw new BadRequestException('至少需要提供一个更新字段');
+    }
+
     // 校验更新后的参数
     this.validateUpdateDto(dto, intention);
 
@@ -338,7 +349,7 @@ export class IntentionService {
    * @throws ForbiddenException 非所属球员
    * @throws BadRequestException 状态不允许取消
    */
-  async cancel(intentionId: number, playerId: number): Promise<void> {
+  async cancel(intentionId: number, playerId: number): Promise<IntentionResponse> {
     const intention = await this.intentionRepo
       .createQueryBuilder('intention')
       .where('intention.id = :intentionId', { intentionId })
@@ -364,6 +375,8 @@ export class IntentionService {
     this.logger.log(
       `意向取消成功: intentionId=${intentionId}, playerId=${playerId}`,
     );
+
+    return this.findById(intentionId);
   }
 
   // ==================== READ ====================
@@ -411,13 +424,13 @@ export class IntentionService {
       .leftJoinAndSelect('intentionVenue.venue', 'venue')
       .leftJoinAndSelect('intention.intentionFormats', 'intentionFormat')
       .leftJoinAndSelect('intentionFormat.format', 'format')
-      .where('intention.player_id = :playerId', { playerId });
+      .where('intention.playerId = :playerId', { playerId });
 
     if (query.status) {
       qb.andWhere('intention.status = :status', { status: query.status });
     }
 
-    qb.orderBy('intention.submitted_at', 'DESC').skip(skip).take(pageSize);
+    qb.orderBy('intention.submittedAt', 'DESC').skip(skip).take(pageSize);
 
     const [intentions, total] = await qb.getManyAndCount();
 
@@ -530,10 +543,10 @@ export class IntentionService {
 
     const qb = this.intentionRepo
       .createQueryBuilder('intention')
-      .where('intention.player_id = :playerId', { playerId })
+      .where('intention.playerId = :playerId', { playerId })
       .andWhere('intention.status = :status', { status: 'pending' })
-      .andWhere('intention.start_time < :endTime', { endTime })
-      .andWhere('intention.end_time > :startTime', { startTime });
+      .andWhere('intention.startTime < :endTime', { endTime })
+      .andWhere('intention.endTime > :startTime', { startTime });
 
     if (excludeIntentionId !== undefined) {
       qb.andWhere('intention.id != :excludeId', {

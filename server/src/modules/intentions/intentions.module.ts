@@ -7,6 +7,8 @@ import { Player } from '@modules/players/entities/player.entity';
 import { Venue } from '@modules/venues/entities/venue.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 import { IntentionService } from './services/intention.service';
+import { IntentionController } from './controllers/intention.controller';
+import { PlayersModule } from '@modules/players/players.module';
 
 @Module({
   imports: [
@@ -18,7 +20,9 @@ import { IntentionService } from './services/intention.service';
       Venue,
       Format,
     ]),
+    PlayersModule,
   ],
+  controllers: [IntentionController],
   providers: [IntentionService],
   exports: [TypeOrmModule, IntentionService],
 })
