@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { extractApiErrorMessage } from './error';
 import type { VenueDetail, VenueListItem, VenueTimeSlot, VenueDisplaySlot, VenueUnavailableSlot } from '@shared/venue';
 import type { ApiResponse, PaginatedResponse } from '@shared/common';
 
@@ -7,16 +8,6 @@ export class VenueServiceError extends Error {
     super(message);
     this.name = 'VenueServiceError';
   }
-}
-
-function extractErrorMessage(error: unknown): string {
-  if (typeof error === 'object' && error !== null) {
-    const axiosError = error as { response?: { data?: { message?: string } } };
-    if (axiosError.response?.data?.message) {
-      return axiosError.response.data.message;
-    }
-  }
-  return '网络错误，请稍后重试';
 }
 
 export interface GetVenuesParams {
@@ -55,7 +46,7 @@ class VenueService {
       const response = await apiClient.post<ApiResponse<VenueDetail>>('/venues', dto);
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -70,7 +61,7 @@ class VenueService {
       );
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -85,7 +76,7 @@ class VenueService {
       );
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -104,7 +95,7 @@ class VenueService {
       );
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -114,7 +105,7 @@ class VenueService {
       const response = await apiClient.get<ApiResponse<VenueListItem[]>>('/venues/my');
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -124,7 +115,7 @@ class VenueService {
       const response = await apiClient.get<ApiResponse<VenueDetail>>(`/venues/${venueId}`);
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -134,7 +125,7 @@ class VenueService {
       const response = await apiClient.put<ApiResponse<VenueDetail>>(`/venues/${venueId}`, dto);
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -143,7 +134,7 @@ class VenueService {
     try {
       await apiClient.delete<ApiResponse<void>>(`/venues/${venueId}`);
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -159,7 +150,7 @@ class VenueService {
       );
       return response.data.data;
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -178,7 +169,7 @@ class VenueService {
       );
       return response.data.data[0];
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }
@@ -190,7 +181,7 @@ class VenueService {
     try {
       await apiClient.delete<ApiResponse<void>>(`/venues/${venueId}/unavailable-slots/${slotId}`);
     } catch (error) {
-      const userMessage = extractErrorMessage(error);
+      const userMessage = extractApiErrorMessage(error);
       throw new VenueServiceError(userMessage);
     }
   }

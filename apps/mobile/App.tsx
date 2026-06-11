@@ -19,6 +19,9 @@ import { VenueDetailScreen } from './src/screens/venue/VenueDetailScreen';
 import { VenueListScreen } from './src/screens/venue/VenueListScreen';
 import { EditVenueScreen } from './src/screens/venue/EditVenueScreen';
 import { UnavailableSlotsScreen } from './src/screens/venue/UnavailableSlotsScreen';
+import { MyIntentionsScreen } from './src/screens/intention/MyIntentionsScreen';
+import { CreateIntentionScreen } from './src/screens/intention/CreateIntentionScreen';
+import { IntentionDetailScreen } from './src/screens/intention/IntentionDetailScreen';
 import { useAppStore } from './src/stores';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -35,6 +38,10 @@ function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<Root
 
   const handleVenuePress = () => {
     navigation.navigate('VenueList');
+  };
+
+  const handleIntentionPress = () => {
+    navigation.navigate('MyIntentions');
   };
 
   return (
@@ -57,6 +64,16 @@ function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<Root
       >
         <Text style={styles.venueButtonText}>浏览场地</Text>
       </TouchableOpacity>
+      {user?.userType === 'player' && (
+        <TouchableOpacity
+          style={styles.intentionButton}
+          onPress={handleIntentionPress}
+          accessibilityLabel="我的意向"
+          accessibilityRole="button"
+        >
+          <Text style={styles.intentionButtonText}>我的意向</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -143,6 +160,21 @@ export default function App() {
           options={{ title: '不可预订时段' }}
         />
         <Stack.Screen
+          name="MyIntentions"
+          component={MyIntentionsScreen}
+          options={{ title: '我的意向' }}
+        />
+        <Stack.Screen
+          name="CreateIntention"
+          component={CreateIntentionScreen}
+          options={{ title: '创建意向' }}
+        />
+        <Stack.Screen
+          name="IntentionDetail"
+          component={IntentionDetailScreen}
+          options={{ title: '意向详情' }}
+        />
+        <Stack.Screen
           name="Home"
           component={HomeScreen}
           options={{
@@ -188,12 +220,24 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
   },
+  intentionButton: {
+    marginTop: 16,
+    backgroundColor: '#f39c12',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
   profileButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
   venueButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  intentionButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

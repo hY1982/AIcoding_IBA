@@ -165,6 +165,33 @@ export class IntentionController {
   }
 
   /**
+   * GET /api/v1/intentions/my/:id
+   * 查询我的单条意向详情
+   */
+  @Get('my/:id')
+  @ApiOperation({ summary: '查询我的单条意向详情' })
+  @ApiParam({ name: 'id', description: '意向ID', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: '返回意向详情',
+    type: IntentionDetailResponse,
+  })
+  @ApiResponse({ status: 401, description: '未登录或Token无效' })
+  @ApiResponse({ status: 403, description: '非球员角色或非归属球员' })
+  @ApiResponse({ status: 404, description: '意向不存在' })
+  async findMyIntentionById(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<IntentionResponse> {
+    const profile = await this.assertPlayerRole(req);
+    const intention = await this.intentionService.findById(id);
+    if (intention.playerId !== profile.id) {
+      throw new ForbiddenException('无权查看该意向');
+    }
+    return intention;
+  }
+
+  /**
    * PUT /api/v1/intentions/:id
    * 修改比赛意向（仅 pending 状态可修改）
    */

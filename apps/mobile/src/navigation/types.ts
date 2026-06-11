@@ -21,6 +21,9 @@ export type RootStackParamList = {
   VenueDetail: { venueId: number };
   EditVenue: { venue: VenueDetail };
   UnavailableSlots: { venueId: number; venueName: string };
+  CreateIntention: undefined;
+  MyIntentions: undefined;
+  IntentionDetail: { intentionId: number };
 };
 
 // Navigation prop types for type-safe navigation.navigate()
@@ -77,6 +80,18 @@ export type UnavailableSlotsScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'UnavailableSlots'
 >;
+export type CreateIntentionScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'CreateIntention'
+>;
+export type MyIntentionsScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'MyIntentions'
+>;
+export type IntentionDetailScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'IntentionDetail'
+>;
 
 // Route prop types for type-safe route.params
 export type RegisterScreenRouteProp = RouteProp<RootStackParamList, 'Register'>;
@@ -94,3 +109,4 @@ export type EditVenueManagerProfileScreenRouteProp = RouteProp<
 export type VenueDetailScreenRouteProp = RouteProp<RootStackParamList, 'VenueDetail'>;
 export type EditVenueScreenRouteProp = RouteProp<RootStackParamList, 'EditVenue'>;
 export type UnavailableSlotsScreenRouteProp = RouteProp<RootStackParamList, 'UnavailableSlots'>;
+export type IntentionDetailScreenRouteProp = RouteProp<RootStackParamList, 'IntentionDetail'>;
