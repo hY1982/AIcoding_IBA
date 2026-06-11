@@ -47,6 +47,15 @@ const mockFormats = [
   { id: 3, name: '5v5短赛', formatType: 'short', teamSize: 5, teamCountMin: 3, teamCountMax: 4, isActive: true, createdAt: '2026-01-01' },
 ];
 
+// Helper: open a dropdown and select an option
+function openDropdown(labelText: string) {
+  fireEvent.press(screen.getByLabelText(labelText));
+}
+
+function selectDropdownOption(optionText: string) {
+  fireEvent.press(screen.getByLabelText(optionText));
+}
+
 describe('CreateIntentionScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -86,78 +95,107 @@ describe('CreateIntentionScreen', () => {
     });
   });
 
-  it('should select date chip and highlight', async () => {
+  it('should select date via dropdown', async () => {
     jest.useRealTimers();
     render(<CreateIntentionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('今天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('今天'));
-    // after pressing, time slots should be visible
-    expect(screen.getByText('选择时间')).toBeTruthy();
+    // Open date dropdown
+    openDropdown('请选择日期');
+
+    // Select "今天" option
+    await waitFor(() => {
+      expect(screen.getByLabelText('今天')).toBeTruthy();
+    });
+    selectDropdownOption('今天');
+
+    // After selecting, the trigger should show "今天"
+    expect(screen.getByLabelText('今天')).toBeTruthy();
   });
 
-  it('should select time chip', async () => {
+  it('should select time via dropdown after date selected', async () => {
     jest.useRealTimers();
-
     render(<CreateIntentionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('明天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
 
-    // Select "tomorrow" so all time slots are available regardless of timezone
-    fireEvent.press(screen.getByText('明天'));
+    // Select "明天" first (all times available)
+    openDropdown('请选择日期');
+    await waitFor(() => { expect(screen.getByLabelText('明天')).toBeTruthy(); });
+    selectDropdownOption('明天');
 
+    // Open time dropdown
     await waitFor(() => {
-      expect(screen.getByText('08:00')).toBeTruthy();
+      expect(screen.getByLabelText('请选择时间')).toBeTruthy();
+    });
+    openDropdown('请选择时间');
+
+    // Time options should be available
+    await waitFor(() => {
+      expect(screen.getByLabelText('08:00')).toBeTruthy();
     });
   });
 
   it('should filter time slots for today (>= now + 1h)', async () => {
     jest.useRealTimers();
-    // Mock Date.now to a fixed time where filtering makes a visible difference
-    // We'll verify by checking that selecting "today" shows fewer time slots
-    // than selecting "tomorrow" (which shows all slots)
     const mockNow = new Date();
-    mockNow.setHours(15, 30, 0, 0); // 15:30 local time
+    mockNow.setHours(15, 30, 0, 0);
     jest.spyOn(Date, 'now').mockReturnValue(mockNow.getTime());
 
     render(<CreateIntentionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('今天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('今天'));
+    // Select "今天"
+    openDropdown('请选择日期');
+    await waitFor(() => { expect(screen.getByLabelText('今天')).toBeTruthy(); });
+    selectDropdownOption('今天');
 
-    // After pressing today with now=15:30, only times >= 16:30 should show
-    // So 17:00 should be available
+    // Open time dropdown
     await waitFor(() => {
-      expect(screen.getByText('17:00')).toBeTruthy();
+      expect(screen.getByLabelText('请选择时间')).toBeTruthy();
+    });
+    openDropdown('请选择时间');
+
+    // After selecting today with now=15:30, only times >= 16:30 should show
+    await waitFor(() => {
+      expect(screen.getByLabelText('17:00')).toBeTruthy();
     });
 
-    // 15:00 should NOT be shown (< 15:30 + 1h = 16:30)
-    expect(screen.queryByText('15:00')).toBeNull();
+    // 15:00 should NOT be shown
+    expect(screen.queryByLabelText('15:00')).toBeNull();
     // 14:00 should NOT be shown
-    expect(screen.queryByText('14:00')).toBeNull();
+    expect(screen.queryByLabelText('14:00')).toBeNull();
 
     jest.restoreAllMocks();
   });
 
-  it('should select duration chip', async () => {
+  it('should select duration via dropdown', async () => {
     jest.useRealTimers();
     render(<CreateIntentionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('2h')).toBeTruthy();
+      expect(screen.getByLabelText('请选择持续时长')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('3h'));
-    // Chip should be selected - we just verify no crash
-    expect(screen.getByText('3h')).toBeTruthy();
+    // Open duration dropdown
+    openDropdown('请选择持续时长');
+
+    // Select 3小时
+    await waitFor(() => {
+      expect(screen.getByLabelText('3小时')).toBeTruthy();
+    });
+    selectDropdownOption('3小时');
+
+    // Trigger should now show selected value
+    expect(screen.getByLabelText('3小时')).toBeTruthy();
   });
 
   it('should handle venue multi-select (max 3)', async () => {
@@ -203,30 +241,40 @@ describe('CreateIntentionScreen', () => {
     fireEvent.press(screen.getByLabelText('提交意向'));
 
     await waitFor(() => {
-      expect(screen.getByText('请选择日期')).toBeTruthy();
+      // "请选择日期" appears in both placeholder and error text
+      const matches = screen.getAllByText('请选择日期');
+      expect(matches.length).toBeGreaterThanOrEqual(2); // placeholder + error
     });
   });
 
   it('should show validation error when no venue selected on submit', async () => {
     jest.useRealTimers();
-  
     render(<CreateIntentionScreen />);
-  
+
     await waitFor(() => {
-      expect(screen.getByText('明天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
-  
-    // Select date (tomorrow so all times available), time, duration but no venue
-    fireEvent.press(screen.getByText('明天'));
-    await waitFor(() => { expect(screen.getByText('08:00')).toBeTruthy(); });
-    fireEvent.press(screen.getByText('08:00'));
-    fireEvent.press(screen.getByText('2h'));
-  
+
+    // Select date (tomorrow), time, duration via dropdowns but no venue
+    openDropdown('请选择日期');
+    await waitFor(() => { expect(screen.getByLabelText('明天')).toBeTruthy(); });
+    selectDropdownOption('明天');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择时间')).toBeTruthy(); });
+    openDropdown('请选择时间');
+    await waitFor(() => { expect(screen.getByLabelText('08:00')).toBeTruthy(); });
+    selectDropdownOption('08:00');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择持续时长')).toBeTruthy(); });
+    openDropdown('请选择持续时长');
+    await waitFor(() => { expect(screen.getByLabelText('2小时')).toBeTruthy(); });
+    selectDropdownOption('2小时');
+
     // Select a format
     fireEvent.press(screen.getByText('3v3短赛'));
-  
+
     fireEvent.press(screen.getByLabelText('提交意向'));
-  
+
     await waitFor(() => {
       expect(screen.getByText('请至少选择一个场地')).toBeTruthy();
     });
@@ -234,22 +282,31 @@ describe('CreateIntentionScreen', () => {
 
   it('should show validation error when no format selected on submit', async () => {
     jest.useRealTimers();
-  
     render(<CreateIntentionScreen />);
-  
+
     await waitFor(() => {
-      expect(screen.getByText('明天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
-  
+
     // Select date (tomorrow), time, duration, venue but no format
-    fireEvent.press(screen.getByText('明天'));
-    await waitFor(() => { expect(screen.getByText('08:00')).toBeTruthy(); });
-    fireEvent.press(screen.getByText('08:00'));
-    fireEvent.press(screen.getByText('2h'));
+    openDropdown('请选择日期');
+    await waitFor(() => { expect(screen.getByLabelText('明天')).toBeTruthy(); });
+    selectDropdownOption('明天');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择时间')).toBeTruthy(); });
+    openDropdown('请选择时间');
+    await waitFor(() => { expect(screen.getByLabelText('08:00')).toBeTruthy(); });
+    selectDropdownOption('08:00');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择持续时长')).toBeTruthy(); });
+    openDropdown('请选择持续时长');
+    await waitFor(() => { expect(screen.getByLabelText('2小时')).toBeTruthy(); });
+    selectDropdownOption('2小时');
+
     fireEvent.press(screen.getByText('深圳湾体育中心'));
-  
+
     fireEvent.press(screen.getByLabelText('提交意向'));
-  
+
     await waitFor(() => {
       expect(screen.getByText('请至少选择一个赛制')).toBeTruthy();
     });
@@ -262,14 +319,24 @@ describe('CreateIntentionScreen', () => {
     render(<CreateIntentionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('明天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
 
-    // Fill form completely using tomorrow (all times available)
-    fireEvent.press(screen.getByText('明天'));
-    await waitFor(() => { expect(screen.getByText('08:00')).toBeTruthy(); });
-    fireEvent.press(screen.getByText('08:00'));
-    fireEvent.press(screen.getByText('2h'));
+    // Fill form using dropdowns
+    openDropdown('请选择日期');
+    await waitFor(() => { expect(screen.getByLabelText('明天')).toBeTruthy(); });
+    selectDropdownOption('明天');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择时间')).toBeTruthy(); });
+    openDropdown('请选择时间');
+    await waitFor(() => { expect(screen.getByLabelText('08:00')).toBeTruthy(); });
+    selectDropdownOption('08:00');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择持续时长')).toBeTruthy(); });
+    openDropdown('请选择持续时长');
+    await waitFor(() => { expect(screen.getByLabelText('2小时')).toBeTruthy(); });
+    selectDropdownOption('2小时');
+
     fireEvent.press(screen.getByText('深圳湾体育中心'));
     fireEvent.press(screen.getByText('3v3短赛'));
 
@@ -288,13 +355,23 @@ describe('CreateIntentionScreen', () => {
     render(<CreateIntentionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('明天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText('明天'));
-    await waitFor(() => { expect(screen.getByText('08:00')).toBeTruthy(); });
-    fireEvent.press(screen.getByText('08:00'));
-    fireEvent.press(screen.getByText('2h'));
+    openDropdown('请选择日期');
+    await waitFor(() => { expect(screen.getByLabelText('明天')).toBeTruthy(); });
+    selectDropdownOption('明天');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择时间')).toBeTruthy(); });
+    openDropdown('请选择时间');
+    await waitFor(() => { expect(screen.getByLabelText('08:00')).toBeTruthy(); });
+    selectDropdownOption('08:00');
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择持续时长')).toBeTruthy(); });
+    openDropdown('请选择持续时长');
+    await waitFor(() => { expect(screen.getByLabelText('2小时')).toBeTruthy(); });
+    selectDropdownOption('2小时');
+
     fireEvent.press(screen.getByText('深圳湾体育中心'));
     fireEvent.press(screen.getByText('3v3短赛'));
 

@@ -12,19 +12,22 @@ import { intentionService } from '@/api/intention.service';
 import { venueService } from '@/api/venue.service';
 import { formatService } from '@/api/format.service';
 import { ChipMultiSelect } from '@/components/ChipMultiSelect';
+import { DropdownSelect } from '@/components/DropdownSelect';
 import type { VenueListItem } from '@shared/venue';
 import type { Format } from '@shared/format';
 import type { CreateIntentionScreenNavigationProp } from '@/navigation/types';
 
-// Duration options in minutes
-const DURATION_OPTIONS = [
-  { label: '2h', value: 120 },
-  { label: '2.5h', value: 150 },
-  { label: '3h', value: 180 },
-  { label: '4h', value: 240 },
-  { label: '5h', value: 300 },
-  { label: '6h', value: 360 },
-];
+// Duration options in minutes, every 30 min from 0.5h to 6h
+const DURATION_OPTIONS: { label: string; value: number }[] = [];
+for (let m = 30; m <= 360; m += 30) {
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  let label: string;
+  if (h === 0) label = `${rem}分钟`;
+  else if (rem === 0) label = `${h}小时`;
+  else label = `${h}小时${rem}分钟`;
+  DURATION_OPTIONS.push({ label, value: m });
+}
 
 // Generate time slots: 8:00 to 22:00 every 30 min
 function generateAllTimeSlots(): string[] {
@@ -67,10 +70,10 @@ export function CreateIntentionScreen() {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
 
-  // Form states
-  const [selectedDateIndex, setSelectedDateIndex] = useState<number | null>(null);
+  // Form states (string values for dropdown)
+  const [selectedDateValue, setSelectedDateValue] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [selectedDuration, setSelectedDuration] = useState<number | null>(null);
+  const [selectedDurationValue, setSelectedDurationValue] = useState<string | null>(null);
   const [selectedVenues, setSelectedVenues] = useState<VenueListItem[]>([]);
   const [selectedFormats, setSelectedFormats] = useState<Format[]>([]);
   const [acceptableWait, setAcceptableWait] = useState(30);
@@ -83,6 +86,20 @@ export function CreateIntentionScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const dateOptions = generateDateOptions();
+
+  // Build dropdown option arrays
+  const dateDropdownOptions = dateOptions.map((opt, i) => ({
+    label: opt.label,
+    value: String(i),
+  }));
+
+  const durationDropdownOptions = DURATION_OPTIONS.map((opt) => ({
+    label: opt.label,
+    value: String(opt.value),
+  }));
+
+  // Selected date index (from string state)
+  const selectedDateIndex = selectedDateValue !== null ? Number(selectedDateValue) : null;
 
   // Load venues and formats
   useEffect(() => {
@@ -128,6 +145,8 @@ export function CreateIntentionScreen() {
     return ALL_TIME_SLOTS;
   }, [selectedDateIndex, dateOptions]);
 
+  const timeDropdownOptions = getAvailableTimeSlots().map((t) => ({ label: t, value: t }));
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
@@ -137,7 +156,7 @@ export function CreateIntentionScreen() {
     if (selectedTime === null) {
       newErrors.time = '请选择时间';
     }
-    if (selectedDuration === null) {
+    if (selectedDurationValue === null) {
       newErrors.duration = '请选择持续时长';
     }
     if (selectedVenues.length === 0) {
@@ -177,7 +196,7 @@ export function CreateIntentionScreen() {
 
       await intentionService.createIntention({
         startTime: startTime.toISOString(),
-        durationMinutes: selectedDuration!,
+        durationMinutes: Number(selectedDurationValue!),
         acceptableWaitMinutes: acceptableWait,
         venueIds: selectedVenues.map((v, i) => ({ venueId: v.id, priority: i + 1 })),
         formatIds: selectedFormats.map((f, i) => ({ formatId: f.id, priority: i + 1 })),
@@ -209,83 +228,49 @@ export function CreateIntentionScreen() {
     );
   }
 
-  const availableTimeSlots = getAvailableTimeSlots();
-
   return (
     <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
-      {/* Date Selection */}
-      <Text style={styles.sectionLabel}>选择日期</Text>
-      <View style={styles.chipRow}>
-        {dateOptions.map((opt, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[styles.chip, selectedDateIndex === index && styles.chipSelected]}
-            onPress={() => {
-              setSelectedDateIndex(index);
-              setSelectedTime(null); // Reset time when date changes
-              setErrors((prev) => ({ ...prev, date: '' }));
-            }}
-            accessibilityLabel={opt.label}
-          >
-            <Text style={[styles.chipText, selectedDateIndex === index && styles.chipTextSelected]}>
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {errors.date ? <Text style={styles.fieldError}>{errors.date}</Text> : null}
+      {/* Date Dropdown */}
+      <DropdownSelect
+        label="选择日期"
+        options={dateDropdownOptions}
+        selectedValue={selectedDateValue}
+        placeholder="请选择日期"
+        onSelect={(val) => {
+          setSelectedDateValue(val);
+          setSelectedTime(null); // Reset time when date changes
+          setErrors((prev) => ({ ...prev, date: '' }));
+        }}
+        error={errors.date}
+      />
 
-      {/* Time Selection */}
-      <Text style={styles.sectionLabel}>选择时间</Text>
-      {selectedDateIndex !== null ? (
-        availableTimeSlots.length > 0 ? (
-          <View style={styles.chipRow}>
-            {availableTimeSlots.map((time) => (
-              <TouchableOpacity
-                key={time}
-                style={[styles.chip, selectedTime === time && styles.chipSelected]}
-                onPress={() => {
-                  setSelectedTime(time);
-                  setErrors((prev) => ({ ...prev, time: '' }));
-                }}
-                accessibilityLabel={time}
-              >
-                <Text style={[styles.chipText, selectedTime === time && styles.chipTextSelected]}>
-                  {time}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.hintText}>今天已无可用时段，请选择其他日期</Text>
-        )
-      ) : (
-        <Text style={styles.hintText}>请先选择日期</Text>
-      )}
-      {errors.time ? <Text style={styles.fieldError}>{errors.time}</Text> : null}
+      {/* Time Dropdown */}
+      <DropdownSelect
+        label="选择时间"
+        options={timeDropdownOptions}
+        selectedValue={selectedTime}
+        placeholder={selectedDateIndex !== null ? '请选择时间' : '请先选择日期'}
+        onSelect={(val) => {
+          setSelectedTime(val);
+          setErrors((prev) => ({ ...prev, time: '' }));
+        }}
+        error={errors.time}
+        disabled={selectedDateIndex === null}
+        emptyMessage={selectedDateIndex !== null ? '今天已无可用时段，请选择其他日期' : undefined}
+      />
 
-      {/* Duration Selection */}
-      <Text style={styles.sectionLabel}>持续时长</Text>
-      <View style={styles.chipRow}>
-        {DURATION_OPTIONS.map((opt) => (
-          <TouchableOpacity
-            key={opt.value}
-            style={[styles.chip, selectedDuration === opt.value && styles.chipSelected]}
-            onPress={() => {
-              setSelectedDuration(opt.value);
-              setErrors((prev) => ({ ...prev, duration: '' }));
-            }}
-            accessibilityLabel={opt.label}
-          >
-            <Text
-              style={[styles.chipText, selectedDuration === opt.value && styles.chipTextSelected]}
-            >
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {errors.duration ? <Text style={styles.fieldError}>{errors.duration}</Text> : null}
+      {/* Duration Dropdown */}
+      <DropdownSelect
+        label="持续时长"
+        options={durationDropdownOptions}
+        selectedValue={selectedDurationValue}
+        placeholder="请选择持续时长"
+        onSelect={(val) => {
+          setSelectedDurationValue(val);
+          setErrors((prev) => ({ ...prev, duration: '' }));
+        }}
+        error={errors.duration}
+      />
 
       {/* Venue Selection */}
       <ChipMultiSelect
@@ -365,47 +350,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#e74c3c',
     textAlign: 'center',
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 16,
-    color: '#333',
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#f5f5f5',
-  },
-  chipSelected: {
-    backgroundColor: '#1a73e8',
-    borderColor: '#1a73e8',
-  },
-  chipText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  chipTextSelected: {
-    color: '#fff',
-  },
-  fieldError: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#e74c3c',
-  },
-  hintText: {
-    fontSize: 13,
-    color: '#999',
-    fontStyle: 'italic',
   },
   submitErrorText: {
     fontSize: 14,

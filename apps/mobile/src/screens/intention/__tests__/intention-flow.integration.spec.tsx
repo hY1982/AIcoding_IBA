@@ -119,14 +119,24 @@ describe('Intention Flow Integration', () => {
     render(<CreateIntentionScreen />);
 
     await waitFor(() => {
-      expect(screen.getByText('明天')).toBeTruthy();
+      expect(screen.getByLabelText('请选择日期')).toBeTruthy();
     });
 
-    // Fill form
-    fireEvent.press(screen.getByText('明天'));
-    await waitFor(() => { expect(screen.getByText('08:00')).toBeTruthy(); });
-    fireEvent.press(screen.getByText('08:00'));
-    fireEvent.press(screen.getByText('2h'));
+    // Fill form via dropdowns
+    fireEvent.press(screen.getByLabelText('请选择日期'));
+    await waitFor(() => { expect(screen.getByLabelText('明天')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('明天'));
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择时间')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('请选择时间'));
+    await waitFor(() => { expect(screen.getByLabelText('08:00')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('08:00'));
+
+    await waitFor(() => { expect(screen.getByLabelText('请选择持续时长')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('请选择持续时长'));
+    await waitFor(() => { expect(screen.getByLabelText('2小时')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('2小时'));
+
     fireEvent.press(screen.getByText('深圳湾体育中心'));
     fireEvent.press(screen.getByText('3v3短赛'));
 
