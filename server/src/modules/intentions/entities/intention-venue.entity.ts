@@ -40,7 +40,7 @@ export class IntentionVenue {
   })
   venueId!: number;
 
-  @ManyToOne(() => Venue)
+  @ManyToOne(() => Venue, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'venue_id' })
   venue!: Venue;
 

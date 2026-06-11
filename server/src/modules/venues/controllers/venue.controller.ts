@@ -394,7 +394,7 @@ export class VenueController {
   @Public()
   @ApiOperation({ summary: '查询场地展示时段' })
   @ApiParam({ name: 'id', description: '场地ID' })
-  @ApiQuery({ name: 'slotDate', required: true, type: String, description: '日期 YYYY-MM-DD' })
+  @ApiQuery({ name: 'slotDate', required: false, type: String, description: '日期 YYYY-MM-DD，默认为今天' })
   @ApiResponse({
     status: 200,
     description: '查询成功，返回连续时段列表',
@@ -404,15 +404,18 @@ export class VenueController {
   @ApiResponse({ status: 404, description: '场地不存在' })
   async findTimeSlots(
     @Param('id', ParseIntPipe) id: number,
-    @Query('slotDate') slotDate: string,
+    @Query('slotDate') slotDate?: string,
   ): Promise<VenueDisplaySlot[]> {
+    // 默认使用今天
+    const targetDate = slotDate || new Date().toISOString().slice(0, 10);
+
     // 校验日期格式
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(slotDate)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
       throw new BadRequestException('slotDate 格式必须为 YYYY-MM-DD');
     }
 
     // 校验日期有效性
-    const [year, month, day] = slotDate.split('-').map(Number);
+    const [year, month, day] = targetDate.split('-').map(Number);
     const date = new Date(year, month - 1, day);
     if (
       date.getFullYear() !== year ||
@@ -422,7 +425,7 @@ export class VenueController {
       throw new BadRequestException('slotDate 不是有效日期');
     }
 
-    return this.unavailableSlotService.getDisplaySlots(id, slotDate);
+    return this.unavailableSlotService.getDisplaySlots(id, targetDate);
   }
 
   /**

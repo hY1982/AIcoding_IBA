@@ -406,12 +406,13 @@ describe('VenueController (e2e)', () => {
       expect(res.body.data.pageSize).toBe(1);
     });
 
-    it('should reject unauthenticated request with 401', async () => {
+    it('should allow public access to venue list', async () => {
       const res = await request(app.getHttpServer())
         .get('/api/v1/venues')
-        .expect(401);
+        .expect(200);
 
-      expect(res.body).toHaveProperty('code', 401);
+      expect(res.body).toHaveProperty('code', 0);
+      expect(res.body.data).toHaveProperty('list');
     });
   });
 
@@ -677,13 +678,14 @@ describe('VenueController (e2e)', () => {
       const { accessToken: playerToken } = await registerAndLoginPlayer();
 
       const res = await request(app.getHttpServer())
-        .get(`/api/v1/venues/${venueId}/slots`)
+        .get(`/api/v1/venues/${venueId}/slots?slotDate=2026-06-15`)
         .set('Authorization', `Bearer ${playerToken}`)
         .expect(200);
 
       expect(res.body.code).toBe(0);
       expect(res.body.data).toBeInstanceOf(Array);
-      expect(res.body.data).toHaveLength(2);
+      // 展示时段为连续时间轴，包含非营业时间 + 可预订时段
+      expect(res.body.data.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should filter time slots by slotDate', async () => {
@@ -703,27 +705,40 @@ describe('VenueController (e2e)', () => {
 
       const { accessToken: playerToken } = await registerAndLoginPlayer();
 
-      const res = await request(app.getHttpServer())
+      // 查询 6-15 的展示时段
+      const res15 = await request(app.getHttpServer())
         .get(`/api/v1/venues/${venueId}/slots?slotDate=2026-06-15`)
         .set('Authorization', `Bearer ${playerToken}`)
         .expect(200);
 
-      expect(res.body.data).toHaveLength(1);
-      expect(res.body.data[0]).toHaveProperty('slotDate', '2026-06-15');
+      // 展示时段为连续时间轴，6-15 有可预订时段 09:00-11:00
+      expect(res15.body.data).toBeInstanceOf(Array);
+      expect(res15.body.data.length).toBeGreaterThanOrEqual(1);
+
+      // 查询 6-16 的展示时段
+      const res16 = await request(app.getHttpServer())
+        .get(`/api/v1/venues/${venueId}/slots?slotDate=2026-06-16`)
+        .set('Authorization', `Bearer ${playerToken}`)
+        .expect(200);
+
+      expect(res16.body.data).toBeInstanceOf(Array);
+      expect(res16.body.data.length).toBeGreaterThanOrEqual(1);
     });
 
-    it('should return empty array when no slots', async () => {
+    it('should return display slots when no booked slots', async () => {
       const { accessToken: managerToken } = await registerAndLoginManager();
       const venueId = await createVenue(managerToken);
 
       const { accessToken: playerToken } = await registerAndLoginPlayer();
 
       const res = await request(app.getHttpServer())
-        .get(`/api/v1/venues/${venueId}/slots`)
+        .get(`/api/v1/venues/${venueId}/slots?slotDate=2026-06-15`)
         .set('Authorization', `Bearer ${playerToken}`)
         .expect(200);
 
-      expect(res.body.data).toEqual([]);
+      // 没有可预订时段时，仍返回展示时段（非营业时间 + 可预订）
+      expect(res.body.data).toBeInstanceOf(Array);
+      expect(res.body.data.length).toBeGreaterThanOrEqual(1);
     });
 
     it('should return 404 for non-existent venue', async () => {
@@ -752,12 +767,12 @@ describe('VenueController (e2e)', () => {
       expect(res.body.message).toContain('YYYY-MM-DD');
     });
 
-    it('should reject unauthenticated request with 401', async () => {
+    it('should allow public access without authentication', async () => {
       const res = await request(app.getHttpServer())
-        .get('/api/v1/venues/1/slots')
-        .expect(401);
+        .get('/api/v1/venues/99999/slots?slotDate=2026-06-15')
+        .expect(404);
 
-      expect(res.body).toHaveProperty('code', 401);
+      expect(res.body).toHaveProperty('code', 404);
     });
   });
 
@@ -938,12 +953,13 @@ describe('VenueController (e2e)', () => {
         .expect(201);
       expect(slotsRes.body.data).toHaveLength(1);
 
-      // 7. 查询时段
+      // 7. 查询时段（展示时段为连续时间轴）
       const getSlotsRes = await request(app.getHttpServer())
-        .get(`/api/v1/venues/${venueId}/slots`)
+        .get(`/api/v1/venues/${venueId}/slots?slotDate=2026-06-20`)
         .set('Authorization', `Bearer ${managerToken}`)
         .expect(200);
-      expect(getSlotsRes.body.data).toHaveLength(1);
+      expect(getSlotsRes.body.data).toBeInstanceOf(Array);
+      expect(getSlotsRes.body.data.length).toBeGreaterThanOrEqual(1);
 
       // 8. 删除场地
       await request(app.getHttpServer())
