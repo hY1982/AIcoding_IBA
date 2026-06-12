@@ -29,7 +29,8 @@
     "dc:test": "docker-compose -f ../docker-compose.dev.yml run --rm backend npm test -- --runInBand",
     "dc:test:cov": "docker-compose -f ../docker-compose.dev.yml run --rm backend npm run test:cov -- --runInBand",
     "dc:shell": "docker-compose -f ../docker-compose.dev.yml exec backend sh",
-    "demo:full": "cross-env TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register -r tsconfig-paths/register scripts/demo-full-flow.ts"
+    "demo:full": "cross-env TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register -r tsconfig-paths/register scripts/demo-full-flow.ts",
+    "e2e:bot": "cross-env TS_NODE_TRANSPILE_ONLY=true node -r ts-node/register -r tsconfig-paths/register scripts/e2e-bot-test.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.4",
