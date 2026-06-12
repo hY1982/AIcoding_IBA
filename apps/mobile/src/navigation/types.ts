@@ -24,6 +24,10 @@ export type RootStackParamList = {
   CreateIntention: { intentionId?: number } | undefined;
   MyIntentions: undefined;
   IntentionDetail: { intentionId: number };
+  MyMatches: undefined;
+  MatchDetail: { matchId: number };
+  ConfirmMatch: { matchId: number; depositAmount: string };
+  Chat: { matchId: number; matchTitle?: string };
 };
 
 // Navigation prop types for type-safe navigation.navigate()
@@ -92,6 +96,22 @@ export type IntentionDetailScreenNavigationProp = NativeStackNavigationProp<
   RootStackParamList,
   'IntentionDetail'
 >;
+export type MyMatchesScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'MyMatches'
+>;
+export type MatchDetailScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'MatchDetail'
+>;
+export type ConfirmMatchScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'ConfirmMatch'
+>;
+export type ChatScreenNavigationProp = NativeStackNavigationProp<
+  RootStackParamList,
+  'Chat'
+>;
 
 // Route prop types for type-safe route.params
 export type RegisterScreenRouteProp = RouteProp<RootStackParamList, 'Register'>;
@@ -111,3 +131,6 @@ export type EditVenueScreenRouteProp = RouteProp<RootStackParamList, 'EditVenue'
 export type UnavailableSlotsScreenRouteProp = RouteProp<RootStackParamList, 'UnavailableSlots'>;
 export type IntentionDetailScreenRouteProp = RouteProp<RootStackParamList, 'IntentionDetail'>;
 export type CreateIntentionScreenRouteProp = RouteProp<RootStackParamList, 'CreateIntention'>;
+export type MatchDetailScreenRouteProp = RouteProp<RootStackParamList, 'MatchDetail'>;
+export type ConfirmMatchScreenRouteProp = RouteProp<RootStackParamList, 'ConfirmMatch'>;
+export type ChatScreenRouteProp = RouteProp<RootStackParamList, 'Chat'>;

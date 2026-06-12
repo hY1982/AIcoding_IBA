@@ -22,6 +22,10 @@ import { UnavailableSlotsScreen } from './src/screens/venue/UnavailableSlotsScre
 import { MyIntentionsScreen } from './src/screens/intention/MyIntentionsScreen';
 import { CreateIntentionScreen } from './src/screens/intention/CreateIntentionScreen';
 import { IntentionDetailScreen } from './src/screens/intention/IntentionDetailScreen';
+import { MyMatchesScreen } from './src/screens/match/MyMatchesScreen';
+import { MatchDetailScreen } from './src/screens/match/MatchDetailScreen';
+import { ConfirmMatchScreen } from './src/screens/match/ConfirmMatchScreen';
+import { ChatScreen } from './src/screens/chat/ChatScreen';
 import { useAppStore } from './src/stores';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -42,6 +46,10 @@ function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<Root
 
   const handleIntentionPress = () => {
     navigation.navigate('MyIntentions');
+  };
+
+  const handleMatchesPress = () => {
+    navigation.navigate('MyMatches');
   };
 
   return (
@@ -65,14 +73,24 @@ function HomeScreen({ navigation }: { navigation: NativeStackNavigationProp<Root
         <Text style={styles.venueButtonText}>浏览场地</Text>
       </TouchableOpacity>
       {user?.userType === 'player' && (
-        <TouchableOpacity
-          style={styles.intentionButton}
-          onPress={handleIntentionPress}
-          accessibilityLabel="我的意向"
-          accessibilityRole="button"
-        >
-          <Text style={styles.intentionButtonText}>我的意向</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            style={styles.intentionButton}
+            onPress={handleIntentionPress}
+            accessibilityLabel="我的意向"
+            accessibilityRole="button"
+          >
+            <Text style={styles.intentionButtonText}>我的意向</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.matchButton}
+            onPress={handleMatchesPress}
+            accessibilityLabel="我的比赛"
+            accessibilityRole="button"
+          >
+            <Text style={styles.matchButtonText}>我的比赛</Text>
+          </TouchableOpacity>
+        </>
       )}
     </View>
   );
@@ -175,6 +193,26 @@ export default function App() {
           options={{ title: '意向详情' }}
         />
         <Stack.Screen
+          name="MyMatches"
+          component={MyMatchesScreen}
+          options={{ title: '我的比赛' }}
+        />
+        <Stack.Screen
+          name="MatchDetail"
+          component={MatchDetailScreen}
+          options={{ title: '比赛详情' }}
+        />
+        <Stack.Screen
+          name="ConfirmMatch"
+          component={ConfirmMatchScreen}
+          options={{ title: '确认参赛' }}
+        />
+        <Stack.Screen
+          name="Chat"
+          component={ChatScreen}
+          options={{ title: '群聊' }}
+        />
+        <Stack.Screen
           name="Home"
           component={HomeScreen}
           options={{
@@ -238,6 +276,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   intentionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  matchButton: {
+    marginTop: 16,
+    backgroundColor: '#9b59b6',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 8,
+  },
+  matchButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
