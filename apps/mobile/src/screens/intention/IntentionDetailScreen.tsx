@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { intentionService } from '@/api/intention.service';
@@ -54,23 +55,27 @@ export function IntentionDetailScreen() {
   }, [loadIntention]);
 
   const handleCancel = () => {
-    Alert.alert('确认取消', '确定要取消这个意向吗？', [
-      { text: '返回', style: 'cancel' },
-      {
-        text: '确定',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            setCancelError(null);
-            const result = await intentionService.cancelIntention(intentionId);
-            setIntention(result);
-          } catch (err) {
-            const message = err instanceof Error ? err.message : '取消失败';
-            setCancelError(message);
-          }
-        },
-      },
-    ]);
+    const doCancel = async () => {
+      try {
+        setCancelError(null);
+        const result = await intentionService.cancelIntention(intentionId);
+        setIntention(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '取消失败';
+        setCancelError(message);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('确定要取消这个意向吗？')) {
+        doCancel();
+      }
+    } else {
+      Alert.alert('确认取消', '确定要取消这个意向吗？', [
+        { text: '返回', style: 'cancel' },
+        { text: '确定', style: 'destructive', onPress: doCancel },
+      ]);
+    }
   };
 
   const formatDateTime = (isoString: string) => {

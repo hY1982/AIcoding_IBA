@@ -8,6 +8,7 @@ import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { MatchTeam } from '@modules/matches/entities/match-team.entity';
 import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
+import { VenueUnavailableSlot } from '@modules/venues/entities/venue-unavailable-slot.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { Player } from '@modules/players/entities/player.entity';
@@ -56,6 +57,7 @@ describe('MatchingEngine Integration Tests', () => {
         PlayerPosition,
         Venue,
         VenueTimeSlot,
+        VenueUnavailableSlot,
         Format,
         Intention,
         IntentionVenue,
@@ -101,6 +103,8 @@ describe('MatchingEngine Integration Tests', () => {
       playerRepo,
       venueRepo,
       formatRepo,
+      dataSource.getRepository(VenueUnavailableSlot),
+      dataSource.getRepository(VenueTimeSlot),
       dataSource,
     );
   });

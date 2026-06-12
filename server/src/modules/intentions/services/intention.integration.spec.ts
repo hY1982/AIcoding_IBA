@@ -10,6 +10,7 @@ import { User } from '@modules/users/entities/user.entity';
 import { VenueManager } from '@modules/users/entities/venue-manager.entity';
 import { PlayerPosition } from '@modules/players/entities/player-position.entity';
 import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
+import { VenueUnavailableSlot } from '@modules/venues/entities/venue-unavailable-slot.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { MatchTeam } from '@modules/matches/entities/match-team.entity';
@@ -48,6 +49,7 @@ describe('Intention Integration Tests', () => {
         PlayerPosition,
         Venue,
         VenueTimeSlot,
+        VenueUnavailableSlot,
         Format,
         Intention,
         IntentionVenue,
@@ -78,6 +80,8 @@ describe('Intention Integration Tests', () => {
       playerRepo,
       venueRepo,
       formatRepo,
+      dataSource.getRepository(VenueUnavailableSlot),
+      dataSource.getRepository(VenueTimeSlot),
       dataSource,
     );
   });

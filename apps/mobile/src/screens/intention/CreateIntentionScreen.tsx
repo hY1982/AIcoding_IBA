@@ -29,10 +29,20 @@ for (let m = 30; m <= 360; m += 30) {
   DURATION_OPTIONS.push({ label, value: m });
 }
 
-// Generate time slots: 8:00 to 22:00 every 30 min
+// Acceptable wait time options
+const ACCEPTABLE_WAIT_OPTIONS: { label: string; value: number }[] = [
+  { label: '15分钟', value: 15 },
+  { label: '30分钟', value: 30 },
+  { label: '45分钟', value: 45 },
+  { label: '1小时', value: 60 },
+  { label: '1小时30分钟', value: 90 },
+  { label: '2小时', value: 120 },
+];
+
+// Generate time slots: 6:00 to 22:00 every 30 min
 function generateAllTimeSlots(): string[] {
   const slots: string[] = [];
-  for (let h = 8; h <= 22; h++) {
+  for (let h = 6; h <= 22; h++) {
     slots.push(`${h.toString().padStart(2, '0')}:00`);
     if (h < 22) {
       slots.push(`${h.toString().padStart(2, '0')}:30`);
@@ -76,7 +86,7 @@ export function CreateIntentionScreen() {
   const [selectedDurationValue, setSelectedDurationValue] = useState<string | null>(null);
   const [selectedVenues, setSelectedVenues] = useState<VenueListItem[]>([]);
   const [selectedFormats, setSelectedFormats] = useState<Format[]>([]);
-  const [acceptableWait, setAcceptableWait] = useState(30);
+  const [selectedAcceptableWait, setSelectedAcceptableWait] = useState<string | null>(null);
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -94,6 +104,11 @@ export function CreateIntentionScreen() {
   }));
 
   const durationDropdownOptions = DURATION_OPTIONS.map((opt) => ({
+    label: opt.label,
+    value: String(opt.value),
+  }));
+
+  const acceptableWaitDropdownOptions = ACCEPTABLE_WAIT_OPTIONS.map((opt) => ({
     label: opt.label,
     value: String(opt.value),
   }));
@@ -165,6 +180,9 @@ export function CreateIntentionScreen() {
     if (selectedFormats.length === 0) {
       newErrors.formats = '请至少选择一个赛制';
     }
+    if (selectedAcceptableWait === null) {
+      newErrors.acceptableWait = '请选择可接受等待时长';
+    }
 
     // Validate startTime >= now + 1h
     if (selectedDateIndex !== null && selectedTime !== null) {
@@ -194,10 +212,16 @@ export function CreateIntentionScreen() {
       const startTime = new Date(selectedDate);
       startTime.setHours(hours, minutes, 0, 0);
 
+      // 本地日期字符串（避免时区转换）
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const localDate = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
+
       await intentionService.createIntention({
         startTime: startTime.toISOString(),
         durationMinutes: Number(selectedDurationValue!),
-        acceptableWaitMinutes: acceptableWait,
+        acceptableWaitMinutes: Number(selectedAcceptableWait!),
+        localDate,
+        localTime: selectedTime!,
         venueIds: selectedVenues.map((v, i) => ({ venueId: v.id, priority: i + 1 })),
         formatIds: selectedFormats.map((f, i) => ({ formatId: f.id, priority: i + 1 })),
       });
@@ -270,6 +294,19 @@ export function CreateIntentionScreen() {
           setErrors((prev) => ({ ...prev, duration: '' }));
         }}
         error={errors.duration}
+      />
+
+      {/* Acceptable Wait Dropdown */}
+      <DropdownSelect
+        label="可接受等待时长"
+        options={acceptableWaitDropdownOptions}
+        selectedValue={selectedAcceptableWait}
+        placeholder="请选择可接受等待时长"
+        onSelect={(val) => {
+          setSelectedAcceptableWait(val);
+          setErrors((prev) => ({ ...prev, acceptableWait: '' }));
+        }}
+        error={errors.acceptableWait}
       />
 
       {/* Venue Selection */}

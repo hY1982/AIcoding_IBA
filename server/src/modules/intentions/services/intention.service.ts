@@ -13,6 +13,8 @@ import { IntentionVenue } from '../entities/intention-venue.entity';
 import { IntentionFormat } from '../entities/intention-format.entity';
 import { Player } from '@modules/players/entities/player.entity';
 import { Venue } from '@modules/venues/entities/venue.entity';
+import { VenueUnavailableSlot } from '@modules/venues/entities/venue-unavailable-slot.entity';
+import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 import { CreateIntentionDto } from '../dto/create-intention.dto';
 import { UpdateIntentionDto } from '../dto/update-intention.dto';
@@ -70,6 +72,10 @@ export class IntentionService {
     private readonly venueRepo: Repository<Venue>,
     @InjectRepository(Format)
     private readonly formatRepo: Repository<Format>,
+    @InjectRepository(VenueUnavailableSlot)
+    private readonly unavailableSlotRepo: Repository<VenueUnavailableSlot>,
+    @InjectRepository(VenueTimeSlot)
+    private readonly timeSlotRepo: Repository<VenueTimeSlot>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -124,6 +130,17 @@ export class IntentionService {
 
     const startTime = new Date(dto.startTime);
 
+    // 检测同天已有 pending 意向
+    const sameDayIntention = await this.checkSameDayIntention(
+      playerId,
+      startTime,
+    );
+    if (sameDayIntention) {
+      throw new ConflictException(
+        '同一天只能有一个比赛意向，请先取消或修改当天已有的意向',
+      );
+    }
+
     // 检测时间重叠
     const hasOverlap = await this.checkTimeOverlap(
       playerId,
@@ -134,6 +151,19 @@ export class IntentionService {
       throw new ConflictException(
         '该时间段内已存在 pending 状态的比赛意向，时间重叠',
       );
+    }
+
+    // 检测场地时段可用性（不可预订 / 已被预订）
+    const venueConflicts = await this.checkVenueAvailability(
+      venueIds,
+      venues,
+      startTime,
+      dto.durationMinutes,
+      dto.localDate,
+      dto.localTime,
+    );
+    if (venueConflicts.length > 0) {
+      throw new ConflictException(venueConflicts.join('；'));
     }
 
     // 计算 regionCode（传入已查询的player避免重复查询）
@@ -263,6 +293,39 @@ export class IntentionService {
       );
       if (hasOverlap) {
         throw new ConflictException('修改后的时间段与其他意向重叠');
+      }
+    }
+
+    // 若修改了 startTime，检测同天限制（排除自身）
+    if (dto.startTime !== undefined) {
+      const sameDay = await this.checkSameDayIntention(
+        playerId,
+        newStartTime,
+        intentionId,
+      );
+      if (sameDay) {
+        throw new ConflictException(
+          '同一天只能有一个比赛意向，请先取消或修改当天已有的意向',
+        );
+      }
+    }
+
+    // 检测场地时段可用性（仅当时间相关字段变更时）
+    if (dto.startTime !== undefined || dto.durationMinutes !== undefined) {
+      const venueIds = dto.venueIds
+        ? dto.venueIds.map((v) => v.venueId)
+        : intention.intentionVenues.map((iv) => iv.venueId);
+      const venueEntities = await this.venueRepo.findBy({ id: In(venueIds) });
+      const conflicts = await this.checkVenueAvailability(
+        venueIds,
+        venueEntities,
+        newStartTime,
+        newDuration,
+        dto.localDate,
+        dto.localTime,
+      );
+      if (conflicts.length > 0) {
+        throw new ConflictException(conflicts.join('；'));
       }
     }
 
@@ -526,6 +589,41 @@ export class IntentionService {
   }
 
   /**
+   * 检测同天 pending 意向
+   *
+   * 同一球员在同一天只能有一个 pending 状态的意向。
+   *
+   * @param excludeIntentionId 可选：排除指定意向ID（用于更新时排除自身）
+   */
+  private async checkSameDayIntention(
+    playerId: number,
+    startTime: Date,
+    excludeIntentionId?: number,
+  ): Promise<boolean> {
+    // 计算 startTime 所在日期的起止时间（UTC）
+    const dayStart = new Date(startTime);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const qb = this.intentionRepo
+      .createQueryBuilder('intention')
+      .where('intention.playerId = :playerId', { playerId })
+      .andWhere('intention.status = :status', { status: 'pending' })
+      .andWhere('intention.startTime >= :dayStart', { dayStart })
+      .andWhere('intention.startTime < :dayEnd', { dayEnd });
+
+    if (excludeIntentionId !== undefined) {
+      qb.andWhere('intention.id != :excludeId', {
+        excludeId: excludeIntentionId,
+      });
+    }
+
+    const count = await qb.getCount();
+    return count > 0;
+  }
+
+  /**
    * 检测时间重叠
    *
    * 检查同一球员是否存在 pending 状态的意向与给定时间范围重叠。
@@ -559,6 +657,112 @@ export class IntentionService {
   }
 
   /**
+   * 检测场地时段可用性
+   *
+   * 检查每个选定场地在指定日期的时间范围是否与不可预订时段或已预订时段重叠。
+   * 返回冲突详情数组，空数组表示无冲突。
+   */
+  private async checkVenueAvailability(
+    venueIds: number[],
+    venues: Venue[],
+    startTime: Date,
+    durationMinutes: number,
+    localDate?: string,
+    localTime?: string,
+  ): Promise<string[]> {
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    let slotDate: string;
+    let intentionStart: string;
+    let intentionEnd: string;
+
+    if (localDate && localTime) {
+      // 使用前端传来的本地时间（避免时区转换错误）
+      slotDate = localDate;
+      intentionStart = `${localTime}:00`;
+      const [h, m] = localTime.split(':').map(Number);
+      const endTotalMin = h * 60 + m + durationMinutes;
+      const endH = Math.floor(endTotalMin / 60);
+      const endM = endTotalMin % 60;
+      intentionEnd = `${pad(endH)}:${pad(endM)}:00`;
+    } else {
+      // 回退：UTC 提取（向后兼容）
+      const endTime = new Date(
+        startTime.getTime() + durationMinutes * 60 * 1000,
+      );
+      slotDate = `${startTime.getUTCFullYear()}-${pad(startTime.getUTCMonth() + 1)}-${pad(startTime.getUTCDate())}`;
+      intentionStart = `${pad(startTime.getUTCHours())}:${pad(startTime.getUTCMinutes())}:00`;
+      intentionEnd = `${pad(endTime.getUTCHours())}:${pad(endTime.getUTCMinutes())}:00`;
+    }
+
+    const conflicts: string[] = [];
+
+    for (const venueId of venueIds) {
+      const venue = venues.find((v) => Number(v.id) === Number(venueId));
+      const venueName = venue?.name ?? `场地${venueId}`;
+      const turnover = venue?.turnoverTime ?? 0;
+
+      // 查询不可预订时段
+      const unavailableSlots = await this.unavailableSlotRepo
+        .createQueryBuilder('slot')
+        .where('slot.venueId = :venueId', { venueId })
+        .andWhere('slot.slotDate = :slotDate', { slotDate })
+        .getMany();
+
+      for (const slot of unavailableSlots) {
+        // 考虑翻场时间：有效结束时间 = endTime + turnover
+        const effectiveEnd = this.addMinutesToTime(slot.endTime, turnover);
+        // 重叠判定：intentionStart < effectiveEnd && intentionEnd > slot.startTime
+        if (intentionStart < effectiveEnd && intentionEnd > slot.startTime) {
+          const reason = slot.reason ? `（${slot.reason}）` : '';
+          conflicts.push(
+            `${venueName} ${this.formatTimeHM(slot.startTime)}-${this.formatTimeHM(slot.endTime)} 不可预订${reason}`,
+          );
+        }
+      }
+
+      // 查询已预订时段
+      const bookedSlots = await this.timeSlotRepo
+        .createQueryBuilder('slot')
+        .where('slot.venueId = :venueId', { venueId })
+        .andWhere('slot.slotDate = :slotDate', { slotDate })
+        .andWhere('slot.isBooked = :isBooked', { isBooked: true })
+        .getMany();
+
+      for (const slot of bookedSlots) {
+        const effectiveEnd = this.addMinutesToTime(slot.endTime, turnover);
+        if (intentionStart < effectiveEnd && intentionEnd > slot.startTime) {
+          conflicts.push(
+            `${venueName} ${this.formatTimeHM(slot.startTime)}-${this.formatTimeHM(slot.endTime)} 已被预订`,
+          );
+        }
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * 将 HH:MM:SS 时间字符串加上分钟数，返回新的 HH:MM:SS 字符串。
+   * 用于翻场时间叠加计算。
+   */
+  private addMinutesToTime(timeStr: string, minutes: number): string {
+    if (minutes === 0) return timeStr;
+    const [h, m] = timeStr.split(':').map(Number);
+    const totalMin = h * 60 + m + minutes;
+    const newH = Math.min(Math.floor(totalMin / 60), 23);
+    const newM = totalMin % 60;
+    return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}:00`;
+  }
+
+  /**
+   * 将 HH:MM:SS 时间字符串格式化为 HH:MM
+   */
+  private formatTimeHM(timeStr: string): string {
+    return timeStr.substring(0, 5);
+  }
+
+  /**
    * 解析 regionCode
    *
    * 策略：
@@ -583,7 +787,7 @@ export class IntentionService {
     const preferredSelection =
       venueSelections.find((v) => v.priority === 1) ?? venueSelections[0];
     if (preferredSelection) {
-      const venue = venues.find((v) => v.id === preferredSelection.venueId);
+      const venue = venues.find((v) => Number(v.id) === Number(preferredSelection.venueId));
       return venue?.regionCode ?? null;
     }
 

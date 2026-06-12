@@ -178,6 +178,43 @@ export function VenueDetailScreen() {
         </View>
       </View>
 
+      {/* 操作按钮 - 根据角色显示不同内容 */}
+      <View style={styles.buttonSection}>
+        {isManager ? (
+          <>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleEdit}
+              accessibilityLabel="编辑场地"
+            >
+              <Text style={styles.primaryButtonText}>编辑场地</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={handleManageUnavailableSlots}
+              accessibilityLabel="管理不可预订时段"
+            >
+              <Text style={styles.secondaryButtonText}>管理不可预订时段</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.dangerButton}
+              onPress={handleDelete}
+              accessibilityLabel="删除场地"
+            >
+              <Text style={styles.dangerButtonText}>删除场地</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={handleGoBack}
+            accessibilityLabel="返回列表"
+          >
+            <Text style={styles.secondaryButtonText}>返回列表</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
       {/* 评分信息 */}
       {venue.ratingAvg !== undefined && (
         <View style={styles.section} accessibilityLabel="评分信息">
@@ -281,42 +318,6 @@ export function VenueDetailScreen() {
         </View>
       </View>
 
-      {/* 操作按钮 - 根据角色显示不同内容 */}
-      <View style={styles.buttonSection}>
-        {isManager ? (
-          <>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={handleEdit}
-              accessibilityLabel="编辑场地"
-            >
-              <Text style={styles.primaryButtonText}>编辑场地</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={handleManageUnavailableSlots}
-              accessibilityLabel="管理不可预订时段"
-            >
-              <Text style={styles.secondaryButtonText}>管理不可预订时段</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.dangerButton}
-              onPress={handleDelete}
-              accessibilityLabel="删除场地"
-            >
-              <Text style={styles.dangerButtonText}>删除场地</Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={handleGoBack}
-            accessibilityLabel="返回列表"
-          >
-            <Text style={styles.secondaryButtonText}>返回列表</Text>
-          </TouchableOpacity>
-        )}
-      </View>
     </ScrollView>
   );
 }
@@ -547,7 +548,7 @@ const styles = StyleSheet.create({
   buttonSection: {
     padding: 16,
     gap: 12,
-    marginTop: 12,
+    marginTop: 0,
     marginBottom: 24,
   },
   primaryButton: {

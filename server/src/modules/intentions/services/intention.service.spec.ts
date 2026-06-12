@@ -13,6 +13,8 @@ import { IntentionVenue } from '../entities/intention-venue.entity';
 import { IntentionFormat } from '../entities/intention-format.entity';
 import { Player } from '@modules/players/entities/player.entity';
 import { Venue } from '@modules/venues/entities/venue.entity';
+import { VenueUnavailableSlot } from '@modules/venues/entities/venue-unavailable-slot.entity';
+import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 import { CreateIntentionDto } from '../dto/create-intention.dto';
 import { UpdateIntentionDto } from '../dto/update-intention.dto';
@@ -197,6 +199,7 @@ function createMockQueryBuilder<T extends object>(
     take: jest.fn().mockReturnThis(),
     getOne: jest.fn().mockResolvedValue(items[0] ?? null),
     getManyAndCount: jest.fn().mockResolvedValue([items, items.length]),
+    getMany: jest.fn().mockResolvedValue(items),
     getCount: jest.fn().mockResolvedValue(options.getCount ?? items.length),
     execute: jest.fn().mockResolvedValue({ affected: 1 }),
   } as unknown as SelectQueryBuilder<T>;
@@ -213,6 +216,8 @@ describe('IntentionService', () => {
   let playerRepo: MockRepository<Player>;
   let venueRepo: MockRepository<Venue>;
   let formatRepo: MockRepository<Format>;
+  let unavailableSlotRepo: MockRepository<VenueUnavailableSlot>;
+  let timeSlotRepo: MockRepository<VenueTimeSlot>;
   let dataSource: ReturnType<typeof createMockDataSource>;
 
   beforeEach(async () => {
@@ -222,7 +227,14 @@ describe('IntentionService', () => {
     playerRepo = createMockRepository<Player>();
     venueRepo = createMockRepository<Venue>();
     formatRepo = createMockRepository<Format>();
+    unavailableSlotRepo = createMockRepository<VenueUnavailableSlot>();
+    timeSlotRepo = createMockRepository<VenueTimeSlot>();
     dataSource = createMockDataSource();
+
+    // 默认场地时段无冲突（不可预订时段和已预订时段均为空）
+    const emptyQb = createMockQueryBuilder([]);
+    unavailableSlotRepo.createQueryBuilder!.mockReturnValue(emptyQb);
+    timeSlotRepo.createQueryBuilder!.mockReturnValue(emptyQb);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -239,6 +251,14 @@ describe('IntentionService', () => {
         { provide: getRepositoryToken(Player), useValue: playerRepo },
         { provide: getRepositoryToken(Venue), useValue: venueRepo },
         { provide: getRepositoryToken(Format), useValue: formatRepo },
+        {
+          provide: getRepositoryToken(VenueUnavailableSlot),
+          useValue: unavailableSlotRepo,
+        },
+        {
+          provide: getRepositoryToken(VenueTimeSlot),
+          useValue: timeSlotRepo,
+        },
         { provide: DataSource, useValue: dataSource },
       ],
     }).compile();
@@ -267,6 +287,8 @@ describe('IntentionService', () => {
         startTime: validStartTime.toISOString(),
         durationMinutes: 120,
         acceptableWaitMinutes: 30,
+        localDate: '2026-06-15',
+        localTime: '14:00',
         venueIds: [{ venueId: 1, priority: 1 }],
         formatIds: [{ formatId: 1, priority: 1 }],
         ...overrides,
@@ -294,9 +316,12 @@ describe('IntentionService', () => {
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([], { getCount: 0 }),
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
         )
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -333,9 +358,12 @@ describe('IntentionService', () => {
       let capturedIntention: Partial<Intention> | undefined;
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([], { getCount: 0 }),
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
         )
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -387,9 +415,12 @@ describe('IntentionService', () => {
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([], { getCount: 0 }),
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
         )
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -423,9 +454,12 @@ describe('IntentionService', () => {
       let capturedIntention: Partial<Intention> | undefined;
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([], { getCount: 0 }),
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
         )
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -461,9 +495,12 @@ describe('IntentionService', () => {
       let capturedIntention: Partial<Intention> | undefined;
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([], { getCount: 0 }),
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
         )
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -499,9 +536,12 @@ describe('IntentionService', () => {
       let capturedIntention: Partial<Intention> | undefined;
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([], { getCount: 0 }),
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
         )
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -649,8 +689,160 @@ describe('IntentionService', () => {
       playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
       venueRepo.findBy!.mockResolvedValue([mockVenue]);
       formatRepo.findBy!.mockResolvedValue([mockFormat]);
+      // checkSameDayIntention returns 0 (no same-day conflict)
+      // checkTimeOverlap returns 1 (overlap conflict)
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }),
+        )
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 1 }),
+        );
+
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('should throw ConflictException when player already has a pending intention on the same day', async () => {
+      const playerId = 1;
+      const dto = buildValidDto();
+      const mockPlayer = createMockPlayer();
+      const mockVenue = createMockVenue();
+      const mockFormat = createMockFormat();
+
+      playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
+      venueRepo.findBy!.mockResolvedValue([mockVenue]);
+      formatRepo.findBy!.mockResolvedValue([mockFormat]);
+      // checkSameDayIntention returns 1 → same-day conflict (runs before overlap check)
       intentionRepo.createQueryBuilder!.mockReturnValue(
         createMockQueryBuilder([], { getCount: 1 }),
+      );
+
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('should throw ConflictException when selected venue has unavailable slot conflict', async () => {
+      const playerId = 1;
+      const dto = buildValidDto({
+        startTime: new Date('2026-06-16T14:00:00Z').toISOString(),
+        durationMinutes: 120,
+        localDate: '2026-06-16',
+        localTime: '14:00',
+      });
+      const mockPlayer = createMockPlayer();
+      const mockVenue = createMockVenue({ name: '深圳湾体育中心' });
+      const mockFormat = createMockFormat();
+
+      playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
+      venueRepo.findBy!.mockResolvedValue([mockVenue]);
+      formatRepo.findBy!.mockResolvedValue([mockFormat]);
+      // same-day + overlap checks: no conflict
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([], { getCount: 0 }),
+      );
+      // 场地不可预订时段与意向时间重叠
+      unavailableSlotRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([
+          {
+            venueId: 1,
+            slotDate: '2026-06-16',
+            startTime: '13:00:00',
+            endTime: '15:00:00',
+            reason: '维护保养',
+          },
+        ] as any),
+      );
+
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        ConflictException,
+      );
+      // Verify error message includes specific venue and time
+      try {
+        await service.create(playerId, dto);
+      } catch (err: any) {
+        expect(err.message).toContain('深圳湾体育中心');
+        expect(err.message).toContain('13:00-15:00');
+        expect(err.message).toContain('不可预订');
+        expect(err.message).toContain('维护保养');
+      }
+    });
+
+    it('should throw ConflictException when selected venue has booked slot conflict', async () => {
+      const playerId = 1;
+      const dto = buildValidDto({
+        startTime: new Date('2026-06-16T14:00:00Z').toISOString(),
+        durationMinutes: 120,
+        localDate: '2026-06-16',
+        localTime: '14:00',
+      });
+      const mockPlayer = createMockPlayer();
+      const mockVenue = createMockVenue({ name: '福田体育公园' });
+      const mockFormat = createMockFormat();
+
+      playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
+      venueRepo.findBy!.mockResolvedValue([mockVenue]);
+      formatRepo.findBy!.mockResolvedValue([mockFormat]);
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([], { getCount: 0 }),
+      );
+      // 场地已预订时段与意向时间重叠
+      timeSlotRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([
+          {
+            venueId: 1,
+            slotDate: '2026-06-16',
+            startTime: '14:00:00',
+            endTime: '16:00:00',
+            isBooked: true,
+          },
+        ] as any),
+      );
+
+      await expect(service.create(playerId, dto)).rejects.toThrow(
+        ConflictException,
+      );
+      try {
+        await service.create(playerId, dto);
+      } catch (err: any) {
+        expect(err.message).toContain('福田体育公园');
+        expect(err.message).toContain('14:00-16:00');
+        expect(err.message).toContain('已被预订');
+      }
+    });
+
+    it('should fall back to UTC time extraction when localDate/localTime not provided', async () => {
+      const playerId = 1;
+      // UTC time 14:00 → no local fields → backend extracts 14:00 from UTC
+      const dto = buildValidDto({
+        startTime: new Date('2026-06-15T14:00:00Z').toISOString(),
+        durationMinutes: 120,
+        localDate: undefined,
+        localTime: undefined,
+      });
+      const mockPlayer = createMockPlayer();
+      const mockVenue = createMockVenue({ name: '测试场地' });
+      const mockFormat = createMockFormat();
+
+      playerRepo.findOneBy!.mockResolvedValue(mockPlayer);
+      venueRepo.findBy!.mockResolvedValue([mockVenue]);
+      formatRepo.findBy!.mockResolvedValue([mockFormat]);
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([], { getCount: 0 }),
+      );
+      // 不可预订时段与 UTC 提取的 14:00-16:00 重叠
+      unavailableSlotRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([
+          {
+            venueId: 1,
+            slotDate: '2026-06-15',
+            startTime: '14:00:00',
+            endTime: '16:00:00',
+            reason: null,
+          },
+        ] as any),
       );
 
       await expect(service.create(playerId, dto)).rejects.toThrow(
@@ -688,10 +880,15 @@ describe('IntentionService', () => {
 
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([mockIntention]),
+          createMockQueryBuilder([mockIntention]), // query intention to update
         )
-        .mockReturnValueOnce(createMockQueryBuilder([], { getCount: 0 }))
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -718,12 +915,15 @@ describe('IntentionService', () => {
         status: 'pending',
       });
 
+      // durationMinutes only → no same-day check; only checkTimeOverlap
       intentionRepo
         .createQueryBuilder!.mockReturnValueOnce(
-          createMockQueryBuilder([mockIntention]),
+          createMockQueryBuilder([mockIntention]), // query intention to update
         )
-        .mockReturnValueOnce(createMockQueryBuilder([], { getCount: 0 }))
-        .mockReturnValueOnce(createMockQueryBuilder([mockIntention]));
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;

@@ -68,6 +68,14 @@ export class CreateIntentionDto {
   @Type(() => Number)
   acceptableWaitMinutes?: number;
 
+  @IsString()
+  @IsOptional()
+  localDate?: string;
+
+  @IsString()
+  @IsOptional()
+  localTime?: string;
+
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(3)

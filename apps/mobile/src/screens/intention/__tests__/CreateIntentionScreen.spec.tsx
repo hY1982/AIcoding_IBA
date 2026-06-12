@@ -273,6 +273,11 @@ describe('CreateIntentionScreen', () => {
     // Select a format
     fireEvent.press(screen.getByText('3v3短赛'));
 
+    // Select acceptable wait
+    openDropdown('请选择可接受等待时长');
+    await waitFor(() => { expect(screen.getByLabelText('30分钟')).toBeTruthy(); });
+    selectDropdownOption('30分钟');
+
     fireEvent.press(screen.getByLabelText('提交意向'));
 
     await waitFor(() => {
@@ -305,6 +310,11 @@ describe('CreateIntentionScreen', () => {
 
     fireEvent.press(screen.getByText('深圳湾体育中心'));
 
+    // Select acceptable wait
+    openDropdown('请选择可接受等待时长');
+    await waitFor(() => { expect(screen.getByLabelText('30分钟')).toBeTruthy(); });
+    selectDropdownOption('30分钟');
+
     fireEvent.press(screen.getByLabelText('提交意向'));
 
     await waitFor(() => {
@@ -336,6 +346,11 @@ describe('CreateIntentionScreen', () => {
     openDropdown('请选择持续时长');
     await waitFor(() => { expect(screen.getByLabelText('2小时')).toBeTruthy(); });
     selectDropdownOption('2小时');
+
+    // Select acceptable wait
+    openDropdown('请选择可接受等待时长');
+    await waitFor(() => { expect(screen.getByLabelText('30分钟')).toBeTruthy(); });
+    selectDropdownOption('30分钟');
 
     fireEvent.press(screen.getByText('深圳湾体育中心'));
     fireEvent.press(screen.getByText('3v3短赛'));
@@ -371,6 +386,11 @@ describe('CreateIntentionScreen', () => {
     openDropdown('请选择持续时长');
     await waitFor(() => { expect(screen.getByLabelText('2小时')).toBeTruthy(); });
     selectDropdownOption('2小时');
+
+    // Select acceptable wait
+    openDropdown('请选择可接受等待时长');
+    await waitFor(() => { expect(screen.getByLabelText('30分钟')).toBeTruthy(); });
+    selectDropdownOption('30分钟');
 
     fireEvent.press(screen.getByText('深圳湾体育中心'));
     fireEvent.press(screen.getByText('3v3短赛'));

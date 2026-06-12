@@ -140,6 +140,12 @@ describe('Intention Flow Integration', () => {
     fireEvent.press(screen.getByText('深圳湾体育中心'));
     fireEvent.press(screen.getByText('3v3短赛'));
 
+    // Select acceptable wait
+    await waitFor(() => { expect(screen.getByLabelText('请选择可接受等待时长')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('请选择可接受等待时长'));
+    await waitFor(() => { expect(screen.getByLabelText('30分钟')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('30分钟'));
+
     // Submit
     fireEvent.press(screen.getByLabelText('提交意向'));
 

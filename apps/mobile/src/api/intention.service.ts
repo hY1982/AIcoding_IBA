@@ -31,6 +31,8 @@ export interface CreateIntentionDto {
   startTime: string;
   durationMinutes: number;
   acceptableWaitMinutes?: number;
+  localDate?: string;
+  localTime?: string;
   venueIds: { venueId: number; priority: number }[];
   formatIds: { formatId: number; priority: number }[];
 }
