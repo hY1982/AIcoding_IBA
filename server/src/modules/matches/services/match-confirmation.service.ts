@@ -27,6 +27,18 @@ import {
 } from '../interfaces/group-chat-provider.interface';
 import { MatchStatus, MatchPlayerStatus } from '@shared/match';
 
+/**
+ * 自定义异常：球员已确认参赛（幂等性场景）
+ *
+ * 区别于普通 ConflictException，Controller 可通过 instanceof 判断
+ * 将重复确认请求视为幂等成功而非错误，避免字符串硬匹配。
+ */
+export class AlreadyConfirmedException extends ConflictException {
+  constructor() {
+    super('已确认参赛');
+  }
+}
+
 export interface ConfirmParticipationResult {
   success: boolean;
   matchId: number;
@@ -541,7 +553,7 @@ export class MatchConfirmationService {
     }
 
     if (matchPlayer.status === 'confirmed') {
-      throw new ConflictException('已确认参赛');
+      throw new AlreadyConfirmedException();
     }
 
     if (matchPlayer.status === 'declined') {
@@ -795,7 +807,13 @@ export class MatchConfirmationService {
       select: ['playerId'],
     });
 
-    const userIds = confirmedPlayers.map((p) => p.playerId);
+    const playerIds = confirmedPlayers.map((p) => p.playerId);
+    if (playerIds.length === 0) {
+      return;
+    }
+
+    // Resolve playerId → userId via Player table
+    const userIds = await this.resolvePlayerIdsToUserIds(playerIds);
     if (userIds.length === 0) {
       return;
     }
@@ -824,7 +842,19 @@ export class MatchConfirmationService {
       select: ['playerId', 'status'],
     });
 
+    // Resolve playerId → userId via Player table
+    const playerIds = allPlayers.map((p) => p.playerId);
+    const playerIdToUserId = await this.resolvePlayerIdsToUserIdMap(playerIds);
+
     for (const player of allPlayers) {
+      const userId = playerIdToUserId.get(player.playerId);
+      if (!userId) {
+        this.logger.warn(
+          `Player ${player.playerId} has no associated user, skipping notification`,
+        );
+        continue;
+      }
+
       const title = '比赛人数不足，已取消';
       const content =
         player.status === 'confirmed'
@@ -833,7 +863,7 @@ export class MatchConfirmationService {
 
       await this.createNotificationWithRetry(() =>
         this.notificationService.createNotification({
-          userId: player.playerId,
+          userId,
           type: 'match_failed',
           title,
           content,
@@ -918,5 +948,40 @@ export class MatchConfirmationService {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Resolve playerIds to userIds via Player table.
+   *
+   * NotificationService expects userId (User PK), not playerId (Player PK).
+   */
+  private async resolvePlayerIdsToUserIds(playerIds: number[]): Promise<number[]> {
+    if (playerIds.length === 0) return [];
+
+    const rows = await this.dataSource.query(
+      `SELECT user_id FROM players WHERE id = ANY($1)`,
+      [playerIds],
+    );
+    return rows.map((r: { user_id: string | number }) => Number(r.user_id));
+  }
+
+  /**
+   * Resolve playerIds to a playerId→userId mapping via Player table.
+   */
+  private async resolvePlayerIdsToUserIdMap(
+    playerIds: number[],
+  ): Promise<Map<number, number>> {
+    if (playerIds.length === 0) return new Map();
+
+    const rows = await this.dataSource.query(
+      `SELECT id, user_id FROM players WHERE id = ANY($1)`,
+      [playerIds],
+    );
+
+    const map = new Map<number, number>();
+    for (const row of rows) {
+      map.set(Number(row.id), Number(row.user_id));
+    }
+    return map;
   }
 }
