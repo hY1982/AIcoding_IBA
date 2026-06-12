@@ -1045,6 +1045,44 @@ describe('IntentionService', () => {
       );
     });
 
+    it('should update a cancelled intention and restore to pending', async () => {
+      const intentionId = 1;
+      const playerId = 1;
+      const dto: UpdateIntentionDto = {
+        startTime: new Date('2026-06-15T16:00:00Z').toISOString(),
+        durationMinutes: 180,
+      };
+      const mockIntention = createMockIntention({
+        id: intentionId,
+        playerId,
+        status: 'cancelled',
+      });
+
+      intentionRepo
+        .createQueryBuilder!.mockReturnValueOnce(
+          createMockQueryBuilder([mockIntention]), // query intention to update
+        )
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkTimeOverlap
+        )
+        .mockReturnValueOnce(
+          createMockQueryBuilder([], { getCount: 0 }), // checkSameDayIntention
+        )
+        .mockReturnValueOnce(createMockQueryBuilder([mockIntention])); // findById
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = dataSource.manager;
+        manager.findOne.mockResolvedValue(mockIntention);
+        return cb(manager);
+      });
+
+      const result = await service.update(intentionId, playerId, dto);
+
+      expect(result).toBeDefined();
+      expect(mockIntention.status).toBe('pending');
+      expect(dataSource.transaction).toHaveBeenCalled();
+    });
+
     it('should throw BadRequestException when updated startTime is less than 1 hour ahead', async () => {
       const intentionId = 1;
       const playerId = 1;
@@ -1380,6 +1418,102 @@ describe('IntentionService', () => {
       );
 
       await expect(service.cancel(intentionId, playerId)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  // ==================== REMOVE ====================
+
+  describe('remove', () => {
+    it('should physically delete a cancelled intention', async () => {
+      const intentionId = 1;
+      const playerId = 1;
+      const mockIntention = createMockIntention({
+        id: intentionId,
+        playerId,
+        status: 'cancelled',
+      });
+
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([mockIntention]),
+      );
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = dataSource.manager;
+        manager.delete.mockResolvedValue({ affected: 1 });
+        return cb(manager);
+      });
+
+      const result = await service.remove(intentionId, playerId);
+
+      expect(result).toEqual({ success: true });
+      expect(dataSource.transaction).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException when intention does not exist', async () => {
+      const intentionId = 999;
+      const playerId = 1;
+
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([]),
+      );
+
+      await expect(service.remove(intentionId, playerId)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException when non-owner tries to remove', async () => {
+      const intentionId = 1;
+      const playerId = 2;
+      const mockIntention = createMockIntention({
+        id: intentionId,
+        playerId: 1,
+        status: 'cancelled',
+      });
+
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([mockIntention]),
+      );
+
+      await expect(service.remove(intentionId, playerId)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw BadRequestException when intention is pending', async () => {
+      const intentionId = 1;
+      const playerId = 1;
+      const mockIntention = createMockIntention({
+        id: intentionId,
+        playerId,
+        status: 'pending',
+      });
+
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([mockIntention]),
+      );
+
+      await expect(service.remove(intentionId, playerId)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw BadRequestException when intention is matched', async () => {
+      const intentionId = 1;
+      const playerId = 1;
+      const mockIntention = createMockIntention({
+        id: intentionId,
+        playerId,
+        status: 'matched',
+      });
+
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder([mockIntention]),
+      );
+
+      await expect(service.remove(intentionId, playerId)).rejects.toThrow(
         BadRequestException,
       );
     });

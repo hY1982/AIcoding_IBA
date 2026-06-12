@@ -257,12 +257,13 @@ export class IntentionService {
       throw new ForbiddenException('无权操作该意向');
     }
 
-    // 状态校验：仅 pending 可修改
-    if (intention.status !== 'pending') {
+    // 状态校验：仅 pending / cancelled 可修改
+    if (intention.status !== 'pending' && intention.status !== 'cancelled') {
       throw new BadRequestException(
-        `当前状态为 ${intention.status}，仅 pending 状态的意向可修改`,
+        `当前状态为 ${intention.status}，仅 pending 或 cancelled 状态的意向可修改`,
       );
     }
+    const wasCancelled = intention.status === 'cancelled';
 
     // 空 DTO 校验：至少提供一个更新字段
     const hasAnyField =
@@ -339,6 +340,11 @@ export class IntentionService {
         throw new NotFoundException(`意向不存在: intentionId=${intentionId}`);
       }
 
+      // 若从 cancelled 状态重新编辑，恢复为 pending
+      if (wasCancelled) {
+        intentionInTx.status = 'pending';
+      }
+
       // 更新 Intention 主表
       if (dto.startTime !== undefined) {
         intentionInTx.startTime = new Date(dto.startTime);
@@ -352,6 +358,7 @@ export class IntentionService {
 
       // 使用 save 触发 @BeforeUpdate 钩子重新计算 endTime/expiresAt
       if (
+        wasCancelled ||
         dto.startTime !== undefined ||
         dto.durationMinutes !== undefined ||
         dto.acceptableWaitMinutes !== undefined
@@ -440,6 +447,55 @@ export class IntentionService {
     );
 
     return this.findById(intentionId);
+  }
+
+  // ==================== REMOVE (PHYSICAL DELETE) ====================
+
+  /**
+   * 彻底删除已取消的意向（物理删除）
+   *
+   * 仅允许删除 cancelled 状态的意向。
+   * 删除操作会级联移除关联的 intention_venues 和 intention_formats。
+   *
+   * @param intentionId 意向ID
+   * @param playerId 当前操作球员ID
+   * @throws NotFoundException 意向不存在
+   * @throws ForbiddenException 非所属球员
+   * @throws BadRequestException 状态不允许删除
+   */
+  async remove(intentionId: number, playerId: number): Promise<{ success: true }> {
+    const intention = await this.intentionRepo
+      .createQueryBuilder('intention')
+      .where('intention.id = :intentionId', { intentionId })
+      .getOne();
+
+    if (!intention) {
+      throw new NotFoundException(`意向不存在: intentionId=${intentionId}`);
+    }
+
+    if (intention.playerId !== playerId) {
+      throw new ForbiddenException('无权操作该意向');
+    }
+
+    if (intention.status !== 'cancelled') {
+      throw new BadRequestException(
+        `当前状态为 ${intention.status}，仅 cancelled 状态的意向可彻底删除`,
+      );
+    }
+
+    await this.dataSource.transaction(async (manager) => {
+      // 先删除关联表记录
+      await manager.delete(IntentionVenue, { intentionId });
+      await manager.delete(IntentionFormat, { intentionId });
+      // 再删除主表记录
+      await manager.delete(Intention, { id: intentionId });
+    });
+
+    this.logger.log(
+      `意向彻底删除: intentionId=${intentionId}, playerId=${playerId}`,
+    );
+
+    return { success: true };
   }
 
   // ==================== READ ====================

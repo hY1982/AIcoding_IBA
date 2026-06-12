@@ -27,6 +27,8 @@ export function IntentionDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadIntention = useCallback(async () => {
     try {
@@ -74,6 +76,37 @@ export function IntentionDetailScreen() {
       Alert.alert('确认取消', '确定要取消这个意向吗？', [
         { text: '返回', style: 'cancel' },
         { text: '确定', style: 'destructive', onPress: doCancel },
+      ]);
+    }
+  };
+
+  const handleReEdit = () => {
+    navigation.navigate('CreateIntention', { intentionId });
+  };
+
+  const handleDelete = () => {
+    const doDelete = async () => {
+      try {
+        setDeleteError(null);
+        setIsDeleting(true);
+        await intentionService.deleteIntention(intentionId);
+        navigation.goBack();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '删除失败';
+        setDeleteError(message);
+      } finally {
+        setIsDeleting(false);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('确定要彻底删除这个意向吗？此操作不可撤销。')) {
+        doDelete();
+      }
+    } else {
+      Alert.alert('确认删除', '确定要彻底删除这个意向吗？此操作不可撤销。', [
+        { text: '取消', style: 'cancel' },
+        { text: '删除', style: 'destructive', onPress: doDelete },
       ]);
     }
   };
@@ -204,6 +237,35 @@ export function IntentionDetailScreen() {
           <Text style={styles.cancelButtonText}>取消意向</Text>
         </TouchableOpacity>
       )}
+
+      {/* Re-edit and Delete Buttons (only for cancelled) */}
+      {intention.status === 'cancelled' && (
+        <>
+          <TouchableOpacity
+            style={styles.reEditButton}
+            onPress={handleReEdit}
+            accessibilityLabel="重新编辑"
+            accessibilityRole="button"
+          >
+            <Text style={styles.reEditButtonText}>重新编辑并提交</Text>
+          </TouchableOpacity>
+          {deleteError && <Text style={styles.deleteErrorText}>{deleteError}</Text>}
+          <TouchableOpacity
+            style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
+            onPress={handleDelete}
+            disabled={isDeleting}
+            accessibilityLabel="彻底删除"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isDeleting }}
+          >
+            {isDeleting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.deleteButtonText}>彻底删除</Text>
+            )}
+          </TouchableOpacity>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -312,6 +374,40 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  reEditButton: {
+    backgroundColor: '#1a73e8',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  reEditButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteErrorText: {
+    fontSize: 14,
+    color: '#e74c3c',
+    textAlign: 'center',
+    marginBottom: 12,
+    marginTop: 12,
+  },
+  deleteButton: {
+    backgroundColor: '#95a5a6',
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  deleteButtonDisabled: {
+    backgroundColor: '#bdc3c7',
+  },
+  deleteButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

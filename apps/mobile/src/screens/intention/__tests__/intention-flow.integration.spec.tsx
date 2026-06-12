@@ -19,6 +19,8 @@ import type { PaginatedResponse } from '@shared/common';
 
 const mockNavigate = jest.fn();
 const mockGoBack = jest.fn();
+// eslint-disable-next-line prefer-const
+let mockRouteParams: Record<string, unknown> = {};
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -27,9 +29,10 @@ jest.mock('@react-navigation/native', () => {
     useNavigation: () => ({
       navigate: mockNavigate,
       goBack: mockGoBack,
+      setOptions: jest.fn(),
     }),
     useRoute: () => ({
-      params: { intentionId: 1 },
+      params: mockRouteParams,
     }),
     useFocusEffect: (cb: () => void) => {
       const React = require('react');
@@ -94,6 +97,7 @@ describe('Intention Flow Integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useRealTimers();
+    mockRouteParams = {};
   });
 
   it('Happy path: list → create → submit → goBack', async () => {
@@ -171,6 +175,7 @@ describe('Intention Flow Integration', () => {
     unmountList();
 
     // Step 2: Detail screen
+    mockRouteParams = { intentionId: 1 };
     (intentionService.getMyIntentionById as jest.Mock).mockResolvedValue(mockIntention);
     (intentionService.cancelIntention as jest.Mock).mockResolvedValue({
       ...mockIntention,

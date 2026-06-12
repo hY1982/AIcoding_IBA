@@ -21,7 +21,7 @@ export type RootStackParamList = {
   VenueDetail: { venueId: number };
   EditVenue: { venue: VenueDetail };
   UnavailableSlots: { venueId: number; venueName: string };
-  CreateIntention: undefined;
+  CreateIntention: { intentionId?: number } | undefined;
   MyIntentions: undefined;
   IntentionDetail: { intentionId: number };
 };
@@ -110,3 +110,4 @@ export type VenueDetailScreenRouteProp = RouteProp<RootStackParamList, 'VenueDet
 export type EditVenueScreenRouteProp = RouteProp<RootStackParamList, 'EditVenue'>;
 export type UnavailableSlotsScreenRouteProp = RouteProp<RootStackParamList, 'UnavailableSlots'>;
 export type IntentionDetailScreenRouteProp = RouteProp<RootStackParamList, 'IntentionDetail'>;
+export type CreateIntentionScreenRouteProp = RouteProp<RootStackParamList, 'CreateIntention'>;

@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { intentionService } from '@/api/intention.service';
 import { venueService } from '@/api/venue.service';
 import { formatService } from '@/api/format.service';
@@ -15,7 +15,10 @@ import { ChipMultiSelect } from '@/components/ChipMultiSelect';
 import { DropdownSelect } from '@/components/DropdownSelect';
 import type { VenueListItem } from '@shared/venue';
 import type { Format } from '@shared/format';
-import type { CreateIntentionScreenNavigationProp } from '@/navigation/types';
+import type {
+  CreateIntentionScreenNavigationProp,
+  CreateIntentionScreenRouteProp,
+} from '@/navigation/types';
 
 // Duration options in minutes, every 30 min from 0.5h to 6h
 const DURATION_OPTIONS: { label: string; value: number }[] = [];
@@ -73,6 +76,16 @@ function generateDateOptions(): { label: string; date: Date }[] {
 
 export function CreateIntentionScreen() {
   const navigation = useNavigation<CreateIntentionScreenNavigationProp>();
+  const route = useRoute<CreateIntentionScreenRouteProp>();
+  const editIntentionId = route.params?.intentionId;
+  const isEditMode = editIntentionId !== undefined;
+
+  // Set title based on edit mode
+  React.useEffect(() => {
+    navigation.setOptions({
+      title: isEditMode ? '编辑意向' : '创建意向',
+    });
+  }, [navigation, isEditMode]);
 
   // Data loading states
   const [venues, setVenues] = useState<VenueListItem[]>([]);
@@ -116,7 +129,7 @@ export function CreateIntentionScreen() {
   // Selected date index (from string state)
   const selectedDateIndex = selectedDateValue !== null ? Number(selectedDateValue) : null;
 
-  // Load venues and formats
+  // Load venues and formats, then pre-fill if editing
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -126,6 +139,59 @@ export function CreateIntentionScreen() {
         ]);
         setVenues(venueRes.list);
         setFormats(formatRes);
+
+        // If editing, load existing intention data
+        if (editIntentionId) {
+          try {
+            const intention = await intentionService.getMyIntentionById(editIntentionId);
+
+            // Pre-fill duration
+            setSelectedDurationValue(String(intention.durationMinutes));
+
+            // Pre-fill acceptable wait
+            setSelectedAcceptableWait(String(intention.acceptableWaitMinutes));
+
+            // Pre-fill venues
+            const prefillVenues = intention.venues
+              .map((v) => venueRes.list.find((vl) => vl.id === v.venueId))
+              .filter((v): v is VenueListItem => v !== undefined);
+            setSelectedVenues(prefillVenues);
+
+            // Pre-fill formats
+            const prefillFormats = intention.formats
+              .map((f) => formatRes.find((fl) => fl.id === f.formatId))
+              .filter((f): f is Format => f !== undefined);
+            setSelectedFormats(prefillFormats);
+
+            // Pre-fill date and time from startTime
+            const startDate = new Date(intention.startTime);
+            const pad = (n: number) => String(n).padStart(2, '0');
+            const intentionTime = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+
+            // Find matching date in the date options
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const intentionDay = new Date(startDate);
+            intentionDay.setHours(0, 0, 0, 0);
+
+            let matchedDateIndex = -1;
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(today);
+              d.setDate(today.getDate() + i);
+              if (d.getTime() === intentionDay.getTime()) {
+                matchedDateIndex = i;
+                break;
+              }
+            }
+
+            if (matchedDateIndex >= 0) {
+              setSelectedDateValue(String(matchedDateIndex));
+              setSelectedTime(intentionTime);
+            }
+          } catch {
+            // If loading existing intention fails, just show empty form
+          }
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : '加载失败';
         setDataError(message);
@@ -134,7 +200,7 @@ export function CreateIntentionScreen() {
       }
     };
     loadData();
-  }, []);
+  }, [editIntentionId]);
 
   // Filter time slots for today (>= now + 1h)
   const getAvailableTimeSlots = useCallback((): string[] => {
@@ -216,7 +282,7 @@ export function CreateIntentionScreen() {
       const pad = (n: number) => String(n).padStart(2, '0');
       const localDate = `${selectedDate.getFullYear()}-${pad(selectedDate.getMonth() + 1)}-${pad(selectedDate.getDate())}`;
 
-      await intentionService.createIntention({
+      const dto = {
         startTime: startTime.toISOString(),
         durationMinutes: Number(selectedDurationValue!),
         acceptableWaitMinutes: Number(selectedAcceptableWait!),
@@ -224,7 +290,13 @@ export function CreateIntentionScreen() {
         localTime: selectedTime!,
         venueIds: selectedVenues.map((v, i) => ({ venueId: v.id, priority: i + 1 })),
         formatIds: selectedFormats.map((f, i) => ({ formatId: f.id, priority: i + 1 })),
-      });
+      };
+
+      if (isEditMode) {
+        await intentionService.updateIntention(editIntentionId, dto);
+      } else {
+        await intentionService.createIntention(dto);
+      }
 
       navigation.goBack();
     } catch (err) {
@@ -349,14 +421,16 @@ export function CreateIntentionScreen() {
         style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
         onPress={handleSubmit}
         disabled={isSubmitting}
-        accessibilityLabel="提交意向"
+        accessibilityLabel={isEditMode ? '提交修改' : '提交意向'}
         accessibilityRole="button"
         accessibilityState={{ disabled: isSubmitting }}
       >
         {isSubmitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitButtonText}>提交意向</Text>
+          <Text style={styles.submitButtonText}>
+            {isEditMode ? '提交修改' : '提交意向'}
+          </Text>
         )}
       </TouchableOpacity>
     </ScrollView>

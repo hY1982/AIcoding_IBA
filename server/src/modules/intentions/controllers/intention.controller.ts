@@ -241,4 +241,28 @@ export class IntentionController {
     const profile = await this.assertPlayerRole(req);
     return this.intentionService.cancel(id, profile.id);
   }
+
+  /**
+   * DELETE /api/v1/intentions/:id/permanent
+   * 彻底删除已取消的意向（物理删除）
+   */
+  @Delete(':id/permanent')
+  @ApiOperation({ summary: '彻底删除已取消的意向' })
+  @ApiParam({ name: 'id', description: '意向ID', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: '删除成功',
+    schema: { properties: { success: { type: 'boolean' } } },
+  })
+  @ApiResponse({ status: 400, description: '状态不允许删除（非 cancelled）' })
+  @ApiResponse({ status: 401, description: '未登录或Token无效' })
+  @ApiResponse({ status: 403, description: '非球员角色或非归属球员' })
+  @ApiResponse({ status: 404, description: '意向不存在' })
+  async remove(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<{ success: true }> {
+    const profile = await this.assertPlayerRole(req);
+    return this.intentionService.remove(id, profile.id);
+  }
 }

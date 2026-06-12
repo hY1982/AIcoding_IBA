@@ -41,6 +41,8 @@ export interface UpdateIntentionDto {
   startTime?: string;
   durationMinutes?: number;
   acceptableWaitMinutes?: number;
+  localDate?: string;
+  localTime?: string;
   venueIds?: { venueId: number; priority: number }[];
   formatIds?: { formatId: number; priority: number }[];
 }
@@ -97,6 +99,16 @@ class IntentionService {
   async cancelIntention(id: number): Promise<IntentionResponse> {
     try {
       const response = await apiClient.delete<ApiResponse<IntentionResponse>>(`/intentions/${id}`);
+      return response.data.data;
+    } catch (error) {
+      const userMessage = extractApiErrorMessage(error);
+      throw new IntentionServiceError(userMessage);
+    }
+  }
+
+  async deleteIntention(id: number): Promise<{ success: true }> {
+    try {
+      const response = await apiClient.delete<ApiResponse<{ success: true }>>(`/intentions/${id}/permanent`);
       return response.data.data;
     } catch (error) {
       const userMessage = extractApiErrorMessage(error);

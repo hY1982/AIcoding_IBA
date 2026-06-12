@@ -1,11 +1,14 @@
 import { authService } from '../auth.service';
 import { apiClient } from '../client';
+import { secureStorage } from '@/utils/secureStorage';
 import type { AuthApiResponse } from '@shared/auth';
 
-jest.mock('expo-secure-store', () => ({
-  setItemAsync: jest.fn(),
-  getItemAsync: jest.fn(),
-  deleteItemAsync: jest.fn(),
+jest.mock('@/utils/secureStorage', () => ({
+  secureStorage: {
+    setItemAsync: jest.fn(),
+    getItemAsync: jest.fn(),
+    deleteItemAsync: jest.fn(),
+  },
 }));
 
 jest.mock('../client', () => ({
@@ -169,17 +172,16 @@ describe('AuthService', () => {
 
   describe('Token storage', () => {
     it('should save tokens to secure store', async () => {
-      const { setItemAsync } = require('expo-secure-store');
-
       await authService.saveTokens('access-123', 'refresh-456');
 
-      expect(setItemAsync).toHaveBeenCalledWith('accessToken', 'access-123');
-      expect(setItemAsync).toHaveBeenCalledWith('refreshToken', 'refresh-456');
+      expect(secureStorage.setItemAsync).toHaveBeenCalledWith('accessToken', 'access-123');
+      expect(secureStorage.setItemAsync).toHaveBeenCalledWith('refreshToken', 'refresh-456');
     });
 
     it('should get tokens from secure store', async () => {
-      const { getItemAsync } = require('expo-secure-store');
-      getItemAsync.mockResolvedValueOnce('access-123').mockResolvedValueOnce('refresh-456');
+      secureStorage.getItemAsync
+        .mockResolvedValueOnce('access-123')
+        .mockResolvedValueOnce('refresh-456');
 
       const tokens = await authService.getTokens();
 
@@ -187,12 +189,10 @@ describe('AuthService', () => {
     });
 
     it('should clear tokens from secure store', async () => {
-      const { deleteItemAsync } = require('expo-secure-store');
-
       await authService.clearTokens();
 
-      expect(deleteItemAsync).toHaveBeenCalledWith('accessToken');
-      expect(deleteItemAsync).toHaveBeenCalledWith('refreshToken');
+      expect(secureStorage.deleteItemAsync).toHaveBeenCalledWith('accessToken');
+      expect(secureStorage.deleteItemAsync).toHaveBeenCalledWith('refreshToken');
     });
   });
 });

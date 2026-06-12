@@ -7,6 +7,32 @@ import type { PlayerProfile } from '@shared/player';
 
 const mockGoBack = jest.fn();
 
+const mockProfile: PlayerProfile = {
+  id: 1,
+  userId: 1,
+  phone: '138****8000',
+  nickname: 'TestPlayer',
+  realName: '张**',
+  avatarUrl: 'https://example.com/avatar.jpg',
+  age: 25,
+  basketballAge: 5,
+  birthDate: '2000-06-15',
+  startPlayingDate: '2020-03',
+  gender: 'male',
+  height: 180,
+  weight: 75,
+  wingspan: 190,
+  standingReach: 230,
+  jumpingReach: 310,
+  positions: [{ position: 'PG', priority: 1 }, { position: 'SG', priority: 2 }],
+  baseAbilityScore: 72.5,
+  matchAdjustValue: 2.0,
+  totalAbilityScore: 74.5,
+  regionCode: 'shenzhen_futian',
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-06-01T00:00:00Z',
+};
+
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
   return {
@@ -29,30 +55,6 @@ jest.mock('@/api/player.service', () => ({
   },
 }));
 
-const mockProfile: PlayerProfile = {
-  id: 1,
-  userId: 1,
-  phone: '138****8000',
-  nickname: 'TestPlayer',
-  realName: '张**',
-  avatarUrl: 'https://example.com/avatar.jpg',
-  age: 25,
-  basketballAge: 5,
-  gender: 'male',
-  height: 180,
-  weight: 75,
-  wingspan: 190,
-  standingReach: 230,
-  jumpingReach: 310,
-  positions: ['PG', 'SG'],
-  baseAbilityScore: 72.5,
-  matchAdjustValue: 2.0,
-  totalAbilityScore: 74.5,
-  regionCode: 'shenzhen_futian',
-  createdAt: '2026-01-01T00:00:00Z',
-  updatedAt: '2026-06-01T00:00:00Z',
-};
-
 describe('EditProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -61,8 +63,8 @@ describe('EditProfileScreen', () => {
   it('should render all editable fields and submit button', () => {
     render(<EditProfileScreen />);
 
-    expect(screen.getByLabelText('年龄输入框')).toBeTruthy();
-    expect(screen.getByLabelText('球龄输入框')).toBeTruthy();
+    expect(screen.getByLabelText('生日输入框')).toBeTruthy();
+    expect(screen.getByLabelText('开始打球年月输入框')).toBeTruthy();
     expect(screen.getByLabelText('身高输入框')).toBeTruthy();
     expect(screen.getByLabelText('体重输入框')).toBeTruthy();
     expect(screen.getByLabelText('臂展输入框')).toBeTruthy();
@@ -77,8 +79,8 @@ describe('EditProfileScreen', () => {
   it('should prefill form from route params', () => {
     render(<EditProfileScreen />);
 
-    expect(screen.getByLabelText('年龄输入框').props.value).toBe('25');
-    expect(screen.getByLabelText('球龄输入框').props.value).toBe('5');
+    expect(screen.getByLabelText('生日输入框').props.value).toBe('2000-06-15');
+    expect(screen.getByLabelText('开始打球年月输入框').props.value).toBe('2020-03');
     expect(screen.getByLabelText('身高输入框').props.value).toBe('180');
     expect(screen.getByLabelText('体重输入框').props.value).toBe('75');
     expect(screen.getByLabelText('臂展输入框').props.value).toBe('190');
@@ -92,13 +94,13 @@ describe('EditProfileScreen', () => {
   it('should allow editing text fields', () => {
     render(<EditProfileScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '26');
-    fireEvent.changeText(screen.getByLabelText('球龄输入框'), '6');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-05-10');
+    fireEvent.changeText(screen.getByLabelText('开始打球年月输入框'), '2019-06');
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '181');
     fireEvent.changeText(screen.getByLabelText('体重输入框'), '76');
 
-    expect(screen.getByLabelText('年龄输入框').props.value).toBe('26');
-    expect(screen.getByLabelText('球龄输入框').props.value).toBe('6');
+    expect(screen.getByLabelText('生日输入框').props.value).toBe('1999-05-10');
+    expect(screen.getByLabelText('开始打球年月输入框').props.value).toBe('2019-06');
     expect(screen.getByLabelText('身高输入框').props.value).toBe('181');
     expect(screen.getByLabelText('体重输入框').props.value).toBe('76');
   });
@@ -136,13 +138,13 @@ describe('EditProfileScreen', () => {
     expect(screen.getByText('身高必须在50-300cm之间')).toBeTruthy();
   });
 
-  it('should show validation error for invalid age', () => {
+  it('should show validation error for invalid birthDate', () => {
     render(<EditProfileScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '0');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), 'invalid-date');
     fireEvent.press(screen.getByLabelText('保存'));
 
-    expect(screen.getByText('年龄必须在1-120之间')).toBeTruthy();
+    expect(screen.getByText('生日格式不正确，应为 YYYY-MM-DD')).toBeTruthy();
   });
 
   it('should show validation error when no position selected', () => {
@@ -159,20 +161,20 @@ describe('EditProfileScreen', () => {
     jest.useRealTimers();
     (playerService.updateProfile as jest.Mock).mockResolvedValue({
       ...mockProfile,
-      age: 26,
+      birthDate: '1999-05-10',
       height: 181,
     });
 
     render(<EditProfileScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '26');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-05-10');
     fireEvent.changeText(screen.getByLabelText('身高输入框'), '181');
     fireEvent.press(screen.getByLabelText('保存'));
 
     await waitFor(() => {
       expect(playerService.updateProfile).toHaveBeenCalledWith(
         expect.objectContaining({
-          age: 26,
+          birthDate: '1999-05-10',
           height: 181,
           gender: 'male',
           positions: ['PG', 'SG'],
@@ -187,7 +189,7 @@ describe('EditProfileScreen', () => {
 
     render(<EditProfileScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '26');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-05-10');
     fireEvent.press(screen.getByLabelText('保存'));
 
     await waitFor(() => {
@@ -202,7 +204,7 @@ describe('EditProfileScreen', () => {
 
     render(<EditProfileScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '26');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-05-10');
     fireEvent.press(screen.getByLabelText('保存'));
 
     await waitFor(() => {
@@ -220,7 +222,7 @@ describe('EditProfileScreen', () => {
 
     render(<EditProfileScreen />);
 
-    fireEvent.changeText(screen.getByLabelText('年龄输入框'), '26');
+    fireEvent.changeText(screen.getByLabelText('生日输入框'), '1999-05-10');
     fireEvent.press(screen.getByLabelText('保存'));
 
     await waitFor(() => {

@@ -8,6 +8,7 @@ const mockNavigate = jest.fn();
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
+  const React = require('react');
   return {
     ...actual,
     useNavigation: () => ({
@@ -17,6 +18,12 @@ jest.mock('@react-navigation/native', () => {
     useRoute: () => ({
       params: {},
     }),
+    useFocusEffect: (cb: () => (() => void) | void) => {
+      React.useEffect(() => {
+        const cleanup = cb();
+        return cleanup;
+      }, []);
+    },
   };
 });
 
@@ -42,7 +49,7 @@ describe('ProfileScreen', () => {
     wingspan: 190,
     standingReach: 230,
     jumpingReach: 310,
-    positions: ['PG', 'SG'],
+    positions: [{ position: 'PG', priority: 1 }, { position: 'SG', priority: 2 }],
     baseAbilityScore: 72.5,
     matchAdjustValue: 2.0,
     totalAbilityScore: 74.5,
