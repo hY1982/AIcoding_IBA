@@ -51,10 +51,10 @@ export async function runRegistrationPhase(
         const loginResp = await api.login({ phone: bot.phone, password: bot.password });
         bot.accessToken = api.getAccessToken();
         bot.refreshToken = api.getRefreshToken();
-        bot.userId = loginResp?.user?.id ?? data?.user?.id;
+        bot.userId = Number(loginResp?.user?.id ?? data?.user?.id);
         // 获取 venueManagerId
         const profile = await api.getVenueManagerProfile();
-        bot.venueManagerId = profile?.id;
+        bot.venueManagerId = Number(profile?.id);
         report.addSuccess(`VM 注册`, `${bot.nickname} userId=${bot.userId} vmId=${bot.venueManagerId}`, result.durationMs);
       }
     },
@@ -94,8 +94,8 @@ export async function runRegistrationPhase(
         bot.refreshToken = api.getRefreshToken();
         // 获取球员档案
         const profile = await api.getPlayerProfile();
-        bot.userId = profile?.userId ?? profile?.id;
-        bot.playerId = profile?.id;
+        bot.userId = Number(profile?.userId ?? profile?.id);
+        bot.playerId = Number(profile?.id);
         bot.baseAbilityScore = profile?.baseAbilityScore;
         return profile;
       }, metrics);
@@ -133,8 +133,8 @@ export async function runRegistrationPhase(
     human.accessToken = api.getAccessToken();
     human.refreshToken = api.getRefreshToken();
     const profile = await api.getPlayerProfile();
-    human.userId = profile?.userId ?? profile?.id;
-    human.playerId = profile?.id;
+    human.userId = Number(profile?.userId ?? profile?.id);
+    human.playerId = Number(profile?.id);
     human.baseAbilityScore = profile?.baseAbilityScore;
     return profile;
   }, metrics);

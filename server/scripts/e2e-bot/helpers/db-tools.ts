@@ -88,9 +88,9 @@ export class DbTools {
 
     for (const p of params) {
       await this.dataSource.query(
-        `INSERT INTO system_param (key, value, description)
+        `INSERT INTO system_params (param_key, param_value, description)
          VALUES ($1, $2::jsonb, $3)
-         ON CONFLICT (key) DO UPDATE SET value = $2::jsonb, description = $3, updated_at = NOW()`,
+         ON CONFLICT (param_key) DO UPDATE SET param_value = $2::jsonb, description = $3, updated_at = NOW()`,
         [p.key, p.value, p.description],
       );
     }
@@ -135,9 +135,9 @@ export class DbTools {
 
     for (const f of formats) {
       await this.dataSource.query(
-        `INSERT INTO format (name, format_type, team_size, team_count_min, team_count_max, win_condition, duration_hours, is_active)
+        `INSERT INTO formats (name, format_type, team_size, team_count_min, team_count_max, win_condition, duration_hours, is_active)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         ON CONFLICT (name) DO UPDATE SET is_active = true`,
+         ON CONFLICT DO NOTHING`,
         [f.name, f.format_type, f.team_size, f.team_count_min, f.team_count_max, f.win_condition, f.duration_hours, f.is_active],
       );
     }
@@ -148,7 +148,7 @@ export class DbTools {
    */
   async triggerMatching(appContext: any, regionCode: string): Promise<any> {
     // 通过 NestJS ApplicationContext 获取 MatchingEngineService
-    const { MatchingEngineService } = require('../../src/modules/matching/services/matching-engine.service');
+    const { MatchingEngineService } = require('../../../src/modules/matching/services/matching-engine.service');
     const matchingEngine = appContext.get(MatchingEngineService);
     return matchingEngine.runMatching(regionCode);
   }
@@ -158,7 +158,7 @@ export class DbTools {
    */
   async setMatchCompleted(matchId: number): Promise<void> {
     await this.dataSource.query(
-      `UPDATE match SET status = 'completed', updated_at = NOW() WHERE id = $1`,
+      `UPDATE matches SET status = 'completed', updated_at = NOW() WHERE id = $1`,
       [matchId],
     );
   }
@@ -168,7 +168,7 @@ export class DbTools {
    */
   async getFormats(): Promise<Array<{ id: number; name: string; team_size: number }>> {
     const result = await this.dataSource.query(
-      `SELECT id, name, team_size FROM format WHERE is_active = true ORDER BY id`,
+      `SELECT id, name, team_size FROM formats WHERE is_active = true ORDER BY id`,
     );
     return result;
   }
@@ -179,7 +179,7 @@ export class DbTools {
   async getMatchPlayers(matchId: number): Promise<Array<{ player_id: number; status: string; team_number: number }>> {
     const result = await this.dataSource.query(
       `SELECT mp.player_id, mp.status, mp.team_number
-       FROM match_player mp
+       FROM match_players mp
        WHERE mp.match_id = $1
        ORDER BY mp.team_number, mp.player_id`,
       [matchId],
@@ -192,7 +192,7 @@ export class DbTools {
    */
   async getPendingConfirmationMatches(): Promise<Array<{ id: number; total_players: number }>> {
     const result = await this.dataSource.query(
-      `SELECT id, total_players FROM match WHERE status = 'pending_confirmation'`,
+      `SELECT id, total_players FROM matches WHERE status = 'pending_confirmation'`,
     );
     return result;
   }
@@ -202,7 +202,7 @@ export class DbTools {
    */
   async getPlayerIdByUserId(userId: number): Promise<number | null> {
     const result = await this.dataSource.query(
-      `SELECT id FROM player WHERE user_id = $1`,
+      `SELECT id FROM players WHERE user_id = $1`,
       [userId],
     );
     return result.length > 0 ? Number(result[0].id) : null;
@@ -213,7 +213,7 @@ export class DbTools {
    */
   async getVenueManagerIdByUserId(userId: number): Promise<number | null> {
     const result = await this.dataSource.query(
-      `SELECT id FROM venue_manager WHERE user_id = $1`,
+      `SELECT id FROM venue_managers WHERE user_id = $1`,
       [userId],
     );
     return result.length > 0 ? Number(result[0].id) : null;

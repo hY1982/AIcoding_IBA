@@ -156,6 +156,9 @@ async function phaseZero(
 // ─── 主流程 ───
 
 async function main() {
+  // 在 NestJS AppModule 加载前设置，静默 TypeORM 日志和 schema 同步
+  process.env.E2E_TEST = 'true';
+
   const cliArgs = parseArgs();
 
   // --list: 列出可用场景

@@ -55,7 +55,8 @@ export async function runIntentionPhase(
       api.setTokens(bot.accessToken!, bot.refreshToken!);
 
       // 每个球员用稍微不同的时间避免"同天只能1个pending"限制
-      const botStartTime = getFutureTime(scenario.startTimeHoursAhead + (bot.index % 3));
+      // 所有球员使用相同的起始时间，确保匹配引擎能将他们分到同一组
+      const botStartTime = getFutureTime(scenario.startTimeHoursAhead);
 
       const payload: CreateIntentionPayload = {
         startTime: botStartTime,

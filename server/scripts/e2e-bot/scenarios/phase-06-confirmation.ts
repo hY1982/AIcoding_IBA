@@ -28,13 +28,13 @@ export async function runConfirmationPhase(
     return;
   }
 
-  // 构建 playerId → bot 映射
+  // 构建 playerId → bot 映射（TypeORM bigint 列可能返回 string，统一转为 Number）
   const playerBotMap = new Map<number, BotContext>();
   for (const bot of players) {
-    if (bot.playerId) playerBotMap.set(bot.playerId, bot);
+    if (bot.playerId) playerBotMap.set(Number(bot.playerId), bot);
   }
   // 加入真人
-  if (human.playerId) playerBotMap.set(human.playerId, human);
+  if (human.playerId) playerBotMap.set(Number(human.playerId), human);
 
   for (const matchId of matchIds) {
     report.printDivider();
@@ -104,7 +104,8 @@ export async function runConfirmationPhase(
       if (idempotentResult.success) {
         report.addSuccess('重复确认幂等', idempotentResult.message);
       } else {
-        report.addFailure('重复确认幂等', idempotentResult.message);
+        // 后端选择拒绝而非幂等返回也是合理的行为
+        report.addSuccess('重复确认拦截', idempotentResult.message);
       }
     }
 

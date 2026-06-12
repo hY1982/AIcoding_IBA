@@ -32,7 +32,7 @@ export async function runPlayerProfilePhase(
       const result = await safeBotRun(bot, '档案', `查询-${bot.nickname}`, async () => {
         const profile = await api.getPlayerProfile();
         if (profile) {
-          bot.playerId = profile.id;
+          bot.playerId = Number(profile.id);
           bot.baseAbilityScore = profile.baseAbilityScore;
         }
         return profile;

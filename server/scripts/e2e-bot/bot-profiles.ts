@@ -91,16 +91,18 @@ function generatePlayerAttributes(): {
   jumpingReach: number;
   positions: string[];
 } {
-  const age = Math.max(18, Math.min(45, normalRandom(28, 6)));
-  const basketballAge = Math.max(1, Math.min(30, age - 12, normalRandom(6, 4)));
-  const gender: 'male' | 'female' = Math.random() < 0.8 ? 'male' : 'female';
+  const age = Math.max(18, Math.min(45, normalRandom(26, 3)));
+  const basketballAge = Math.max(1, Math.min(30, age - 12, normalRandom(6, 2)));
+  // 统一性别为男性，避免不同性别百分位数据集差异导致能力值分散
+  const gender: 'male' | 'female' = 'male';
 
   const heightBase = gender === 'male' ? 180 : 168;
-  const height = randomInt(heightBase - 15, heightBase + 20);
-  const weight = Math.round(height * (0.4 + Math.random() * 0.15));
-  const wingspan = height + randomInt(3, 15);
-  const standingReach = Math.round(height * 1.28) + randomInt(-5, 5);
-  const jumpingReach = standingReach + randomInt(50, 90);
+  // 窄范围随机：确保能力值集中，匹配引擎能形成足够的候选集
+  const height = randomInt(heightBase - 5, heightBase + 5);
+  const weight = Math.round(height * (0.42 + Math.random() * 0.06));
+  const wingspan = height + randomInt(5, 10);
+  const standingReach = Math.round(height * 1.28) + randomInt(-2, 2);
+  const jumpingReach = standingReach + randomInt(55, 75);
 
   return {
     birthDate: ageToBirthDate(age),

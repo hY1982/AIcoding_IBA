@@ -7,6 +7,8 @@ function getDatabaseConfig(): TypeOrmModuleOptions {
   if (!password) {
     throw new Error('DB_PASSWORD environment variable is required');
   }
+  // E2E bot 测试运行时静默 TypeORM 日志和 schema 同步
+  const isE2E = process.env.E2E_TEST === 'true';
   return {
     type: 'postgres',
     host: process.env.DB_HOST || 'localhost',
@@ -15,8 +17,8 @@ function getDatabaseConfig(): TypeOrmModuleOptions {
     password,
     database: process.env.DB_NAME || 'basketball_platform',
     entities: [__dirname + '/../modules/**/*.entity{.ts,.js}'],
-    synchronize: process.env.NODE_ENV !== 'production',
-    logging: process.env.NODE_ENV === 'development',
+    synchronize: !isE2E && process.env.NODE_ENV !== 'production',
+    logging: !isE2E && process.env.NODE_ENV === 'development',
     ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     extra: {
       poolSize: parseInt(process.env.DB_POOL_SIZE || '10', 10),

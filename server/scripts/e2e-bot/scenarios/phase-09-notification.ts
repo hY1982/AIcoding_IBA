@@ -29,7 +29,7 @@ export async function runNotificationPhase(
   const start1 = performance.now();
   try {
     const notifStats = await dataSource.query(
-      `SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as users FROM notification`,
+      `SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as users FROM notifications`,
     );
     const durationMs = Math.round(performance.now() - start1);
     metrics.record('通知查询', 'success', durationMs);
@@ -48,7 +48,7 @@ export async function runNotificationPhase(
 
   try {
     const typeDistribution = await dataSource.query(
-      `SELECT type, COUNT(*) as cnt FROM notification GROUP BY type ORDER BY cnt DESC`,
+      `SELECT type, COUNT(*) as cnt FROM notifications GROUP BY type ORDER BY cnt DESC`,
     );
 
     if (typeDistribution.length > 0) {
@@ -67,7 +67,7 @@ export async function runNotificationPhase(
 
   try {
     const readStats = await dataSource.query(
-      `SELECT is_read, COUNT(*) as cnt FROM notification GROUP BY is_read`,
+      `SELECT is_read, COUNT(*) as cnt FROM notifications GROUP BY is_read`,
     );
 
     const unread = Number(readStats.find((r: any) => !r.is_read)?.cnt || 0);
@@ -83,9 +83,9 @@ export async function runNotificationPhase(
   const matchId = matchIds[0];
   try {
     const matchNotifs = await dataSource.query(
-      `SELECT COUNT(*) as cnt FROM notification
-       WHERE match_id = $1 OR payload::text LIKE $2`,
-      [matchId, `%${matchId}%`],
+      `SELECT COUNT(*) as cnt FROM notifications
+       WHERE data::text LIKE $1`,
+      [`%${matchId}%`],
     );
     const cnt = Number(matchNotifs[0]?.cnt || 0);
     if (cnt > 0) {
@@ -103,7 +103,7 @@ export async function runNotificationPhase(
   // 获取一个有通知的用户
   try {
     const userWithNotif = await dataSource.query(
-      `SELECT user_id FROM notification WHERE is_read = false LIMIT 1`,
+      `SELECT user_id FROM notifications WHERE is_read = false LIMIT 1`,
     );
 
     if (userWithNotif.length > 0) {
@@ -111,7 +111,7 @@ export async function runNotificationPhase(
 
       // 标记一条为已读
       const markResult = await dataSource.query(
-        `UPDATE notification SET is_read = true, updated_at = NOW()
+        `UPDATE notifications SET is_read = true
          WHERE user_id = $1 AND is_read = false
          RETURNING id`,
         [userId],
@@ -122,7 +122,7 @@ export async function runNotificationPhase(
 
         // 验证已读数量变化
         const afterStats = await dataSource.query(
-          `SELECT COUNT(*) as unread FROM notification WHERE user_id = $1 AND is_read = false`,
+          `SELECT COUNT(*) as unread FROM notifications WHERE user_id = $1 AND is_read = false`,
           [userId],
         );
         const remaining = Number(afterStats[0]?.unread || 0);
@@ -142,7 +142,7 @@ export async function runNotificationPhase(
 
   try {
     const markAllResult = await dataSource.query(
-      `UPDATE notification SET is_read = true, updated_at = NOW()
+      `UPDATE notifications SET is_read = true
        WHERE is_read = false`,
     );
     const affected = markAllResult?.length ?? 0;
@@ -150,7 +150,7 @@ export async function runNotificationPhase(
 
     // 验证: 应该没有未读通知
     const verifyResult = await dataSource.query(
-      `SELECT COUNT(*) as unread FROM notification WHERE is_read = false`,
+      `SELECT COUNT(*) as unread FROM notifications WHERE is_read = false`,
     );
     const unread = Number(verifyResult[0]?.unread || 0);
     if (unread === 0) {
