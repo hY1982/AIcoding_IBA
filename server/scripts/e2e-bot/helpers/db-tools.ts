@@ -35,7 +35,7 @@ export class DbTools {
   async truncateAll(): Promise<void> {
     for (const table of DB_TABLES_TO_TRUNCATE) {
       try {
-        await this.dataSource.query(`TRUNCATE TABLE "${table}" CASCADE`);
+        await this.dataSource.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`);
       } catch {
         // 表可能不存在，忽略
       }

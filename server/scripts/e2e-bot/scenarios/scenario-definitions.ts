@@ -14,6 +14,7 @@ export interface ScenarioDefinition {
   format: '3v3' | '5v5' | 'mixed';
   startTimeHoursAhead: number;
   durationMinutes: number;
+  acceptableWaitMinutes?: number;  // 意向过期时间，默认 30 分钟
   includeStress: boolean;
   includeEdgeCases: boolean;
   expectedMatches: { min: number; max: number };
@@ -70,6 +71,20 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
     includeStress: true,
     includeEdgeCases: true,
     expectedMatches: { min: 3, max: 10 },
+  },
+
+  humanDriven: {
+    id: 'humanDriven',
+    name: '真人驱动 E2E 测试',
+    description: '5 个 Bot 后台准备意向 + 真人通过 Mobile App 注册/录入意向/确认比赛。最接近真实使用场景的测试流程',
+    bots: { playerCount: 5, venueManagerCount: 1 },
+    format: '3v3',
+    startTimeHoursAhead: 3,
+    durationMinutes: 120,
+    acceptableWaitMinutes: 120,  // 真人操作需要较长时间，意向 2 小时后才过期
+    includeStress: false,
+    includeEdgeCases: false,
+    expectedMatches: { min: 1, max: 2 },
   },
 
   edgeCases: {

@@ -33,6 +33,9 @@ import { generateBots } from './e2e-bot/bot-profiles';
 // 场景
 import { getScenario, listScenarios, SCENARIOS } from './e2e-bot/scenarios/scenario-definitions';
 
+// Human-Driven 场景
+import { runHumanDrivenScenario } from './e2e-bot/scenarios/human-driven';
+
 // Phase 执行器
 import { runRegistrationPhase } from './e2e-bot/scenarios/phase-01-registration';
 import { runVenueSetupPhase } from './e2e-bot/scenarios/phase-02-venue-setup';
@@ -170,6 +173,32 @@ async function main() {
   // 验证场景
   const scenario = getScenario(cliArgs.scenario);
 
+  // humanDriven 场景走独立流程
+  if (scenario.id === 'humanDriven') {
+    console.log('');
+    console.log(`${CYAN}${BOLD}╔══════════════════════════════════════════════════════════╗${RESET}`);
+    console.log(`${CYAN}${BOLD}║  🏀 篮球匹配平台 — 真人驱动 E2E 测试                    ║${RESET}`);
+    console.log(`${CYAN}${BOLD}╚══════════════════════════════════════════════════════════╝${RESET}`);
+    console.log('');
+    console.log(`  ${GREEN}Bot 后台准备 + 真人 Mobile App 操作 + 系统自动匹配${RESET}`);
+    console.log(`  前置: 后端 localhost:3000 已启动 + Mobile App 已启动 (npx expo start)`);
+    console.log('');
+
+    let app: any;
+    try {
+      const { AppModule } = require('../src/app.module');
+      app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+      const dataSource: DataSource = app.get(getDataSourceToken());
+      await runHumanDrivenScenario(app, dataSource, scenario);
+    } catch (err: any) {
+      console.error(`\n${RED}❌ 无法创建 NestJS ApplicationContext: ${err.message}${RESET}`);
+      process.exit(1);
+    } finally {
+      try { await app.close(); } catch { /* ignore */ }
+    }
+    return;
+  }
+
   // 打印 Banner
   console.log('');
   console.log(`${CYAN}${BOLD}╔══════════════════════════════════════════════════════════╗${RESET}`);
@@ -189,7 +218,7 @@ async function main() {
   try {
     const { AppModule } = require('../src/app.module');
     app = await NestFactory.createApplicationContext(AppModule, { logger: false });
-    dataSource = app.get<DataSource>(getDataSourceToken());
+    dataSource = app.get(getDataSourceToken()) as DataSource;
   } catch (err: any) {
     console.error(`${RED}❌ 无法创建 NestJS ApplicationContext: ${err.message}${RESET}`);
     console.error('请确认: 1) Docker 已启动  2) .env 配置正确  3) 迁移已执行');

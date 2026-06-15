@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Notification } from './entities/notification.entity';
 import { NotificationService } from './services/notification.service';
+import { NotificationController } from './controllers/notification.controller';
 import { InAppChannel } from './channels/in-app.channel';
 import { NOTIFICATION_CHANNEL_PROVIDER } from './interfaces/notification-channel.interface';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Notification])],
+  controllers: [NotificationController],
   providers: [
     NotificationService,
     InAppChannel,

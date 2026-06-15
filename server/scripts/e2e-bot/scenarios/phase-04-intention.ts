@@ -12,6 +12,9 @@ import { ScenarioDefinition } from './scenario-definitions';
 import { runBatch, safeBotRun } from '../helpers/safe-runner';
 import { BATCH_SIZE_INTENTION, BATCH_DELAY_MS, API_BASE_URL } from '../config';
 
+const RED = '\x1b[31m';
+const RESET = '\x1b[0m';
+
 function getFutureTime(hoursAhead: number): string {
   const d = new Date();
   d.setHours(d.getHours() + hoursAhead);
@@ -29,6 +32,7 @@ export async function runIntentionPhase(
   interactive: InteractivePrompt,
   dbTools: DbTools,
   scenario: ScenarioDefinition,
+  options?: { skipHumanPause?: boolean },
 ): Promise<{ venueId: number; formatId: number; startTime: string }> {
   report.startPhase('Phase 4: 意向提交');
 
@@ -61,7 +65,7 @@ export async function runIntentionPhase(
       const payload: CreateIntentionPayload = {
         startTime: botStartTime,
         durationMinutes: scenario.durationMinutes,
-        acceptableWaitMinutes: 30,
+        acceptableWaitMinutes: scenario.acceptableWaitMinutes ?? 30,
         venueIds: [{ venueId: primaryVenueId, priority: 1 }],
         formatIds: [{ formatId, priority: 1 }],
       };
@@ -75,10 +79,24 @@ export async function runIntentionPhase(
 
       if (result.success) {
         report.addSuccess(`意向提交`, `${bot.nickname} intentionId=${bot.intentionId}`, result.durationMs);
+      } else {
+        const errMsg = result.error?.message || '未知错误';
+        console.log(`  ${RED}❌ 意向提交失败 | ${bot.nickname} | ${errMsg}${RESET}`);
+        report.addFailure(`意向提交`, `${bot.nickname} ${errMsg}`, result.durationMs);
       }
     },
     BATCH_DELAY_MS,
   );
+
+  // 意向提交失败汇总
+  const failedBots = eligiblePlayers.filter((p) => !p.intentionId);
+  if (failedBots.length > 0) {
+    report.printInfo('⚠️ 意向失败', `${failedBots.length}/${eligiblePlayers.length} 个 bot 意向提交失败`);
+    for (const bot of failedBots) {
+      const lastError = bot.errors[bot.errors.length - 1];
+      console.log(`  ${RED}   - ${bot.nickname}: ${lastError?.message || '无错误信息'}${RESET}`);
+    }
+  }
 
   // ─── 4.2 边界: 时间重叠 ───
   report.printInfo('步骤 4.2', '边界: 意向时间重叠');
@@ -97,14 +115,17 @@ export async function runIntentionPhase(
           venueIds: [{ venueId: primaryVenueId, priority: 1 }],
           formatIds: [{ formatId, priority: 1 }],
         });
-        return { caught: false, message: '未拦截' };
+        return { caught: false, message: '未拦截', correctError: false };
       } catch (err: any) {
-        return { caught: true, message: err.message };
+        const isOverlapError = /重叠|overlap|conflict|同一天|同.*天/i.test(err.message);
+        return { caught: true, message: err.message, correctError: isOverlapError };
       }
     })();
 
-    if (overlapResult.caught) {
+    if (overlapResult.caught && overlapResult.correctError) {
       report.addSuccess('时间重叠拦截', overlapResult.message);
+    } else if (overlapResult.caught) {
+      report.addFailure('时间重叠拦截', `拦截成功但错误类型不对: 期望"时间重叠"，实际"${overlapResult.message}"`);
     } else {
       report.addFailure('时间重叠拦截', '系统未阻止时间重叠！');
     }
@@ -127,37 +148,43 @@ export async function runIntentionPhase(
           venueIds: [{ venueId: primaryVenueId, priority: 1 }],
           formatIds: [{ formatId, priority: 1 }],
         });
-        return { caught: false, message: '未拦截' };
+        return { caught: false, message: '未拦截', correctError: false };
       } catch (err: any) {
-        return { caught: true, message: err.message };
+        const isEarlyError = /提前|至少.*小时|too early|at least/i.test(err.message);
+        return { caught: true, message: err.message, correctError: isEarlyError };
       }
     })();
 
-    if (earlyResult.caught) {
+    if (earlyResult.caught && earlyResult.correctError) {
       report.addSuccess('过早开赛拦截', earlyResult.message);
+    } else if (earlyResult.caught) {
+      report.addFailure('过早开赛拦截', `拦截成功但错误类型不对: 期望"提前X小时"，实际"${earlyResult.message}"`);
     } else {
       report.addFailure('过早开赛拦截', '系统未阻止过早开赛！');
     }
   }
 
-  // ─── 4.4 ⏸️ 真人操作 ───
-  const humanToken = human.accessToken || '(请先登录获取)';
+  // ─── 4.4 ⏸️ 真人操作（可被 humanDriven 跳过，其有自己的 Mobile App 暂停点） ───
   const intentionCount = players.filter((p) => p.intentionId).length;
 
-  await interactive.pauseForHuman('请提交你的比赛意向', [
-    { step: 1, description: '打开 Postman / curl / 前端 App' },
-    {
-      step: 2,
-      description: '登录获取 Token',
-      example: `POST ${API_BASE_URL}/auth/login\n     Body: { "phone": "${human.phone}", "password": "${human.password}" }`,
-    },
-    {
-      step: 3,
-      description: '提交意向（与 bot 相同的场地和时间段）',
-      example: `POST ${API_BASE_URL}/intentions\n     Headers: Authorization: Bearer <your_token>\n     Body: {\n       "startTime": "${startTime}",\n       "durationMinutes": ${scenario.durationMinutes},\n       "acceptableWaitMinutes": 30,\n       "venueIds": [{"venueId": ${primaryVenueId}, "priority": 1}],\n       "formatIds": [{"formatId": ${formatId}, "priority": 1}]\n     }`,
-    },
-    { step: 4, description: `当前已有 ${intentionCount} 个 bot 提交了意向` },
-  ]);
+  if (!options?.skipHumanPause) {
+    const humanToken = human.accessToken || '(请先登录获取)';
+
+    await interactive.pauseForHuman('请提交你的比赛意向', [
+      { step: 1, description: '打开 Postman / curl / 前端 App' },
+      {
+        step: 2,
+        description: '登录获取 Token',
+        example: `POST ${API_BASE_URL}/auth/login\n     Body: { "phone": "${human.phone}", "password": "${human.password}" }`,
+      },
+      {
+        step: 3,
+        description: '提交意向（与 bot 相同的场地和时间段）',
+        example: `POST ${API_BASE_URL}/intentions\n     Headers: Authorization: Bearer <your_token>\n     Body: {\n       "startTime": "${startTime}",\n       "durationMinutes": ${scenario.durationMinutes},\n       "acceptableWaitMinutes": 30,\n       "venueIds": [{"venueId": ${primaryVenueId}, "priority": 1}],\n       "formatIds": [{"formatId": ${formatId}, "priority": 1}]\n     }`,
+      },
+      { step: 4, description: `当前已有 ${intentionCount} 个 bot 提交了意向` },
+    ]);
+  }
 
   // 汇总
   report.printInfo('意向汇总', `${intentionCount} 个 bot 已提交意向，准备触发匹配`);

@@ -45,6 +45,9 @@ Thumbs.db
 coverage/
 *.log
 logs/
+server/scripts/e2e-bot-report-*.json
+apps/mobile/*_test_output*.txt
+apps/mobile/test_output*.txt
 
 # Docker
 .docker/data/

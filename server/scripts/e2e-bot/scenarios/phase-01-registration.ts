@@ -10,6 +10,10 @@ import { DbTools } from '../helpers/db-tools';
 import { runBatch, safeBotRun } from '../helpers/safe-runner';
 import { BATCH_SIZE_REGISTRATION, BATCH_DELAY_MS, DEFAULT_REGION } from '../config';
 
+const RED = '\x1b[31m';
+const YELLOW = '\x1b[33m';
+const RESET = '\x1b[0m';
+
 export async function runRegistrationPhase(
   players: BotContext[],
   venueManagers: BotContext[],
@@ -141,6 +145,30 @@ export async function runRegistrationPhase(
 
   if (humanResult.success) {
     report.addSuccess('真人注册', `userId=${human.userId} playerId=${human.playerId}`);
+  } else {
+    // 注册失败（可能因之前运行残留导致手机号已存在），尝试直接登录
+    const errMsg = humanResult.error?.message || '未知错误';
+    console.log(`  ${YELLOW}⚠️  真人注册失败: ${errMsg}，尝试直接登录...${RESET}`);
+
+    const loginResult = await safeBotRun(human, '注册', '真人-login-fallback', async () => {
+      const api = apiClient.clone();
+      await api.login({ phone: human.phone, password: human.password });
+      human.accessToken = api.getAccessToken();
+      human.refreshToken = api.getRefreshToken();
+      const profile = await api.getPlayerProfile();
+      human.userId = Number(profile?.userId ?? profile?.id);
+      human.playerId = Number(profile?.id);
+      human.baseAbilityScore = profile?.baseAbilityScore;
+      return profile;
+    }, metrics);
+
+    if (loginResult.success) {
+      report.addSuccess('真人登录(fallback)', `userId=${human.userId} playerId=${human.playerId}`);
+    } else {
+      const loginErr = loginResult.error?.message || '未知错误';
+      console.log(`  ${RED}❌ 真人登录回退也失败: ${loginErr}${RESET}`);
+      report.addFailure('真人注册', `注册失败: ${errMsg}; 登录回退也失败: ${loginErr}`);
+    }
   }
 
   // ─── 1.4 边界: 重复注册 ───
