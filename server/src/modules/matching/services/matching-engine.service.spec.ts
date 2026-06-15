@@ -355,8 +355,8 @@ describe('MatchingEngineService', () => {
 
   // ==================== Grouping Logic ====================
 
-  describe('group intentions', () => {
-    it('should group intentions by preferred venue, format, and time window', async () => {
+  describe('compatible clustering (integration)', () => {
+    it('should cluster intentions by five-dimensional compatibility scoring', async () => {
       const mockParam = createMockSystemParamThreshold();
       systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
 
@@ -453,7 +453,7 @@ describe('MatchingEngineService', () => {
 
       const result = await service.runMatching('shenzhen_futian');
 
-      // Should form 2 groups: (venue=1, format=1) and (venue=2, format=1)
+      // Should form 2 clusters: venue 1 and venue 2 (no common venue → incompatible)
       expect(result.groupsProcessed).toBe(2);
     });
   });
@@ -655,17 +655,14 @@ describe('MatchingEngineService', () => {
       expect(intentionUpdates.length).toBeGreaterThan(0);
     });
 
-    it('should not duplicate matches on retry', async () => {
+    it('should use WHERE status=pending in updates for idempotent retry safety', async () => {
       const mockParam = createMockSystemParamThreshold();
       systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
 
-      // First call: intentions are pending
-      // Second call: intentions are already matched (simulating retry)
       const intentions = Array.from({ length: 6 }, (_, i) =>
         createMockIntention({
           id: i + 1,
           playerId: i + 1,
-          status: i < 3 ? 'pending' : 'matched', // Some already matched
           player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
           intentionVenues: [
             {
@@ -696,6 +693,7 @@ describe('MatchingEngineService', () => {
 
       formatRepo.findOneBy!.mockResolvedValue(createMockFormat());
 
+      const capturedUpdates: any[] = [];
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
         manager.save.mockImplementation((entity: any, data: any) => {
@@ -706,18 +704,32 @@ describe('MatchingEngineService', () => {
           return Promise.resolve({ ...item, id: 1 });
         });
         manager.create.mockImplementation((_entity: any, data: any) => data);
-        manager.update.mockResolvedValue({ affected: 1 });
+        manager.update.mockImplementation(
+          (entity: any, criteria: any, data: any) => {
+            capturedUpdates.push({ entity, criteria, data });
+            return Promise.resolve({ affected: 1 });
+          },
+        );
         return cb(manager);
       });
 
       teamBalancer.snakeDraft.mockReturnValue([
         { teamNumber: 1, players: [], avgAbility: 76 },
+        { teamNumber: 2, players: [], avgAbility: 77 },
       ]);
 
-      const result = await service.runMatching('shenzhen_futian');
+      await service.runMatching('shenzhen_futian');
 
-      // Should still process but only match pending intentions
-      expect(result.matchesCreated).toBeGreaterThanOrEqual(0);
+      // 验证所有意向更新都包含幂等条件 status='pending'
+      const intentionUpdates = capturedUpdates.filter(
+        (u) => u.entity === Intention || u.entity?.name === 'Intention',
+      );
+      expect(intentionUpdates.length).toBeGreaterThan(0);
+      for (const update of intentionUpdates) {
+        expect(update.criteria).toEqual(
+          expect.objectContaining({ status: 'pending' }),
+        );
+      }
     });
   });
 
@@ -742,7 +754,7 @@ describe('MatchingEngineService', () => {
   // ==================== Exception Isolation ====================
 
   describe('exception isolation', () => {
-    it('should isolate exceptions per group and continue processing other groups', async () => {
+    it('should isolate exceptions per cluster and continue processing other clusters', async () => {
       const mockParam = createMockSystemParamThreshold();
       systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
 
@@ -834,16 +846,17 @@ describe('MatchingEngineService', () => {
       systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
 
       const now = new Date('2026-06-15T10:00:00Z');
-      const intentions = [
+      // 6 players with same ability score; first player waited longest
+      const intentions = Array.from({ length: 6 }, (_, i) =>
         createMockIntention({
-          id: 1,
-          playerId: 1,
-          submittedAt: new Date(now.getTime() - 3600000), // 1 hour ago
-          player: createMockPlayer({ id: 1, totalAbilityScore: 75 }),
+          id: i + 1,
+          playerId: i + 1,
+          submittedAt: new Date(now.getTime() - (6 - i) * 600000), // 60,50,40,30,20,10 min ago
+          player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 }),
           intentionVenues: [
             {
-              id: 1,
-              intentionId: 1,
+              id: i + 1,
+              intentionId: i + 1,
               venueId: 1,
               priority: 1,
               venue: {} as any,
@@ -852,8 +865,8 @@ describe('MatchingEngineService', () => {
           ],
           intentionFormats: [
             {
-              id: 1,
-              intentionId: 1,
+              id: i + 1,
+              intentionId: i + 1,
               formatId: 1,
               priority: 1,
               format: {} as any,
@@ -861,33 +874,7 @@ describe('MatchingEngineService', () => {
             },
           ],
         }),
-        createMockIntention({
-          id: 2,
-          playerId: 2,
-          submittedAt: new Date(now.getTime() - 1800000), // 30 min ago
-          player: createMockPlayer({ id: 2, totalAbilityScore: 75 }),
-          intentionVenues: [
-            {
-              id: 2,
-              intentionId: 2,
-              venueId: 1,
-              priority: 1,
-              venue: {} as any,
-              intention: {} as any,
-            },
-          ],
-          intentionFormats: [
-            {
-              id: 2,
-              intentionId: 2,
-              formatId: 1,
-              priority: 1,
-              format: {} as any,
-              intention: {} as any,
-            },
-          ],
-        }),
-      ];
+      );
 
       intentionRepo.createQueryBuilder!.mockReturnValue(
         createMockQueryBuilder<Intention>(intentions),
@@ -899,10 +886,16 @@ describe('MatchingEngineService', () => {
         return cb(dataSource.manager);
       });
 
+      teamBalancer.snakeDraft.mockReturnValue([
+        { teamNumber: 1, players: [], avgAbility: 75 },
+        { teamNumber: 2, players: [], avgAbility: 75 },
+      ]);
+
       const result = await service.runMatching('shenzhen_futian');
 
-      // Both have same score, but the service should process them
-      expect(result.intentionsScanned).toBe(2);
+      // All 6 scanned, forming 1 cluster with enough players
+      expect(result.intentionsScanned).toBe(6);
+      expect(result.groupsProcessed).toBe(1);
     });
   });
 
@@ -1317,6 +1310,8 @@ describe('MatchingEngineService', () => {
       systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
 
       const now = new Date();
+      // Intention 1: no venue/format → skipped by buildPlayerInfos → unmatched → eligible for expiry
+      // Intention 2: normal venue/format → forms cluster → excluded from expiry
       const intentions = [
         createMockIntention({
           id: 1,
@@ -1324,10 +1319,19 @@ describe('MatchingEngineService', () => {
           status: 'pending',
           expiresAt: new Date(now.getTime() + 10 * 60 * 1000), // 10分钟后过期
           player: createMockPlayer({ id: 1, totalAbilityScore: 75 }),
+          intentionVenues: [], // 无场地 → buildPlayerInfos 跳过
+          intentionFormats: [],
+        }),
+        createMockIntention({
+          id: 2,
+          playerId: 2,
+          status: 'pending',
+          expiresAt: new Date(now.getTime() + 60 * 60 * 1000), // 不过期
+          player: createMockPlayer({ id: 2, totalAbilityScore: 75 }),
           intentionVenues: [
             {
-              id: 1,
-              intentionId: 1,
+              id: 2,
+              intentionId: 2,
               venueId: 1,
               priority: 1,
               venue: {} as any,
@@ -1336,8 +1340,8 @@ describe('MatchingEngineService', () => {
           ],
           intentionFormats: [
             {
-              id: 1,
-              intentionId: 1,
+              id: 2,
+              intentionId: 2,
               formatId: 1,
               priority: 1,
               format: {} as any,
@@ -1351,10 +1355,6 @@ describe('MatchingEngineService', () => {
         createMockQueryBuilder<Intention>(intentions),
       );
 
-      formatRepo.findOneBy!.mockResolvedValue(
-        createMockFormat({ teamSize: 5, teamCountMin: 2 }),
-      );
-
       // 模拟事务内过期更新成功
       dataSource.transaction.mockImplementation(async (cb: any) => {
         const manager = dataSource.manager;
@@ -1364,7 +1364,7 @@ describe('MatchingEngineService', () => {
 
       const result = await service.runMatching('shenzhen_futian');
 
-      expect(result.intentionsScanned).toBe(1);
+      expect(result.intentionsScanned).toBe(2);
       expect(result.expiredCount).toBe(1);
     });
 
@@ -1425,119 +1425,428 @@ describe('MatchingEngineService', () => {
     });
   });
 
-  // ==================== Time Compatibility (HIGH-004) ====================
+  // ==================== Compatibility Scoring ====================
 
-  describe('filterTimeCompatiblePlayers', () => {
-    it('should filter out players with non-overlapping time windows', () => {
-      const players = [
-        {
-          intentionId: 1,
-          playerId: 1,
-          totalAbilityScore: 80,
-          submittedAt: new Date(),
-          startTime: new Date('2026-06-15T14:00:00Z'),
-          endTime: new Date('2026-06-15T16:00:00Z'),
-          acceptableWaitMinutes: 30,
-        },
-        {
-          intentionId: 2,
-          playerId: 2,
-          totalAbilityScore: 75,
-          submittedAt: new Date(),
-          startTime: new Date('2026-06-15T14:30:00Z'),
-          endTime: new Date('2026-06-15T16:30:00Z'),
-          acceptableWaitMinutes: 30,
-        },
-        // 时间完全不重叠，导致整体无交集，所有人被过滤
-        {
-          intentionId: 3,
-          playerId: 3,
-          totalAbilityScore: 70,
-          submittedAt: new Date(),
-          startTime: new Date('2026-06-15T18:00:00Z'),
-          endTime: new Date('2026-06-15T20:00:00Z'),
-          acceptableWaitMinutes: 30,
-        },
-      ];
+  function createTestPlayerInfo(overrides: Partial<any> = {}): any {
+    const intentionId = overrides.intentionId ?? 1;
+    return {
+      intention: createMockIntention({ id: intentionId, playerId: overrides.playerId ?? 1 }),
+      intentionId: 1,
+      playerId: 1,
+      totalAbilityScore: 75,
+      submittedAt: new Date('2026-06-15T10:00:00Z'),
+      startTime: new Date('2026-06-15T14:00:00Z'),
+      endTime: new Date('2026-06-15T16:00:00Z'),
+      acceptableWaitMinutes: 30,
+      durationMinutes: 120,
+      venueIds: [1],
+      formatIds: [1],
+      venuePriorities: new Map([[1, 1]]),
+      formatPriorities: new Map([[1, 1]]),
+      ...overrides,
+    };
+  }
 
-      const result = (service as any).filterTimeCompatiblePlayers(players);
-
-      // 当存在完全不重叠的时间窗口时，latestStart > earliestEnd，交集为空
-      // 因此所有球员都被过滤（因为没有任何共同可行时间）
-      expect(result).toHaveLength(0);
+  describe('computeMatchScore', () => {
+    it('should return full compatibility for identical intentions', () => {
+      const a = createTestPlayerInfo();
+      const b = createTestPlayerInfo({ intentionId: 2, playerId: 2 });
+      const result = (service as any).computeMatchScore(a, b);
+      expect(result.compatible).toBe(true);
+      expect(result.totalScore).toBeGreaterThan(0);
+      expect(result.timeScore).toBe(1);
+      expect(result.venueScore).toBe(1);
+      expect(result.formatScore).toBe(1);
+      expect(result.durationScore).toBe(1);
+      expect(result.abilityScore).toBe(1);
     });
 
-    it('should keep players with overlapping time windows', () => {
-      const players = [
-        {
-          intentionId: 1,
-          playerId: 1,
-          totalAbilityScore: 80,
-          submittedAt: new Date(),
+    it('should return incompatible when time windows do not overlap', () => {
+      const a = createTestPlayerInfo({
+        startTime: new Date('2026-06-15T14:00:00Z'),
+        acceptableWaitMinutes: 30,
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        startTime: new Date('2026-06-15T15:00:00Z'),
+        acceptableWaitMinutes: 30,
+      });
+      const result = (service as any).computeMatchScore(a, b);
+      expect(result.compatible).toBe(false);
+      expect(result.totalScore).toBe(0);
+    });
+
+    it('should return compatible when time windows overlap via acceptableWait', () => {
+      const a = createTestPlayerInfo({
+        startTime: new Date('2026-06-15T14:00:00Z'),
+        acceptableWaitMinutes: 60,
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        startTime: new Date('2026-06-15T14:45:00Z'),
+        acceptableWaitMinutes: 60,
+      });
+      const result = (service as any).computeMatchScore(a, b);
+      expect(result.compatible).toBe(true);
+      expect(result.timeScore).toBeGreaterThan(0);
+    });
+
+    it('should return incompatible when venue lists have no intersection', () => {
+      const a = createTestPlayerInfo({ venueIds: [1], venuePriorities: new Map([[1, 1]]) });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        venueIds: [2], venuePriorities: new Map([[2, 1]]),
+      });
+      const result = (service as any).computeMatchScore(a, b);
+      expect(result.compatible).toBe(false);
+    });
+
+    it('should return incompatible when format lists have no intersection', () => {
+      const a = createTestPlayerInfo({ formatIds: [1], formatPriorities: new Map([[1, 1]]) });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        formatIds: [2], formatPriorities: new Map([[2, 1]]),
+      });
+      const result = (service as any).computeMatchScore(a, b);
+      expect(result.compatible).toBe(false);
+    });
+
+    it('should score venue by 1/max(priority) for cross-venue matching', () => {
+      const a = createTestPlayerInfo({
+        venueIds: [1, 2], venuePriorities: new Map([[1, 1], [2, 2]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        venueIds: [2, 3], venuePriorities: new Map([[2, 1], [3, 2]]),
+      });
+      const result = (service as any).computeMatchScore(a, b);
+      expect(result.compatible).toBe(true);
+      // Common venue is 2; A's priority=2, B's priority=1 → max=2 → 1/2 = 0.5
+      expect(result.venueScore).toBe(0.5);
+    });
+
+    it('should score ability closeness correctly', () => {
+      const a = createTestPlayerInfo({ totalAbilityScore: 80 });
+      const b = createTestPlayerInfo({ intentionId: 2, playerId: 2, totalAbilityScore: 55 });
+      const result = (service as any).computeMatchScore(a, b);
+      // diff=25, score = max(0, 1.0 - 25/50) = 0.5
+      expect(result.abilityScore).toBe(0.5);
+    });
+
+    it('should score duration tolerance as soft score (no hard constraint)', () => {
+      const a = createTestPlayerInfo({ durationMinutes: 120 });
+      const b = createTestPlayerInfo({ intentionId: 2, playerId: 2, durationMinutes: 180 });
+      const result = (service as any).computeMatchScore(a, b);
+      expect(result.compatible).toBe(true);
+      // ratio = |120-180|/180 = 0.333, score = 1.0 - 0.333 = 0.667
+      expect(result.durationScore).toBeCloseTo(0.667, 2);
+    });
+  });
+
+  // ==================== Compatible Clustering ====================
+
+  describe('buildCompatibleClusters', () => {
+    it('should group identical intentions into one cluster', () => {
+      const infos = Array.from({ length: 6 }, (_, i) =>
+        createTestPlayerInfo({ intentionId: i + 1, playerId: i + 1 }),
+      );
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      const clusters = (service as any).buildCompatibleClusters(infos, matrix);
+      expect(clusters.length).toBe(1);
+      expect(clusters[0].playerInfos.length).toBe(6);
+    });
+
+    it('should enforce clique constraint: A-B compatible, B-C compatible, A-C not → separate clusters', () => {
+      // A and B share venue 1; B and C share venue 2; A and C share nothing
+      const a = createTestPlayerInfo({
+        intentionId: 1, playerId: 1,
+        venueIds: [1], venuePriorities: new Map([[1, 1]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        venueIds: [1, 2], venuePriorities: new Map([[1, 1], [2, 1]]),
+      });
+      const c = createTestPlayerInfo({
+        intentionId: 3, playerId: 3,
+        venueIds: [2], venuePriorities: new Map([[2, 1]]),
+      });
+      const infos = [a, b, c];
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      const clusters = (service as any).buildCompatibleClusters(infos, matrix);
+      // A and C are not compatible → B must choose one side
+      expect(clusters.length).toBe(2);
+    });
+
+    it('should separate intentions with no common venue', () => {
+      const a = createTestPlayerInfo({
+        intentionId: 1, playerId: 1,
+        venueIds: [1], venuePriorities: new Map([[1, 1]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        venueIds: [2], venuePriorities: new Map([[2, 1]]),
+      });
+      const infos = [a, b];
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      const clusters = (service as any).buildCompatibleClusters(infos, matrix);
+      expect(clusters.length).toBe(2);
+    });
+
+    it('should detect empty global overlap window via computeOverlapWindow', () => {
+      // 直接测试 computeOverlapWindow 返回 isEmpty=true 的场景
+      const infos = [
+        createTestPlayerInfo({
+          intentionId: 1, playerId: 1,
           startTime: new Date('2026-06-15T14:00:00Z'),
-          endTime: new Date('2026-06-15T16:00:00Z'),
-          acceptableWaitMinutes: 30,
-        },
-        {
-          intentionId: 2,
-          playerId: 2,
-          totalAbilityScore: 75,
-          submittedAt: new Date(),
-          startTime: new Date('2026-06-15T14:30:00Z'),
-          endTime: new Date('2026-06-15T16:30:00Z'),
-          acceptableWaitMinutes: 30,
-        },
-        // 部分重叠，与 1 和 2 都有交集（14:30-16:00）
-        {
-          intentionId: 3,
-          playerId: 3,
-          totalAbilityScore: 70,
-          submittedAt: new Date(),
+          acceptableWaitMinutes: 10,
+        }),
+        createTestPlayerInfo({
+          intentionId: 2, playerId: 2,
           startTime: new Date('2026-06-15T15:00:00Z'),
-          endTime: new Date('2026-06-15T17:00:00Z'),
-          acceptableWaitMinutes: 30,
-        },
+          acceptableWaitMinutes: 10,
+        }),
       ];
-
-      const result = (service as any).filterTimeCompatiblePlayers(players);
-
-      // 三人共同交集为 15:00-16:00，都存在重叠
-      expect(result).toHaveLength(3);
-      expect(result.map((p: any) => p.playerId)).toContain(1);
-      expect(result.map((p: any) => p.playerId)).toContain(2);
-      expect(result.map((p: any) => p.playerId)).toContain(3);
+      const result = (service as any).computeOverlapWindow(infos);
+      expect(result.isEmpty).toBe(true);
     });
 
-    it('should return empty array for empty input', () => {
-      const result = (service as any).filterTimeCompatiblePlayers([]);
-      expect(result).toEqual([]);
+    it('should verify clique constraint prevents A-C incompatible pair in same cluster', () => {
+      // A-B pairwise compatible, B-C pairwise compatible, but A-C not compatible
+      // Clique constraint prevents all 3 from entering same cluster
+      const a = createTestPlayerInfo({
+        intentionId: 1, playerId: 1,
+        startTime: new Date('2026-06-15T14:00:00Z'),
+        acceptableWaitMinutes: 30,
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        startTime: new Date('2026-06-15T14:15:00Z'),
+        acceptableWaitMinutes: 60,
+      });
+      const c = createTestPlayerInfo({
+        intentionId: 3, playerId: 3,
+        startTime: new Date('2026-06-15T14:50:00Z'),
+        acceptableWaitMinutes: 30,
+      });
+      const infos = [a, b, c];
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      expect(matrix[0][1].compatible).toBe(true);
+      expect(matrix[1][2].compatible).toBe(true);
+      expect(matrix[0][2].compatible).toBe(false);
     });
 
-    it('should keep all players when all time windows overlap', () => {
-      const players = [
-        {
-          intentionId: 1,
-          playerId: 1,
-          totalAbilityScore: 80,
-          submittedAt: new Date(),
+    it('should handle flexible time matching: different startTime but wait windows overlap', () => {
+      const a = createTestPlayerInfo({
+        intentionId: 1, playerId: 1,
+        startTime: new Date('2026-06-15T14:00:00Z'),
+        acceptableWaitMinutes: 45,
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        startTime: new Date('2026-06-15T14:30:00Z'),
+        acceptableWaitMinutes: 45,
+      });
+      const infos = [a, b];
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      expect(matrix[0][1].compatible).toBe(true);
+      // Overlap: [14:30, 14:45] = 15 min; min(45,45)=45 → timeScore = 15/45
+      expect(matrix[0][1].timeScore).toBeCloseTo(15 / 45, 2);
+    });
+  });
+
+  // ==================== Venue/Format Selection ====================
+
+  describe('selectBestVenue', () => {
+    it('should select venue with highest weighted score', () => {
+      const a = createTestPlayerInfo({
+        venueIds: [1, 2], venuePriorities: new Map([[1, 1], [2, 2]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        venueIds: [1, 3], venuePriorities: new Map([[1, 1], [3, 2]]),
+      });
+      // Global intersection = {1}. venue 1: 1/1 + 1/1 = 2.0
+      const result = (service as any).selectBestVenue([a, b]);
+      expect(result).toBe(1);
+    });
+
+    it('should prefer global intersection over individual preferences', () => {
+      const a = createTestPlayerInfo({
+        venueIds: [1, 2], venuePriorities: new Map([[1, 1], [2, 1]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        venueIds: [2, 3], venuePriorities: new Map([[2, 1], [3, 1]]),
+      });
+      // Global intersection = {2}. Even though venue 1 has priority=1 from A, it's not in the intersection.
+      const result = (service as any).selectBestVenue([a, b]);
+      expect(result).toBe(2);
+    });
+
+    it('should pick smaller venueId on tie (deterministic tie-breaker)', () => {
+      const a = createTestPlayerInfo({
+        venueIds: [5], venuePriorities: new Map([[5, 1]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        venueIds: [2], venuePriorities: new Map([[2, 1]]),
+      });
+      // No global intersection → fallback to all venues. venue 5: 1.0, venue 2: 1.0 → tie → pick 2
+      const result = (service as any).selectBestVenue([a, b]);
+      expect(result).toBe(2);
+    });
+  });
+
+  describe('selectBestFormat', () => {
+    it('should select format with highest weighted score from global intersection', () => {
+      const a = createTestPlayerInfo({
+        formatIds: [1, 2], formatPriorities: new Map([[1, 1], [2, 3]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        formatIds: [1, 3], formatPriorities: new Map([[1, 2], [3, 1]]),
+      });
+      // Global intersection = {1}. format 1: 1/1 + 1/2 = 1.5
+      const result = (service as any).selectBestFormat([a, b]);
+      expect(result).toBe(1);
+    });
+
+    it('should pick smaller formatId on tie', () => {
+      const a = createTestPlayerInfo({
+        formatIds: [10], formatPriorities: new Map([[10, 1]]),
+      });
+      const b = createTestPlayerInfo({
+        intentionId: 2, playerId: 2,
+        formatIds: [3], formatPriorities: new Map([[3, 1]]),
+      });
+      // No global intersection → fallback. format 10: 1.0, format 3: 1.0 → tie → pick 3
+      const result = (service as any).selectBestFormat([a, b]);
+      expect(result).toBe(3);
+    });
+  });
+
+  // ==================== Performance ====================
+
+  describe('performance', () => {
+    it('should cluster 500 intentions within 2 seconds', () => {
+      const now = new Date('2026-06-15T10:00:00Z');
+      const infos = Array.from({ length: 500 }, (_, i) =>
+        createTestPlayerInfo({
+          intentionId: i + 1,
+          playerId: i + 1,
+          totalAbilityScore: 50 + (i % 50),
+          submittedAt: new Date(now.getTime() - i * 60000),
           startTime: new Date('2026-06-15T14:00:00Z'),
-          endTime: new Date('2026-06-15T16:00:00Z'),
           acceptableWaitMinutes: 30,
-        },
-        {
-          intentionId: 2,
-          playerId: 2,
-          totalAbilityScore: 75,
-          submittedAt: new Date(),
-          startTime: new Date('2026-06-15T14:15:00Z'),
-          endTime: new Date('2026-06-15T15:45:00Z'),
+          venueIds: [(i % 3) + 1],
+          venuePriorities: new Map([[(i % 3) + 1, 1]]),
+          formatIds: [1],
+          formatPriorities: new Map([[1, 1]]),
+        }),
+      );
+
+      const start = Date.now();
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      (service as any).buildCompatibleClusters(infos, matrix);
+      const elapsed = Date.now() - start;
+
+      expect(elapsed).toBeLessThan(2000);
+    });
+
+    it('should cluster 1000 intentions within 5 seconds', () => {
+      const now = new Date('2026-06-15T10:00:00Z');
+      const infos = Array.from({ length: 1000 }, (_, i) =>
+        createTestPlayerInfo({
+          intentionId: i + 1,
+          playerId: i + 1,
+          totalAbilityScore: 50 + (i % 50),
+          submittedAt: new Date(now.getTime() - i * 60000),
+          startTime: new Date('2026-06-15T14:00:00Z'),
           acceptableWaitMinutes: 30,
-        },
-      ];
+          venueIds: [(i % 3) + 1],
+          venuePriorities: new Map([[(i % 3) + 1, 1]]),
+          formatIds: [1],
+          formatPriorities: new Map([[1, 1]]),
+        }),
+      );
 
-      const result = (service as any).filterTimeCompatiblePlayers(players);
+      const start = Date.now();
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      (service as any).buildCompatibleClusters(infos, matrix);
+      const elapsed = Date.now() - start;
 
-      expect(result).toHaveLength(2);
+      expect(elapsed).toBeLessThan(5000);
+    });
+  });
+
+  // ==================== Backward Compatibility Regression ====================
+
+  describe('backward compatibility', () => {
+    it('should produce same result as old algorithm for exact-match intentions', async () => {
+      const mockParam = createMockSystemParamThreshold();
+      systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
+
+      // 6 players with same venue/format/time (exact match scenario)
+      const intentions = Array.from({ length: 6 }, (_, i) =>
+        createMockIntention({
+          id: i + 1,
+          playerId: i + 1,
+          player: createMockPlayer({ id: i + 1, totalAbilityScore: 75 + i }),
+          intentionVenues: [
+            {
+              id: i + 1, intentionId: i + 1,
+              venueId: 1, priority: 1,
+              venue: {} as any, intention: {} as any,
+            },
+          ],
+          intentionFormats: [
+            {
+              id: i + 1, intentionId: i + 1,
+              formatId: 1, priority: 1,
+              format: {} as any, intention: {} as any,
+            },
+          ],
+        }),
+      );
+
+      intentionRepo.createQueryBuilder!.mockReturnValue(
+        createMockQueryBuilder<Intention>(intentions),
+      );
+
+      formatRepo.findOneBy!.mockResolvedValue(createMockFormat());
+
+      const mockVenueSlotQb = {
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        setLock: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ id: 1 }),
+      };
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = dataSource.manager;
+        manager.save.mockImplementation((entity: any, data: any) => {
+          const item = data !== undefined ? data : entity;
+          if (item.venueId !== undefined) {
+            return Promise.resolve({ ...item, id: 100 });
+          }
+          return Promise.resolve({ ...item, id: 1 });
+        });
+        manager.create.mockImplementation((_entity: any, data: any) => data);
+        manager.update.mockResolvedValue({ affected: 1 });
+        manager.createQueryBuilder = jest.fn().mockReturnValue(mockVenueSlotQb);
+        return cb(manager);
+      });
+
+      teamBalancer.snakeDraft.mockReturnValue([
+        { teamNumber: 1, players: [], avgAbility: 76 },
+        { teamNumber: 2, players: [], avgAbility: 77 },
+      ]);
+
+      const result = await service.runMatching('shenzhen_futian');
+
+      // Same as old algorithm: 1 cluster, 1 match created
+      expect(result.matchesCreated).toBe(1);
+      expect(result.groupsProcessed).toBe(1);
     });
   });
 });
