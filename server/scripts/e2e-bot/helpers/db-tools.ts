@@ -218,4 +218,71 @@ export class DbTools {
     );
     return result.length > 0 ? Number(result[0].id) : null;
   }
+
+  /**
+   * 查询所有比赛的参赛球员完整信息（压力测试结果展示）
+   */
+  async getMatchDetailsForReport(): Promise<Array<{
+    match_id: number; match_status: string; start_time: Date;
+    team_number: number; player_id: number; nickname: string;
+    age: number; basketball_age: number; height: number;
+    base_ability_score: number; position: string | null;
+  }>> {
+    return this.dataSource.query(`
+      SELECT m.id AS match_id, m.status AS match_status, m.start_time,
+             mp.team_number, p.id AS player_id, u.nickname,
+             p.age, p.basketball_age, p.height, p.base_ability_score,
+             pp.position
+      FROM matches m
+      JOIN match_players mp ON mp.match_id = m.id
+      JOIN players p ON p.id = mp.player_id
+      JOIN users u ON u.id = p.user_id
+      LEFT JOIN player_positions pp ON pp.player_id = p.id
+      ORDER BY m.id, mp.team_number, p.id
+    `);
+  }
+
+  /**
+   * 查询所有已匹配意向的详情（含场地/赛制名称）
+   */
+  async getMatchedIntentions(): Promise<Array<{
+    intention_id: number; player_id: number; nickname: string;
+    start_time: Date; duration_minutes: number; acceptable_wait_minutes: number;
+    status: string; match_id: number; venue_name: string; format_name: string;
+  }>> {
+    return this.dataSource.query(`
+      SELECT i.id AS intention_id, i.player_id, u.nickname,
+             i.start_time, i.duration_minutes, i.acceptable_wait_minutes,
+             i.status, i.match_id,
+             v.name AS venue_name, f.name AS format_name
+      FROM intentions i
+      LEFT JOIN players p ON p.id = i.player_id
+      LEFT JOIN users u ON u.id = p.user_id
+      LEFT JOIN intention_venues iv ON iv.intention_id = i.id AND iv.priority = 1
+      LEFT JOIN venues v ON v.id = iv.venue_id
+      LEFT JOIN intention_formats ifmt ON ifmt.intention_id = i.id AND ifmt.priority = 1
+      LEFT JOIN formats f ON f.id = ifmt.format_id
+      WHERE i.match_id IS NOT NULL
+      ORDER BY i.match_id, i.id
+    `);
+  }
+
+  /**
+   * 查询场地时段预订状态
+   */
+  async getVenueSlotStatus(): Promise<Array<{
+    venue_name: string; slot_date: string; start_time: string;
+    end_time: string; is_booked: boolean; match_id: number | null;
+    match_status: string | null; total_players: number | null;
+  }>> {
+    return this.dataSource.query(`
+      SELECT v.name AS venue_name, vts.slot_date, vts.start_time,
+             vts.end_time, vts.is_booked, vts.match_id,
+             m.status AS match_status, m.total_players
+      FROM venue_time_slots vts
+      JOIN venues v ON v.id = vts.venue_id
+      LEFT JOIN matches m ON m.id = vts.match_id
+      ORDER BY vts.venue_id, vts.slot_date, vts.start_time
+    `);
+  }
 }

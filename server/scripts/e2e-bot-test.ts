@@ -35,6 +35,7 @@ import { getScenario, listScenarios, SCENARIOS } from './e2e-bot/scenarios/scena
 
 // Human-Driven 场景
 import { runHumanDrivenScenario } from './e2e-bot/scenarios/human-driven';
+import { runHumanDrivenStressScenario } from './e2e-bot/scenarios/human-driven-stress';
 
 // Phase 执行器
 import { runRegistrationPhase } from './e2e-bot/scenarios/phase-01-registration';
@@ -190,6 +191,32 @@ async function main() {
       app = await NestFactory.createApplicationContext(AppModule, { logger: false });
       const dataSource: DataSource = app.get(getDataSourceToken());
       await runHumanDrivenScenario(app, dataSource, scenario);
+    } catch (err: any) {
+      console.error(`\n${RED}❌ 无法创建 NestJS ApplicationContext: ${err.message}${RESET}`);
+      process.exit(1);
+    } finally {
+      try { await app.close(); } catch { /* ignore */ }
+    }
+    return;
+  }
+
+  // humanDrivenStress 场景走独立流程
+  if (scenario.id === 'humanDrivenStress') {
+    console.log('');
+    console.log(`${CYAN}${BOLD}╔══════════════════════════════════════════════════════════╗${RESET}`);
+    console.log(`${CYAN}${BOLD}║  🏀 篮球匹配平台 — 200 人大规模压力测试                 ║${RESET}`);
+    console.log(`${CYAN}${BOLD}╚══════════════════════════════════════════════════════════╝${RESET}`);
+    console.log('');
+    console.log(`  ${GREEN}200 Bot + 随机意向(今天 8:00-20:00) + 自动匹配 + 富表格展示${RESET}`);
+    console.log(`  模式: ${cliArgs.auto ? YELLOW + '自动模式' + RESET : GREEN + '交互模式' + RESET}`);
+    console.log('');
+
+    let app: any;
+    try {
+      const { AppModule } = require('../src/app.module');
+      app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+      const dataSource: DataSource = app.get(getDataSourceToken());
+      await runHumanDrivenStressScenario(app, dataSource, scenario, cliArgs.auto);
     } catch (err: any) {
       console.error(`\n${RED}❌ 无法创建 NestJS ApplicationContext: ${err.message}${RESET}`);
       process.exit(1);

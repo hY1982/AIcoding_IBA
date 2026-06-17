@@ -21,6 +21,10 @@ export const BATCH_SIZE_MESSAGE = 5;
 export const BATCH_SIZE_FEEDBACK = 5;
 export const BATCH_DELAY_MS = 100;
 
+// 压力测试专用配置
+export const STRESS_BATCH_SIZE = 20;      // 注册/意向批大小
+export const STRESS_BATCH_DELAY_MS = 200;  // 批间延迟稍长，避免 DB 过载
+
 // 超时保护
 export const SCENARIO_TIMEOUT_MS = 60_000;
 export const STRESS_TIMEOUT_MS = 120_000;

@@ -855,7 +855,12 @@ export class MatchingEngineService {
   }
 
   /**
-   * 预订场地时段（悲观锁）
+   * 预订场地时段（悲观锁 + 时段拆分）
+   *
+   * 找到包含比赛时间的空闲时段，删除原时段，拆分为：
+   * - 比赛前空闲段（如果有）
+   * - 比赛占用段（is_booked=true, matchId）
+   * - 比赛后空闲段（如果有）
    */
   private async bookVenueTimeSlot(
     manager: EntityManager,
@@ -864,11 +869,18 @@ export class MatchingEngineService {
     endTime: Date,
     matchId: number,
   ): Promise<void> {
-    const slotDate = startTime.toLocaleDateString('en-CA');
-    const startTimeStr = startTime.toTimeString().slice(0, 8);
-    const endTimeStr = endTime.toTimeString().slice(0, 8);
+    // 时区修复：用 Asia/Shanghai 提取日期和时间
+    const slotDate = startTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+    const startTimeStr = startTime.toLocaleTimeString('en-GB', {
+      timeZone: 'Asia/Shanghai', hour12: false,
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const endTimeStr = endTime.toLocaleTimeString('en-GB', {
+      timeZone: 'Asia/Shanghai', hour12: false,
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
 
-    // Step 1: 悲观锁锁定时段
+    // Step 1: 悲观锁锁定包含比赛时间的空闲时段
     const lockedSlot = await manager
       .createQueryBuilder(VenueTimeSlot, 'slot')
       .where('slot.venue_id = :venueId', { venueId })
@@ -887,23 +899,43 @@ export class MatchingEngineService {
       return;
     }
 
-    // Step 2: 更新（乐观锁二次校验）
-    const updateResult = await manager.update(
-      VenueTimeSlot,
-      {
-        id: lockedSlot.id,
-        isBooked: false,
-      },
-      {
-        isBooked: true,
-        matchId,
-      },
-    );
+    // Step 2: 删除原大时段
+    await manager.delete(VenueTimeSlot, { id: lockedSlot.id });
 
-    if (updateResult.affected === 0) {
-      this.logger.warn(
-        `场地时段预订失败（可能已被其他任务预订）: slotId=${lockedSlot.id}`,
-      );
+    // Step 3: 插入拆分后的时段
+    const segments: Array<{
+      venueId: number; slotDate: string;
+      startTime: string; endTime: string;
+      isBooked: boolean; matchId: number | null;
+    }> = [];
+
+    // 比赛前空闲段
+    if (lockedSlot.startTime < startTimeStr) {
+      segments.push({
+        venueId, slotDate,
+        startTime: lockedSlot.startTime, endTime: startTimeStr,
+        isBooked: false, matchId: null,
+      });
+    }
+
+    // 比赛占用段
+    segments.push({
+      venueId, slotDate,
+      startTime: startTimeStr, endTime: endTimeStr,
+      isBooked: true, matchId,
+    });
+
+    // 比赛后空闲段
+    if (endTimeStr < lockedSlot.endTime) {
+      segments.push({
+        venueId, slotDate,
+        startTime: endTimeStr, endTime: lockedSlot.endTime,
+        isBooked: false, matchId: null,
+      });
+    }
+
+    for (const seg of segments) {
+      await manager.insert(VenueTimeSlot, seg);
     }
   }
 
