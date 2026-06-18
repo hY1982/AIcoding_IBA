@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
 import { MatchingEngineService } from './matching-engine.service';
-import { TeamBalancerService } from './team-balancer.service';
+import { VenueBookingService } from '@modules/venues/services/venue-booking.service';
 import { Intention } from '@modules/intentions/entities/intention.entity';
 import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
 import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
@@ -48,9 +48,10 @@ const createMockDataSource = () => ({
   },
 });
 
-const createMockTeamBalancer = () => ({
-  snakeDraft: jest.fn(),
-  calculateBalanceScore: jest.fn(),
+const createMockVenueBookingService = () => ({
+  checkAvailability: jest.fn().mockResolvedValue(true),
+  bookSlot: jest.fn().mockResolvedValue(true),
+  releaseSlot: jest.fn().mockResolvedValue(undefined),
 });
 
 // ==================== Test Data Helpers ====================
@@ -132,7 +133,6 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
     acceptableWaitMinutes,
     endTime,
     status: 'pending',
-    matchId: null,
     regionCode: 'shenzhen_futian',
     submittedAt,
     updatedAt: now,
@@ -194,7 +194,9 @@ describe('MatchingEngineService', () => {
   let formatRepo: MockRepository<Format>;
   let systemParamRepo: MockRepository<SystemParam>;
   let dataSource: ReturnType<typeof createMockDataSource>;
-  let teamBalancer: ReturnType<typeof createMockTeamBalancer>;
+  let venueBookingService: ReturnType<typeof createMockVenueBookingService>;
+  // v2.0: backward-compatible alias for old test setup (snakeDraft no longer used in matching engine)
+  let teamBalancer: { snakeDraft: jest.Mock; calculateBalanceScore: jest.Mock };
 
   beforeEach(async () => {
     intentionRepo = createMockRepository<Intention>();
@@ -202,7 +204,9 @@ describe('MatchingEngineService', () => {
     formatRepo = createMockRepository<Format>();
     systemParamRepo = createMockRepository<SystemParam>();
     dataSource = createMockDataSource();
-    teamBalancer = createMockTeamBalancer();
+    venueBookingService = createMockVenueBookingService();
+    // v2.0: backward-compatible alias for old test setup (snakeDraft no longer used)
+    teamBalancer = { snakeDraft: jest.fn(), calculateBalanceScore: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -212,7 +216,7 @@ describe('MatchingEngineService', () => {
         { provide: getRepositoryToken(Format), useValue: formatRepo },
         { provide: getRepositoryToken(SystemParam), useValue: systemParamRepo },
         { provide: DataSource, useValue: dataSource },
-        { provide: TeamBalancerService, useValue: teamBalancer },
+        { provide: VenueBookingService, useValue: venueBookingService },
       ],
     }).compile();
 

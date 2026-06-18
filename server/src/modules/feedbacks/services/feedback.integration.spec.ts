@@ -244,7 +244,7 @@ describe('Feedback Integration Tests', () => {
       await seedSystemParams();
 
       const match = await createTestMatch(dataSource, {
-        status: 'pending_confirmation',
+        status: 'pending_players',
       });
       const playerA = await createTestPlayer(dataSource);
       const playerB = await createTestPlayer(dataSource);

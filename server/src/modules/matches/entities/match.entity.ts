@@ -20,22 +20,25 @@ import { MatchStatus, MATCH_STATUSES } from '@shared/match';
 /**
  * Match entity representing a basketball match.
  *
- * Core business entity produced by the matching engine. Each match captures
- * the venue, format, timing, team assignments, and player confirmations.
+ * v2.0 重构：
+ * - status 改为 7 状态（pending_players/pending_venue/confirmed/in_progress/completed/cancelled/expired）
+ * - 新增 requiredPlayers（= teamCount * playersPerTeam）
+ * - 新增 confirmDeadline（球员确认截止时间 = startTime - 1小时）
+ * - 新增 venueConfirmDeadline（场地方确认截止时间 = 满员时刻 + 30分钟）
+ * - 删除 totalPlayers（改用 requiredPlayers）
+ * - 新增复合索引 (status, confirmDeadline)
  *
  * Design decisions:
  * - confirmed_players is a denormalized counter for query efficiency.
- *   It must be maintained in sync with match_players.is_confirmed count.
- *   Module 2.7 (MatchConfirmationService) handles this via transactions.
- * - group_chat_id is populated by external chat service when match is confirmed.
- * - OneToMany relations use lazy loading to prevent accidental N+1 queries
- *   and circular serialization issues.
+ * - group_chat_id is populated when match is confirmed.
+ * - OneToMany relations use lazy loading to prevent N+1 queries.
  */
 @Entity('matches')
 @Index(['status'])
 @Index(['startTime'])
 @Index(['venueId', 'startTime'])
 @Index(['regionCode'])
+@Index(['status', 'confirmDeadline'])  // v2.0: 超时调度器复合索引
 export class Match {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id!: number;
@@ -80,7 +83,7 @@ export class Match {
     type: 'enum',
     enum: MATCH_STATUSES,
     nullable: false,
-    default: 'pending_confirmation',
+    default: 'pending_players',  // v2.0: 候选比赛
   })
   status!: MatchStatus;
 
@@ -98,12 +101,16 @@ export class Match {
   })
   playersPerTeam!: number;
 
+  /**
+   * v2.0: 所需球员总数 = teamCount * playersPerTeam。
+   * 替代旧的 totalPlayers 字段。
+   */
   @Column({
-    name: 'total_players',
+    name: 'required_players',
     type: 'int',
     nullable: false,
   })
-  totalPlayers!: number;
+  requiredPlayers!: number;
 
   /**
    * Denormalized counter: number of players with status = 'confirmed'.
@@ -131,6 +138,28 @@ export class Match {
    */
   @VersionColumn({ name: 'version' })
   version!: number;
+
+  /**
+   * v2.0: 球员确认截止时间 = startTime - 1小时。
+   * 由匹配引擎创建候选比赛时设置。
+   */
+  @Column({
+    name: 'confirm_deadline',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  confirmDeadline!: Date | null;
+
+  /**
+   * v2.0: 场地方确认截止时间 = 满员时刻 + 30分钟。
+   * 由满员触发场地确认时设置。
+   */
+  @Column({
+    name: 'venue_confirm_deadline',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  venueConfirmDeadline!: Date | null;
 
   /**
    * Deposit amount per player. Stored as decimal in DB, exposed as string

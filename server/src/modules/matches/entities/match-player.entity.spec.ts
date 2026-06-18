@@ -206,7 +206,7 @@ describe('MatchPlayer Entity', () => {
       expect(mp.playerId).toBe(player.id);
       expect(mp.teamNumber).toBe(1);
       expect(mp.isConfirmed).toBe(true); // derived from status
-      expect(mp.isReserve).toBe(false);
+      // v2.0: isReserve removed
       expect(mp.depositPaid).toBe(true);
       expect(mp.status).toBe('confirmed');
     });

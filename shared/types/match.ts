@@ -1,19 +1,20 @@
-// 比赛状态 — 联合类型 + const 数组（单一来源）
+// 比赛状态 — v2.0 重构：7状态（拆分为两阶段确认）
 export const MATCH_STATUSES = [
-  'pending_confirmation',
-  'confirmed',
-  'in_progress',
-  'completed',
-  'cancelled',
-  'failed',
+  'pending_players',   // 候选比赛，等球员确认
+  'pending_venue',     // 满员，等场地方确认（30分钟窗口）
+  'confirmed',         // 场地已确认，比赛正式生效
+  'in_progress',       // 进行中
+  'completed',         // 已完成
+  'cancelled',         // 已取消（场地拒绝/不可用）
+  'expired',           // 超时未满员
 ] as const;
 export type MatchStatus = (typeof MATCH_STATUSES)[number];
 
-// 比赛球员参赛状态 — 联合类型 + const 数组（单一来源）
+// 比赛球员参赛状态 — v2.0 重构：declined→withdrawn
 export const MATCH_PLAYER_STATUSES = [
   'invited',
   'confirmed',
-  'declined',
+  'withdrawn',   // v2.0: 统一表达"释放"（确认其他比赛/超时/场地拒绝/比赛取消）
   'no_show',
 ] as const;
 export type MatchPlayerStatus = (typeof MATCH_PLAYER_STATUSES)[number];
@@ -23,24 +24,25 @@ export const MESSAGE_TYPES = ['text', 'image', 'system'] as const;
 export type MessageType = (typeof MESSAGE_TYPES)[number];
 
 /**
- * 比赛状态机 — 定义合法的状态流转路径。
- * 为 Module 2.7（比赛确认服务）提供状态流转校验依据。
+ * 比赛状态机 — v2.0 重构（二阶段确认）
  *
  * 状态流转规则：
- * - pending_confirmation: 匹配成功，等待球员确认参赛
- * - confirmed: 足够人数确认，比赛正式确认
- * - in_progress: 比赛进行中（由系统或人工标记）
- * - completed: 比赛结束，进入反馈阶段
- * - cancelled: 比赛取消（人数不足或主动取消）
- * - failed: 匹配失败（确认人数不足）
+ * - pending_players: 候选比赛，等球员先到先得确认
+ * - pending_venue: 满员（confirmedPlayers == requiredPlayers），等场地方确认
+ * - confirmed: 场地已确认，比赛正式生效
+ * - in_progress: 比赛进行中
+ * - completed: 比赛结束
+ * - cancelled: 场地拒绝/不可用
+ * - expired: 候选比赛超时未满员
  */
 export const MATCH_STATUS_TRANSITIONS: Record<MatchStatus, MatchStatus[]> = {
-  pending_confirmation: ['confirmed', 'cancelled', 'failed'],
+  pending_players: ['pending_venue', 'expired'],
+  pending_venue: ['confirmed', 'cancelled'],
   confirmed: ['in_progress', 'cancelled'],
   in_progress: ['completed', 'cancelled'],
   completed: [],
   cancelled: [],
-  failed: [],
+  expired: [],
 };
 
 /**
@@ -57,12 +59,16 @@ export function canTransitionMatchStatus(
 }
 
 /**
- * 球员参赛状态机 — 定义合法的状态流转路径。
+ * 球员参赛状态机 — v2.0 重构
+ *
+ * 关键变更：
+ * - declined → withdrawn（统一表达"释放"）
+ * - confirmed 可回退到 withdrawn（场地拒绝/比赛取消）
  */
 export const MATCH_PLAYER_STATUS_TRANSITIONS: Record<MatchPlayerStatus, MatchPlayerStatus[]> = {
-  invited: ['confirmed', 'declined'],
-  confirmed: ['no_show'],
-  declined: [],
+  invited: ['confirmed', 'withdrawn'],
+  confirmed: ['withdrawn', 'no_show'],
+  withdrawn: [],
   no_show: [],
 };
 
@@ -80,29 +86,34 @@ export function canTransitionMatchPlayerStatus(
 }
 
 /**
- * 比赛状态标签
+ * 比赛状态标签 — v2.0
  */
 export const MATCH_STATUS_LABELS: Record<MatchStatus, string> = {
-  pending_confirmation: '等待确认',
+  pending_players: '等待球员确认',
+  pending_venue: '等待场地确认',
   confirmed: '已确认',
   in_progress: '进行中',
   completed: '已完成',
   cancelled: '已取消',
-  failed: '匹配失败',
+  expired: '已超时',
 };
 
 /**
- * 球员参赛状态标签
+ * 球员参赛状态标签 — v2.0
  */
 export const MATCH_PLAYER_STATUS_LABELS: Record<MatchPlayerStatus, string> = {
   invited: '已邀请',
   confirmed: '已确认',
-  declined: '已拒绝',
+  withdrawn: '已释放',
   no_show: '未到场',
 };
 
 /**
- * 比赛（API 响应契约）
+ * 比赛（API 响应契约）— v2.0 重构
+ *
+ * 关键变更：
+ * - 新增 requiredPlayers、confirmDeadline、venueConfirmDeadline
+ * - 删除 totalPlayers（改用 requiredPlayers）
  */
 export interface Match {
   id: number;
@@ -113,9 +124,11 @@ export interface Match {
   status: MatchStatus;
   teamCount: number;
   playersPerTeam: number;
-  totalPlayers: number;
+  requiredPlayers: number;    // v2.0: teamCount * playersPerTeam
   confirmedPlayers: number;
   depositAmount: string; // decimal 作为 string 传输避免精度问题
+  confirmDeadline: string | null;         // v2.0: 球员确认截止时间
+  venueConfirmDeadline: string | null;    // v2.0: 场地方确认截止时间
   groupChatId: string | null;
   regionCode: string | null;
   createdAt: string;
@@ -123,17 +136,22 @@ export interface Match {
 }
 
 /**
- * 比赛球员关联（API 响应契约）
+ * 比赛球员关联（API 响应契约）— v2.0 重构
+ *
+ * 关键变更：
+ * - 新增 intentionId、depositOrderNo
+ * - 删除 isReserve
  */
 export interface MatchPlayer {
   id: number;
   matchId: number;
   playerId: number;
+  intentionId: number | null;  // v2.0: 关联产生该邀请的意向
   teamNumber: number | null;
   isConfirmed: boolean;
-  isReserve: boolean;
   confirmedAt: string | null;
   depositPaid: boolean;
+  depositOrderNo: string | null;  // v2.0: 支付订单号（Saga补偿用）
   status: MatchPlayerStatus;
 }
 

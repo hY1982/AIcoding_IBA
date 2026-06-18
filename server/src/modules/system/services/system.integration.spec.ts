@@ -1,6 +1,6 @@
 import { DataSource, Repository } from 'typeorm';
 import { MatchingEngineService } from '@modules/matching/services/matching-engine.service';
-import { TeamBalancerService } from '@modules/matching/services/team-balancer.service';
+import { VenueBookingService } from '@modules/venues/services/venue-booking.service';
 import { SystemParam } from '../entities/system-param.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
 import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
@@ -64,14 +64,19 @@ describe('System Integration Tests', () => {
 
     systemParamRepo = dataSource.getRepository(SystemParam);
 
-    const teamBalancer = new TeamBalancerService();
+    const mockVenueBookingService = {
+      checkAvailability: jest.fn().mockResolvedValue(true),
+      bookSlot: jest.fn().mockResolvedValue(true),
+      releaseSlot: jest.fn().mockResolvedValue(undefined),
+    } as unknown as VenueBookingService;
+
     matchingService = new MatchingEngineService(
       dataSource.getRepository(Intention),
       dataSource.getRepository(Match),
       dataSource.getRepository(Format),
       systemParamRepo,
       dataSource,
-      teamBalancer,
+      mockVenueBookingService,
     );
   });
 

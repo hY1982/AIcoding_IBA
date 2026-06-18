@@ -36,7 +36,7 @@ export interface IntentionResponse {
   acceptableWaitMinutes: number;
   endTime: string;
   status: IntentionStatus;
-  matchId: number | null;
+  // v2.0: 移除 matchId（意向不再 1:1 绑定比赛）
   regionCode: string | null;
   submittedAt: string;
   updatedAt: string;
@@ -410,8 +410,8 @@ export class IntentionService {
   /**
    * 取消比赛意向
    *
-   * 允许取消的状态：pending, matched
-   * 不允许取消的状态：confirmed, cancelled, expired, failed
+   * v2.0: 允许取消的状态：pending（通过状态机 INTENTION_STATUS_TRANSITIONS 校验）
+   * 不允许取消的状态：confirmed, cancelled, expired
    *
    * @param intentionId 意向ID
    * @param playerId 当前操作球员ID
@@ -876,7 +876,7 @@ export class IntentionService {
       acceptableWaitMinutes: intention.acceptableWaitMinutes,
       endTime: intention.endTime.toISOString(),
       status: intention.status,
-      matchId: intention.matchId,
+      // v2.0: 移除 matchId
       regionCode: intention.regionCode,
       submittedAt: intention.submittedAt.toISOString(),
       updatedAt: intention.updatedAt.toISOString(),

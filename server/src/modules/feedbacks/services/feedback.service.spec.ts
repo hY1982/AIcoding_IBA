@@ -212,7 +212,7 @@ describe('FeedbackService', () => {
     it('should reject when match status is not completed', async () => {
       matchRepo.findOne.mockResolvedValue({
         id: 1,
-        status: 'pending_confirmation',
+        status: 'pending_players',
       } as Match);
 
       await expect(service.createFeedback(createDto)).rejects.toThrow(

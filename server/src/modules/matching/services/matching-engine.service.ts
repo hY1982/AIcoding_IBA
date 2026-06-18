@@ -1,24 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository, EntityManager } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Intention } from '@modules/intentions/entities/intention.entity';
-import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
-import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
-import { MatchTeam } from '@modules/matches/entities/match-team.entity';
-import { VenueTimeSlot } from '@modules/venues/entities/venue-time-slot.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { MatchThresholdParams, isMatchThresholdParams } from '@shared/system';
-import { TeamBalancerService } from './team-balancer.service';
+import { VenueBookingService } from '@modules/venues/services/venue-booking.service';
 import { MatchingResult } from '../interfaces/matching-result.interface';
 
 /**
  * 球员意向信息（用于匹配计算）
  */
 interface PlayerIntentionInfo {
-  intention: Intention; // 原始意向引用，避免索引错位
+  intention: Intention;
   intentionId: number;
   playerId: number;
   totalAbilityScore: number;
@@ -47,22 +43,16 @@ interface CompatibilityResult {
 }
 
 /**
- * 兼容簇（替代原 MatchGroup）
+ * v2.0 候选比赛组（venue+format 分组，意向可跨组）
  */
-interface CompatibleCluster {
-  intentions: Intention[];
-  playerInfos: PlayerIntentionInfo[];
+interface CandidateGroup {
   venueId: number;
   formatId: number;
-  timeOverlapStart: Date;
-  timeOverlapEnd: Date;
-}
-
-/**
- * 候选集
- */
-interface CandidateSet {
+  format: Format;
   players: PlayerIntentionInfo[];
+  matchStartTime: Date;
+  matchEndTime: Date;
+  confirmDeadline: Date;
 }
 
 /**
@@ -80,20 +70,26 @@ const MATCH_SCORE_WEIGHTS = {
 const TIME_COARSE_PARTITION_MS = 6 * 60 * 60 * 1000; // 6 小时
 
 /**
- * 匹配引擎核心服务
+ * 匹配引擎核心服务 — v2.0 异步预匹配模式
  *
- * 负责将 pending 状态的比赛意向按五维兼容性评分（时间窗口交集、
- * 场地/赛制偏好交集、时长容差、能力值接近度）自动聚类匹配，
- * 生成比赛记录并分配队伍。
+ * 负责将 pending 状态的意向按五维兼容性评分（时间窗口交集、
+ * 场地/赛制偏好交集、时长容差、能力值接近度）自动分组，
+ * 创建候选比赛（pending_players），意向保持 pending 不锁定。
+ *
+ * v2.0 核心变化：
+ * - 同一意向可参与多个候选比赛（无上限）
+ * - 创建比赛时不分队（延后到 confirmed）
+ * - 创建比赛时不预订场地（延后到场地方确认）
+ * - 意向保持 pending（不改为 matched）
+ * - 邀请人数无上限（所有符合条件的意向全部邀请）
+ * - 满员后由 MatchConfirmationService 触发场地确认
  *
  * 关键设计：
- * - 参数快照：任务开始时一次性读取系统参数，确保任务内一致性
- * - 预计算兼容性矩阵：O(n²) 一次性计算所有对的评分，避免重复计算
- * - 贪心团聚类：团约束确保簇内每对成员都互相兼容
- * - 双指针滑动窗口：O(n) 时间复杂度的能力值候选集聚类
- * - 幂等更新：UPDATE ... WHERE status='pending' 防止重试时重复创建
- * - 悲观锁预订：SELECT ... FOR UPDATE 防止并发场地冲突
- * - 异常隔离：单个簇异常不影响其他簇
+ * - 参数快照：任务开始时一次性读取系统参数，保证任务内一致性
+ * - 预计算兼容性矩阵：O(n²) 一次性计算所有对的评分
+ * - venue+format 分组：允许意向跨组参与多个候选比赛
+ * - 幂等性：MatchPlayer 使用 ON CONFLICT DO NOTHING 防重复
+ * - 异常隔离：单个组异常不影响其他组
  */
 @Injectable()
 export class MatchingEngineService {
@@ -109,7 +105,7 @@ export class MatchingEngineService {
     @InjectRepository(SystemParam)
     private readonly systemParamRepo: Repository<SystemParam>,
     private readonly dataSource: DataSource,
-    private readonly teamBalancer: TeamBalancerService,
+    private readonly venueBookingService: VenueBookingService,
   ) {}
 
   // ==================== Public API ====================
@@ -147,49 +143,43 @@ export class MatchingEngineService {
     // 3. 构建 PlayerIntentionInfo 索引
     const playerInfos = this.buildPlayerInfos(intentions);
 
-    // 4. 预计算兼容性矩阵 + 贪心团聚类
+    // 4. 预计算兼容性矩阵
     const matrix = this.buildCompatibilityMatrix(playerInfos);
-    const clusters = this.buildCompatibleClusters(playerInfos, matrix);
+
+    // 5. v2.0: 按 venue+format 分组创建候选比赛
+    const groups = await this.buildCandidateGroups(playerInfos, matrix, thresholdParams);
     this.logger.log(
-      `扫描到 ${intentions.length} 个意向，形成 ${clusters.length} 个兼容簇`,
+      `扫描到 ${intentions.length} 个意向，形成 ${groups.length} 个候选组`,
     );
 
     let matchesCreated = 0;
     let matchesFailed = 0;
-    let expiredCount = 0;
 
-    // 5. 处理每个簇
-    for (const cluster of clusters) {
+    // 6. 处理每个候选组
+    for (const group of groups) {
       try {
-        const result = await this.processCluster(cluster, thresholdParams);
-        if (result.created) matchesCreated++;
-        if (result.failed) matchesFailed++;
+        const created = await this.processCandidateGroup(group);
+        if (created) matchesCreated++;
       } catch (error) {
         this.logger.error(
-          `簇处理异常 (venueId=${cluster.venueId}, formatId=${cluster.formatId}): ${(error as Error).message}`,
+          `候选组处理异常 (venueId=${group.venueId}, formatId=${group.formatId}): ${(error as Error).message}`,
         );
         matchesFailed++;
       }
     }
 
-    // 6. 处理未匹配意向的过期检查 — 排除已被簇处理匹配的意向
-    const matchedIntentionIds = new Set(
-      clusters.flatMap((c) => c.playerInfos.map((p) => p.intentionId)),
-    );
-    const unmatchedIntentions = intentions.filter(
-      (i) => !matchedIntentionIds.has(i.id),
-    );
-    expiredCount = await this.processExpiredIntentionsInTransaction(unmatchedIntentions);
+    // 7. 处理过期意向
+    const expiredCount = await this.processExpiredIntentions(intentions);
 
     const durationMs = Date.now() - startTime;
     this.logger.log(
-      `匹配任务完成: 扫描=${intentions.length}, 簇=${clusters.length}, ` +
+      `匹配任务完成: 扫描=${intentions.length}, 组=${groups.length}, ` +
         `成功=${matchesCreated}, 失败=${matchesFailed}, 过期=${expiredCount}, 耗时=${durationMs}ms`,
     );
 
     return {
       intentionsScanned: intentions.length,
-      groupsProcessed: clusters.length,
+      groupsProcessed: groups.length,
       matchesCreated,
       matchesFailed,
       expiredCount,
@@ -418,187 +408,152 @@ export class MatchingEngineService {
     return matrix;
   }
 
-  // ==================== Private: Cluster Selection ====================
+  // ==================== Private: Candidate Groups (v2.0) ====================
 
   /**
-   * 加权投票选场地：按 1/priority 加权求和，平局选 venueId 较小者
-   */
-  private selectBestVenue(infos: PlayerIntentionInfo[]): number {
-    // 优先从全局交集（所有成员都有的场地）中投票；若为空退化为全量
-    let common = new Set(infos[0].venueIds);
-    for (let i = 1; i < infos.length; i++) {
-      common = new Set(infos[i].venueIds.filter((v) => common.has(v)));
-    }
-    const votePool = common.size > 0 ? [...common] : infos.flatMap((i) => i.venueIds);
-
-    const scores = new Map<number, number>();
-    for (const info of infos) {
-      for (const v of info.venueIds) {
-        if (!votePool.includes(v)) continue;
-        const priority = info.venuePriorities.get(v) ?? 1;
-        scores.set(v, (scores.get(v) ?? 0) + 1.0 / priority);
-      }
-    }
-    let bestVenue = -1;
-    let bestScore = -1;
-    for (const [venueId, score] of scores) {
-      if (score > bestScore || (score === bestScore && venueId < bestVenue)) {
-        bestScore = score;
-        bestVenue = venueId;
-      }
-    }
-    return bestVenue;
-  }
-
-  /**
-   * 加权投票选赛制：按 1/priority 加权求和，平局选 formatId 较小者
-   */
-  private selectBestFormat(infos: PlayerIntentionInfo[]): number {
-    // 优先从全局交集（所有成员都有的赛制）中投票；若为空退化为全量
-    let common = new Set(infos[0].formatIds);
-    for (let i = 1; i < infos.length; i++) {
-      common = new Set(infos[i].formatIds.filter((f) => common.has(f)));
-    }
-    const votePool = common.size > 0 ? [...common] : infos.flatMap((i) => i.formatIds);
-
-    const scores = new Map<number, number>();
-    for (const info of infos) {
-      for (const f of info.formatIds) {
-        if (!votePool.includes(f)) continue;
-        const priority = info.formatPriorities.get(f) ?? 1;
-        scores.set(f, (scores.get(f) ?? 0) + 1.0 / priority);
-      }
-    }
-    let bestFormat = -1;
-    let bestScore = -1;
-    for (const [formatId, score] of scores) {
-      if (score > bestScore || (score === bestScore && formatId < bestFormat)) {
-        bestScore = score;
-        bestFormat = formatId;
-      }
-    }
-    return bestFormat;
-  }
-
-  /**
-   * 计算簇的全局时间窗口交集
-   * 时间窗口定义：[startTime, startTime + acceptableWaitMinutes]
-   */
-  private computeOverlapWindow(infos: PlayerIntentionInfo[]): {
-    start: Date; end: Date; isEmpty: boolean;
-  } {
-    const latestStart = Math.max(
-      ...infos.map((p) => p.startTime.getTime()),
-    );
-    const earliestEnd = Math.min(
-      ...infos.map((p) => p.startTime.getTime() + p.acceptableWaitMinutes * 60000),
-    );
-    const isEmpty = latestStart > earliestEnd;
-    return {
-      start: new Date(latestStart),
-      end: new Date(earliestEnd),
-      isEmpty,
-    };
-  }
-
-  // ==================== Private: Greedy Clique Clustering ====================
-
-  /**
-   * 贪心团聚类算法
+   * v2.0: 按 venue+format 分组，构建候选比赛组。
    *
-   * 团约束：簇内每对成员都必须互相兼容，确保所有参与者对时间/场地/赛制
-   * 达成共识。不会出现"A 想去场地 X、C 只想去场地 Y 却被分到同一场"的情况。
-   * MVP 阶段保持严格团约束，后续版本可探索"近似团"松弛策略。
+   * 核心变化：
+   * - 同一意向可出现在多个 venue+format 组中（无排他约束）
+   * - 所有符合兼容性的意向全部邀请（无上限）
+   * - 组内人数 >= minPlayers 才创建候选比赛
+   *
+   * 分组策略：
+   * 1. 按 (venueId, formatId) 对意向进行分组
+   * 2. 每个意向可属于多个组（遍历其所有 venue+format 组合）
+   * 3. 过滤掉人数不足 minPlayers 的组
+   * 4. 计算每组的比赛时间和 confirmDeadline
    */
-  private buildCompatibleClusters(
+  private async buildCandidateGroups(
     infos: PlayerIntentionInfo[],
     matrix: CompatibilityResult[][],
-  ): CompatibleCluster[] {
-    const n = infos.length;
-    // 构建 intentionId -> index 映射
+    thresholdParams: MatchThresholdParams,
+  ): Promise<CandidateGroup[]> {
+    // 构建 intentionId → index 映射
     const idToIndex = new Map<number, number>();
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < infos.length; i++) {
       idToIndex.set(infos[i].intentionId, i);
     }
 
-    // 按 submittedAt 升序排序（等待最久的优先处理）
-    const sortedIndices = Array.from({ length: n }, (_, i) => i);
-    sortedIndices.sort(
-      (a, b) => infos[a].submittedAt.getTime() - infos[b].submittedAt.getTime(),
-    );
-
-    const matched = new Set<number>(); // 已匹配的意向索引
-    const clusters: CompatibleCluster[] = [];
-
-    for (const seedIdx of sortedIndices) {
-      if (matched.has(seedIdx)) continue;
-
-      // 开始新簇
-      const groupIndices: number[] = [seedIdx];
-      matched.add(seedIdx);
-
-      // 找所有与 seed 兼容的未匹配候选，按 totalScore 降序
-      const candidates: Array<{ idx: number; score: number }> = [];
-      for (const j of sortedIndices) {
-        if (matched.has(j) || j === seedIdx) continue;
-        const score = matrix[seedIdx][j].totalScore;
-        if (score > 0) candidates.push({ idx: j, score });
-      }
-      candidates.sort((a, b) => b.score - a.score);
-
-      // 贪心扩展：团约束 - candidate 必须与 group 中每个现有成员兼容
-      for (const { idx: candidateIdx } of candidates) {
-        if (matched.has(candidateIdx)) continue;
-        const compatibleWithAll = groupIndices.every(
-          (memberIdx) => matrix[candidateIdx][memberIdx].totalScore > 0,
-        );
-        if (compatibleWithAll) {
-          groupIndices.push(candidateIdx);
-          matched.add(candidateIdx);
+    // 1. 按 (venueId, formatId) 分组，意向可跨组
+    const groupMap = new Map<string, PlayerIntentionInfo[]>();
+    for (const info of infos) {
+      for (const venueId of info.venueIds) {
+        for (const formatId of info.formatIds) {
+          const key = `${venueId}_${formatId}`;
+          if (!groupMap.has(key)) {
+            groupMap.set(key, []);
+          }
+          groupMap.get(key)!.push(info);
         }
       }
+    }
 
-      // 构建簇的 PlayerIntentionInfo 和 Intention
-      const clusterInfos = groupIndices.map((i) => infos[i]);
-      const clusterIntentions = groupIndices.map((i) => infos[i].intention);
+    // 2. 过滤 + 构建候选组
+    const groups: CandidateGroup[] = [];
 
-      // 校验全局时间交集
-      const overlap = this.computeOverlapWindow(clusterInfos);
-      if (overlap.isEmpty) {
-        this.logger.log(
-          `簇内全局时间交集为空（${clusterInfos.length} 个意向），跳过`,
-        );
+    for (const [key, players] of groupMap) {
+      const [venueIdStr, formatIdStr] = key.split('_');
+      const venueId = parseInt(venueIdStr, 10);
+      const formatId = parseInt(formatIdStr, 10);
+
+      // 获取赛制信息
+      const format = await this.formatRepo.findOneBy({ id: formatId });
+      if (!format) continue;
+
+      const minPlayers = format.teamCountMin * format.teamSize;
+
+      // v2.0: 使用兼容性矩阵过滤组内不兼容的成员
+      // 保留与组内大多数成员兼容的球员
+      const compatiblePlayers = this.filterCompatiblePlayers(
+        players,
+        matrix,
+        idToIndex,
+        thresholdParams,
+      );
+
+      if (compatiblePlayers.length < minPlayers) {
         continue;
       }
 
-      // 投票选场地和赛制
-      const venueId = this.selectBestVenue(clusterInfos);
-      const formatId = this.selectBestFormat(clusterInfos);
+      // 3. 计算比赛时间
+      const matchStartTime = new Date(
+        Math.max(...compatiblePlayers.map((p) => p.startTime.getTime())),
+      );
+      const matchDuration = this.calculateMatchDuration(compatiblePlayers, format);
+      const matchEndTime = new Date(matchStartTime.getTime() + matchDuration);
 
-      clusters.push({
-        intentions: clusterIntentions,
-        playerInfos: clusterInfos,
+      // 4. confirmDeadline = startTime - 1小时
+      const confirmDeadline = new Date(matchStartTime.getTime() - 60 * 60 * 1000);
+
+      groups.push({
         venueId,
         formatId,
-        timeOverlapStart: overlap.start,
-        timeOverlapEnd: overlap.end,
+        format,
+        players: compatiblePlayers,
+        matchStartTime,
+        matchEndTime,
+        confirmDeadline,
       });
     }
 
-    // 按簇内平均 totalScore 降序排序（优先处理质量最高的簇）
-    clusters.sort((a, b) => {
-      const avgA = this.avgClusterScore(a.playerInfos, matrix, idToIndex);
-      const avgB = this.avgClusterScore(b.playerInfos, matrix, idToIndex);
-      return avgB - avgA;
+    // 5. 按组内平均兼容性评分降序排序（优先处理质量最高的组）
+    groups.sort((a, b) => {
+      const scoreA = this.avgGroupScore(a.players, matrix, idToIndex);
+      const scoreB = this.avgGroupScore(b.players, matrix, idToIndex);
+      return scoreB - scoreA;
     });
 
-    return clusters;
+    return groups;
   }
 
   /**
-   * 计算簇内平均兼容性评分
+   * 使用兼容性矩阵过滤组内成员。
+   *
+   * 保留与组内至少半数其他成员兼容的球员，
+   * 并使用动态阈值限制能力值差距。
    */
-  private avgClusterScore(
+  private filterCompatiblePlayers(
+    players: PlayerIntentionInfo[],
+    matrix: CompatibilityResult[][],
+    idToIndex: Map<number, number>,
+    thresholdParams: MatchThresholdParams,
+  ): PlayerIntentionInfo[] {
+    if (players.length <= 2) return players;
+
+    const threshold = this.calculateDynamicThreshold(
+      players.length,
+      thresholdParams,
+    );
+
+    // 保留与组内至少半数其他成员兼容的球员
+    return players.filter((player, i) => {
+      const playerIdx = idToIndex.get(player.intentionId)!;
+      let compatibleCount = 0;
+      let totalChecked = 0;
+      let abilityInRange = true;
+
+      for (let j = 0; j < players.length; j++) {
+        if (i === j) continue;
+        const otherIdx = idToIndex.get(players[j].intentionId)!;
+        totalChecked++;
+        if (matrix[playerIdx][otherIdx].compatible) {
+          compatibleCount++;
+        }
+        // 检查能力值差距
+        if (Math.abs(player.totalAbilityScore - players[j].totalAbilityScore) > threshold * 2) {
+          abilityInRange = false;
+        }
+      }
+
+      return compatibleCount >= Math.floor(totalChecked / 2) && abilityInRange;
+    });
+  }
+
+  /**
+   * 计算组内平均兼容性评分
+   */
+  private avgGroupScore(
     infos: PlayerIntentionInfo[],
     matrix: CompatibilityResult[][],
     idToIndex: Map<number, number>,
@@ -617,49 +572,6 @@ export class MatchingEngineService {
     return count > 0 ? sum / count : 0;
   }
 
-  // ==================== Private: Process Cluster ====================
-
-  /**
-   * 处理单个兼容簇
-   */
-  private async processCluster(
-    cluster: CompatibleCluster,
-    thresholdParams: MatchThresholdParams,
-  ): Promise<{ created: boolean; failed: boolean }> {
-    // 获取赛制信息
-    const format = await this.formatRepo.findOneBy({ id: cluster.formatId });
-    if (!format) {
-      this.logger.warn(`赛制不存在: formatId=${cluster.formatId}`);
-      return { created: false, failed: true };
-    }
-
-    // 计算动态阈值
-    const threshold = this.calculateDynamicThreshold(
-      cluster.playerInfos.length,
-      thresholdParams,
-    );
-
-    // 双指针滑动窗口聚类（按能力值筛选最优子集）
-    const candidateSet = this.findBestCandidateSet(
-      cluster.playerInfos,
-      threshold,
-    );
-
-    const minPlayers = format.teamCountMin * format.teamSize;
-    if (candidateSet.players.length < minPlayers) {
-      this.logger.log(
-        `簇候选集人数不足: ${candidateSet.players.length} < ${minPlayers} ` +
-          `(venueId=${cluster.venueId}, formatId=${cluster.formatId})`,
-      );
-      return { created: false, failed: false };
-    }
-
-    // 创建比赛（事务内）
-    await this.createMatchInTransaction(cluster, candidateSet, format);
-
-    return { created: true, failed: false };
-  }
-
   // ==================== Private: Dynamic Threshold ====================
 
   /**
@@ -676,287 +588,169 @@ export class MatchingEngineService {
     return Math.max(params.min_threshold, dynamicValue);
   }
 
-  // ==================== Private: Candidate Set (Two-Pointer) ====================
+  // ==================== Private: Match Duration ====================
 
   /**
-   * 双指针滑动窗口寻找最佳候选集
+   * 计算比赛时长
    *
-   * 算法：
-   * 1. 按能力值降序 + submittedAt升序排序
-   * 2. 用 left/right 指针维护窗口
-   * 3. 当窗口内 maxScore - minScore <= threshold 时右移 right
-   * 4. 否则右移 left
-   * 5. 记录所有满足条件的窗口，选择人数最多的
-   *
-   * 时间复杂度：O(n log n) 排序 + O(n) 滑动窗口
-   *
-   * 关键优化：由于数组已按能力值降序排序，窗口 [left, right] 内的
-   * 最大值就是 sorted[left]，最小值就是 sorted[right]。
-   * 因此 max - min = sorted[left].totalAbilityScore - sorted[right].totalAbilityScore
-   * 无需遍历窗口计算 min/max。
+   * v2.0: matchDuration = max(median(all participants' durationMinutes), 120)
+   * 兼顾各方偏好，最低120分钟保证比赛可行性。
    */
-  private findBestCandidateSet(
+  private calculateMatchDuration(
     players: PlayerIntentionInfo[],
-    threshold: number,
-  ): CandidateSet {
-    // 按能力值降序排序（同分按 submittedAt 升序，等待久的优先）
-    const sorted = [...players].sort((a, b) => {
-      const scoreDiff = b.totalAbilityScore - a.totalAbilityScore;
-      if (Math.abs(scoreDiff) > 0.01) return scoreDiff;
-      return a.submittedAt.getTime() - b.submittedAt.getTime();
+    format: Format,
+  ): number {
+    const durations = players.map((p) => p.durationMinutes).sort((a, b) => a - b);
+    const median = durations.length > 0
+      ? durations[Math.floor(durations.length / 2)]
+      : 120;
+    const durationMinutes = Math.max(median, 120);
+    return durationMinutes * 60 * 1000; // 返回毫秒
+  }
+
+  // ==================== Private: Process Candidate Group ====================
+
+  /**
+   * v2.0: 处理单个候选组 — 创建候选比赛。
+   *
+   * 关键变化：
+   * - 不分队（延后到 confirmed）
+   * - 不预订场地（延后到场地方确认）
+   * - 不更新意向状态（保持 pending）
+   * - 乐观场地可用性检查（允许少量误判）
+   * - MatchPlayer 包含 intentionId
+   * - 使用 ON CONFLICT DO NOTHING 防重复
+   */
+  private async processCandidateGroup(
+    group: CandidateGroup,
+  ): Promise<boolean> {
+    // 乐观场地可用性检查（不加锁，允许少量误判）
+    const slotDate = group.matchStartTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
+    const startTimeStr = group.matchStartTime.toLocaleTimeString('en-GB', {
+      timeZone: 'Asia/Shanghai', hour12: false,
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    const endTimeStr = group.matchEndTime.toLocaleTimeString('en-GB', {
+      timeZone: 'Asia/Shanghai', hour12: false,
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
 
-    let bestStart = 0;
-    let bestEnd = 0;
-    let left = 0;
+    const isAvailable = await this.venueBookingService.checkAvailability(
+      group.venueId,
+      slotDate,
+      startTimeStr,
+      endTimeStr,
+    );
 
-    for (let right = 0; right < sorted.length; right++) {
-      // 利用已排序特性：窗口内 max = sorted[left], min = sorted[right]
-      while (
-        left < right &&
-        sorted[left].totalAbilityScore - sorted[right].totalAbilityScore >
-          threshold
-      ) {
-        left++;
-      }
-
-      // 窗口有效，检查是否是最大的
-      if (right - left > bestEnd - bestStart) {
-        bestStart = left;
-        bestEnd = right;
-      }
+    if (!isAvailable) {
+      this.logger.log(
+        `场地不可用（乐观检查）: venueId=${group.venueId}, date=${slotDate}, ` +
+          `time=${startTimeStr}-${endTimeStr}，跳过`,
+      );
+      return false;
     }
 
-    return {
-      players: sorted.slice(bestStart, bestEnd + 1),
-    };
+    // 事务内创建比赛 + MatchPlayer
+    await this.createMatchInTransaction(group);
+
+    return true;
   }
 
   // ==================== Private: Create Match (Transaction) ====================
 
   /**
-   * 在事务内创建比赛及相关记录
+   * v2.0: 在事务内创建候选比赛及 MatchPlayer。
+   *
+   * - 不分队（teamNumber=null）
+   * - 不创建 MatchTeam（延后到 confirmed）
+   * - MatchPlayer 包含 intentionId
+   * - 使用 ON CONFLICT DO NOTHING 防并发重复
    */
   private async createMatchInTransaction(
-    cluster: CompatibleCluster,
-    candidateSet: CandidateSet,
-    format: Format,
+    group: CandidateGroup,
   ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
-      // 确定比赛时间（取实际参赛球员的最晚 startTime，与 endTime 基准一致）
-      const matchStartTime = new Date(
-        Math.max(...candidateSet.players.map((p) => p.startTime.getTime())),
-      );
-      const matchEndTime = this.calculateMatchEndTime(
-        candidateSet.players,
-        format,
-      );
-
-      // 1. 创建 Match
+      // 1. 创建 Match（候选比赛）
       const matchData = {
-        venueId: cluster.venueId,
-        formatId: cluster.formatId,
-        startTime: matchStartTime,
-        endTime: matchEndTime,
-        status: 'pending_confirmation' as const,
-        teamCount: format.teamCountMin,
-        playersPerTeam: format.teamSize,
-        totalPlayers: candidateSet.players.length,
+        venueId: group.venueId,
+        formatId: group.formatId,
+        startTime: group.matchStartTime,
+        endTime: group.matchEndTime,
+        status: 'pending_players' as const,
+        teamCount: group.format.teamCountMin,
+        playersPerTeam: group.format.teamSize,
+        requiredPlayers: group.format.teamCountMin * group.format.teamSize,
         confirmedPlayers: 0,
+        confirmDeadline: group.confirmDeadline,
+        venueConfirmDeadline: null,
         depositAmount: '0.00',
-        regionCode: cluster.intentions[0]?.regionCode,
+        regionCode: group.players[0]?.intention.regionCode,
       };
 
       const match = manager.create(Match, matchData);
       const savedMatch = await manager.save(Match, match);
 
-      // 2. 蛇形分队
-      const playerPicks = candidateSet.players.map((p) => ({
-        id: p.playerId,
-        totalAbilityScore: p.totalAbilityScore,
-      }));
-
-      const teams = this.teamBalancer.snakeDraft({
-        players: playerPicks,
-        format,
-      });
-
-      // 3. 创建 MatchTeam
-      for (const team of teams) {
-        const teamData = {
+      // 2. 创建 MatchPlayer（所有邀请球员，intentionId 关联）
+      for (const player of group.players) {
+        const matchPlayerData = {
           matchId: savedMatch.id,
-          teamNumber: team.teamNumber,
-          teamName: team.teamName ?? `队伍${team.teamNumber}`,
-          avgAbility: team.avgAbility,
+          playerId: player.playerId,
+          intentionId: player.intentionId,
+          teamNumber: null,       // v2.0: 不分队，延后到 confirmed
+          status: 'invited' as const,
+          depositPaid: false,
+          depositOrderNo: null,
+          confirmedAt: null,
         };
-        await manager.save(MatchTeam, manager.create(MatchTeam, teamData));
-      }
 
-      // 4. 创建 MatchPlayer
-      for (const team of teams) {
-        for (const player of team.players) {
-          const matchPlayerData = {
-            matchId: savedMatch.id,
-            playerId: player.id,
-            teamNumber: team.teamNumber,
-            status: 'invited' as const,
-            isReserve: false,
-            depositPaid: false,
-          };
-          await manager.save(
-            MatchPlayer,
-            manager.create(MatchPlayer, matchPlayerData),
-          );
+        // 使用 create + save（ON CONFLICT 由 unique constraint 兜底）
+        try {
+          const mp = manager.create(MatchPlayer, matchPlayerData);
+          await manager.save(MatchPlayer, mp);
+        } catch (error) {
+          // ON CONFLICT DO NOTHING: 并发场景下可能重复，静默忽略
+          if ((error as any)?.code === '23505') {
+            this.logger.debug(
+              `MatchPlayer 已存在，跳过: matchId=${savedMatch.id}, playerId=${player.playerId}`,
+            );
+          } else {
+            throw error;
+          }
         }
       }
 
-      // 5. 【幂等更新】更新意向状态
-      for (const playerInfo of candidateSet.players) {
-        const updateResult = await manager.update(
-          Intention,
-          { id: playerInfo.intentionId, status: 'pending' },
-          { status: 'matched', matchId: savedMatch.id },
-        );
-
-        if (updateResult.affected === 0) {
-          this.logger.warn(
-            `意向状态更新失败（可能已被处理）: intentionId=${playerInfo.intentionId}`,
-          );
-        }
-      }
-
-      // 6. 【悲观锁预订】场地时段
-      await this.bookVenueTimeSlot(
-        manager,
-        cluster.venueId,
-        matchStartTime,
-        matchEndTime,
-        savedMatch.id,
-      );
+      // v2.0: 不更新意向状态（意向保持 pending，可参与多个候选比赛）
+      // v2.0: 不预订场地（延后到场地方确认阶段由 VenueBookingService.bookSlot 执行）
+      // v2.0: 不分队（延后到比赛 confirmed 后由蛇形选秀执行）
 
       this.logger.log(
-        `比赛创建成功: matchId=${savedMatch.id}, ` +
-          `venueId=${cluster.venueId}, formatId=${cluster.formatId}, ` +
-          `players=${candidateSet.players.length}`,
+        `候选比赛创建成功: matchId=${savedMatch.id}, ` +
+          `venueId=${group.venueId}, formatId=${group.formatId}, ` +
+          `invited=${group.players.length}, required=${matchData.requiredPlayers}, ` +
+          `confirmDeadline=${group.confirmDeadline.toISOString()}`,
       );
     });
-  }
-
-  /**
-   * 计算比赛结束时间
-   */
-  private calculateMatchEndTime(
-    players: PlayerIntentionInfo[],
-    format: Format,
-  ): Date {
-    const startTimeMs = Math.max(...players.map((p) => p.startTime.getTime()));
-    const durationHours = format.durationHours ?? 2;
-    return new Date(startTimeMs + durationHours * 60 * 60 * 1000);
-  }
-
-  /**
-   * 预订场地时段（悲观锁 + 时段拆分）
-   *
-   * 找到包含比赛时间的空闲时段，删除原时段，拆分为：
-   * - 比赛前空闲段（如果有）
-   * - 比赛占用段（is_booked=true, matchId）
-   * - 比赛后空闲段（如果有）
-   */
-  private async bookVenueTimeSlot(
-    manager: EntityManager,
-    venueId: number,
-    startTime: Date,
-    endTime: Date,
-    matchId: number,
-  ): Promise<void> {
-    // 时区修复：用 Asia/Shanghai 提取日期和时间
-    const slotDate = startTime.toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
-    const startTimeStr = startTime.toLocaleTimeString('en-GB', {
-      timeZone: 'Asia/Shanghai', hour12: false,
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    });
-    const endTimeStr = endTime.toLocaleTimeString('en-GB', {
-      timeZone: 'Asia/Shanghai', hour12: false,
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-    });
-
-    // Step 1: 悲观锁锁定包含比赛时间的空闲时段
-    const lockedSlot = await manager
-      .createQueryBuilder(VenueTimeSlot, 'slot')
-      .where('slot.venue_id = :venueId', { venueId })
-      .andWhere('slot.slot_date = :slotDate', { slotDate })
-      .andWhere('slot.start_time <= :startTime', { startTime: startTimeStr })
-      .andWhere('slot.end_time >= :endTime', { endTime: endTimeStr })
-      .andWhere('slot.is_booked = false')
-      .setLock('pessimistic_write')
-      .getOne();
-
-    if (!lockedSlot) {
-      this.logger.warn(
-        `未找到可用的场地时段: venueId=${venueId}, date=${slotDate}, ` +
-          `time=${startTimeStr}-${endTimeStr}`,
-      );
-      return;
-    }
-
-    // Step 2: 删除原大时段
-    await manager.delete(VenueTimeSlot, { id: lockedSlot.id });
-
-    // Step 3: 插入拆分后的时段
-    const segments: Array<{
-      venueId: number; slotDate: string;
-      startTime: string; endTime: string;
-      isBooked: boolean; matchId: number | null;
-    }> = [];
-
-    // 比赛前空闲段
-    if (lockedSlot.startTime < startTimeStr) {
-      segments.push({
-        venueId, slotDate,
-        startTime: lockedSlot.startTime, endTime: startTimeStr,
-        isBooked: false, matchId: null,
-      });
-    }
-
-    // 比赛占用段
-    segments.push({
-      venueId, slotDate,
-      startTime: startTimeStr, endTime: endTimeStr,
-      isBooked: true, matchId,
-    });
-
-    // 比赛后空闲段
-    if (endTimeStr < lockedSlot.endTime) {
-      segments.push({
-        venueId, slotDate,
-        startTime: endTimeStr, endTime: lockedSlot.endTime,
-        isBooked: false, matchId: null,
-      });
-    }
-
-    for (const seg of segments) {
-      await manager.insert(VenueTimeSlot, seg);
-    }
   }
 
   // ==================== Private: Expired Intentions ====================
 
   /**
-   * 处理过期意向（在事务内执行以保证数据一致性）
+   * 处理过期意向
    *
-   * - 距离 expiresAt <= 30分钟 → 状态改为 'expired'
+   * - expiresAt <= now() → 状态改为 'expired'
+   * - 在事务内执行以保证数据一致性
+   * - 与调度器 (MatchExpirationScheduler) 行为保持一致：到期即过期，无提前量
    */
-  private async processExpiredIntentionsInTransaction(
+  private async processExpiredIntentions(
     intentions: Intention[],
   ): Promise<number> {
     const now = new Date();
-    const thirtyMinutesLater = new Date(now.getTime() + 30 * 60 * 1000);
 
-    // 筛选出需要过期的意向
+    // 筛选出已过期的意向（expiresAt <= now）
     const expiredIntentions = intentions.filter(
       (intention) =>
         intention.status === 'pending' &&
-        intention.expiresAt <= thirtyMinutesLater,
+        intention.expiresAt <= now,
     );
 
     if (expiredIntentions.length === 0) {

@@ -171,9 +171,9 @@ describe('MatchController (e2e)', () => {
       endTime: futureEnd,
       teamCount: 2,
       playersPerTeam: Math.ceil(playerIds.length / 2),
-      totalPlayers: playerIds.length,
+      requiredPlayers: playerIds.length,
       depositAmount: '50.00',
-      status: 'pending_confirmation',
+      status: 'pending_players',
       ...matchOverrides,
     });
 

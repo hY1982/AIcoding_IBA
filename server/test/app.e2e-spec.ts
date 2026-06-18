@@ -477,14 +477,14 @@ describe('Full E2E Flow (e2e)', () => {
     it('should have created match with correct structure', async () => {
       const matchRepo = dataSource.getRepository(Match);
       const matches = await matchRepo.find({
-        where: { status: 'pending_confirmation' },
+        where: { status: 'pending_players' },
       });
 
       expect(matches.length).toBe(1);
       matchId = matches[0].id;
       expect(matches[0].venueId).toBe(venueId);
       expect(matches[0].formatId).toBe(formatId);
-      expect(matches[0].totalPlayers).toBe(6);
+      expect(matches[0].requiredPlayers).toBe(6);
     });
 
     it('should have created match players with invited status', async () => {
@@ -515,16 +515,14 @@ describe('Full E2E Flow (e2e)', () => {
       expect(bookedSlot!.matchId).toBe(matchId);
     });
 
-    it('should update intention status to matched', async () => {
+    it('should keep intention status as pending (v2.0: no longer matched)', async () => {
       const intentionRepo = dataSource.getRepository(Intention);
       const intentions = await intentionRepo.find({
-        where: { status: 'matched' },
+        where: { status: 'pending' },
       });
 
-      // At least the 6 original intentions should be matched
+      // At least the 6 original intentions should still be pending (v2.0: intentions stay pending)
       expect(intentions.length).toBeGreaterThanOrEqual(6);
-      // All matched intentions should reference valid matches
-      expect(intentions.every((i) => i.matchId !== null)).toBe(true);
     });
 
     it('should add job to BullMQ matching queue', async () => {

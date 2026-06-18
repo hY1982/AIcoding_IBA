@@ -50,7 +50,7 @@ describe('IntentionController', () => {
     acceptableWaitMinutes: 30,
     endTime: '2026-06-12T12:00:00.000Z',
     status: 'pending',
-    matchId: null,
+    // v2.0: matchId removed
     regionCode: 'shenzhen_futian',
     submittedAt: '2026-06-11T08:00:00.000Z',
     updatedAt: '2026-06-11T08:00:00.000Z',

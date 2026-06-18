@@ -77,4 +77,7 @@ export interface PaymentProviderInterface {
 
   /** Close an expired or cancelled order */
   closeOrder(orderNo: string): Promise<boolean>;
+
+  /** v2.0: Refund a payment (Saga compensation) */
+  refund?(orderNo: string): Promise<boolean>;
 }

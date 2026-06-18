@@ -1,37 +1,35 @@
-// 意向状态 — 联合类型 + const 数组（单一来源）
+// 意向状态 — v2.0 重构：移除 matched/failed，仅保留四状态
 export const INTENTION_STATUSES = [
   'pending',
-  'matched',
   'confirmed',
   'cancelled',
   'expired',
-  'failed',
 ] as const;
 export type IntentionStatus = (typeof INTENTION_STATUSES)[number];
 
 export const INTENTION_STATUS_LABELS: Record<IntentionStatus, string> = {
   pending: '等待匹配',
-  matched: '已匹配',
   confirmed: '已确认',
   cancelled: '已取消',
   expired: '已过期',
-  failed: '匹配失败',
 };
 
 /**
- * 意向状态机 — 定义合法的状态流转路径。
- * 为 Module 2.5（意向服务）提供状态流转校验依据。
+ * 意向状态机 — v2.0 重构
+ *
+ * 关键变更：
+ * - 移除 matched/failed，意向可同时参与多个候选比赛
+ * - confirmed → pending 回退（场地方拒绝且未在其他比赛 confirmed）
+ * - cancelled → pending 支持重新编辑
  */
 export const INTENTION_STATUS_TRANSITIONS: Record<
   IntentionStatus,
   IntentionStatus[]
 > = {
-  pending: ['matched', 'cancelled', 'expired'],
-  matched: ['confirmed', 'cancelled', 'failed'],
-  confirmed: [],
-  cancelled: [],
+  pending: ['confirmed', 'cancelled', 'expired'],
+  confirmed: ['pending'],  // 场地方拒绝时回退（前提：该意向未在其他比赛 confirmed）
+  cancelled: ['pending'],  // 支持重新编辑
   expired: [],
-  failed: [],
 };
 
 /**
@@ -55,7 +53,11 @@ export interface IntentionFormat {
 }
 
 /**
- * 比赛意向（API 响应契约）
+ * 比赛意向（API 响应契约）— v2.0 重构
+ *
+ * 关键变更：
+ * - 移除 matchId（意向不再 1:1 绑定比赛，可同时参与多个候选比赛）
+ * - expiresAt 语义改为 startTime - 1小时
  */
 export interface Intention {
   id: number;
@@ -65,11 +67,11 @@ export interface Intention {
   acceptableWaitMinutes: number;
   endTime: string; // ISO 8601，由后端根据 start_time + duration_minutes 计算
   status: IntentionStatus;
-  matchId: number | null;
+  // v2.0: 移除 matchId，意向不再 1:1 绑定比赛
   regionCode: string | null;
   submittedAt: string;
   updatedAt: string;
-  expiresAt: string;
+  expiresAt: string; // v2.0: = startTime - 1小时
 }
 
 /**
@@ -77,7 +79,7 @@ export interface Intention {
  *
  * 注意：
  * - end_time 由后端根据 start_time + duration_minutes 自动计算，不可传入
- * - expires_at 由后端根据 submitted_at + acceptable_wait_minutes 自动计算，不可传入
+ * - expires_at 由后端根据 start_time - 1小时自动计算，不可传入（v2.0 变更）
  * - region_code 由后端根据 player 地区或首选场地地区自动填充，不可传入
  */
 export interface CreateIntentionInput {

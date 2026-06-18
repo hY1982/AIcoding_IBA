@@ -1,7 +1,7 @@
 # 篮球匹配平台 — 分模块开发计划
 
-> 版本：v1.1
-> 日期：2026-05-26
+> 版本：v2.0
+> 日期：2026-06-17（v2.0 核心业务流程重构：异步预匹配 + 先到先得确认 + 二阶段确认）
 > 策略：按依赖顺序逐个模块实现，每次只分配单一模块任务，先写测试再写代码，TDD完整覆盖（目标80%+），用户逐步审查
 
 ---
@@ -172,35 +172,47 @@
 - **关键路径**：`server/src/modules/formats/entities/format.entity.ts`
 
 #### Module 1.4 — 比赛意向实体（intentions + intention_venues + intention_formats）
-- **目标**：定义比赛意向及关联实体
+- **目标**：定义比赛意向及关联实体（v2.0：无 matchId，支持多候选比赛）
 - **依赖顺序**：Module 1.3 完成后
 - **交付物**：
   - `server/src/modules/intentions/entities/intention.entity.ts`
   - `server/src/modules/intentions/entities/intention-venue.entity.ts`
   - `server/src/modules/intentions/entities/intention-format.entity.ts`
   - `server/src/migrations/1716740000005-CreateIntentionTables.ts`
-- **测试**：
-  - 实体约束测试（duration_minutes 120-360、status 枚举）
+- **v2.0 变更**：
+  - 删除 `matchId` 列（意向不再 1:1 绑定比赛，可同时参与多个候选比赛）
+  - status 枚举改为 `pending/confirmed/cancelled/expired`（删除 matched/failed）
+  - `expiresAt = startTime - 1小时`（与确认截止时间对齐）
+  - 新增索引 `idx_intentions_expires_at`（超时调度器高频查询）
+- **测试**（先写测试）：
+  - 实体约束测试（duration_minutes 120-360、status 四状态枚举）
   - end_time 生成列验证
+  - expiresAt 计算测试（= startTime - 1小时）
   - 关系映射测试（intention → intention_venues → venues）
   - Migration 执行测试
 - **关键路径**：`server/src/modules/intentions/entities/intention.entity.ts`
 
-#### Module 1.5 — 比赛与群聊实体（matches + match_players + match_teams + match_messages）
-- **目标**：定义比赛、队伍、球员关联、群聊消息实体
+#### Module 1.5 — 比赛与群聊实体（matches + match_players + match_teams + match_messages + venue_booking_requests）
+- **目标**：定义比赛、队伍、球员关联、群聊消息、场地预订请求实体（v2.0 重构）
 - **依赖顺序**：Module 1.4 完成后
 - **交付物**：
   - `server/src/modules/matches/entities/match.entity.ts`
   - `server/src/modules/matches/entities/match-player.entity.ts`
   - `server/src/modules/matches/entities/match-team.entity.ts`
   - `server/src/modules/messages/entities/match-message.entity.ts`
+  - `server/src/modules/venues/entities/venue-booking-request.entity.ts`（v2.0 新增）
   - `server/src/migrations/1716740000006-CreateMatchTables.ts`
-- **测试**：
-  - 实体约束测试（status 枚举、confirmed_players <= total_players）
-  - 关系映射测试（match → match_players → players、match → match_teams）
-  - 唯一约束测试（match_id + player_id）
+- **v2.0 变更**：
+  - matches 新增 `requiredPlayers`/`confirmDeadline`/`venueConfirmDeadline`，status 改为 7 状态
+  - match_players 新增 `intentionId`，status 改为 `invited/confirmed/withdrawn/no_show`，删除 `isReserve`，唯一约束改为 `(matchId, intentionId)`
+  - 新增 venue_booking_requests 表（含状态、截止时间、拒绝原因）
+- **测试**（先写测试）：
+  - 实体约束测试（matches 7状态、match_players 4状态）
+  - 关系映射测试（match → match_players → players、match_player → intention）
+  - 唯一约束测试（match_id + intention_id）
+  - venue_booking_requests 约束测试（5状态、响应截止时间）
   - Migration 执行测试
-- **关键路径**：`server/src/modules/matches/entities/match.entity.ts`
+- **关键路径**：`server/src/modules/matches/entities/match.entity.ts`、`server/src/modules/venues/entities/venue-booking-request.entity.ts`
 
 #### Module 1.6 — 反馈与系统参数实体（feedbacks + feedback_player_ratings + system_params + notifications）
 - **目标**：定义赛后反馈、系统参数、通知实体
@@ -287,74 +299,105 @@
   - 更新场地测试（仅所属场地方可修改）
 - **关键路径**：`server/src/modules/venues/services/venue.service.ts`
 
-#### Module 2.5 — 意向服务（IntentionService）
-- **目标**：实现比赛意向的提交、修改、取消、状态查询，含提前1小时校验
+#### Module 2.5 — 意向服务（IntentionService）（v2.0 重构）
+- **目标**：实现比赛意向的提交、修改、取消、状态查询，含提前1小时校验 + expiresAt = startTime - 1小时
 - **依赖顺序**：Module 1.4 + Module 2.3 + Module 2.4 完成后
 - **交付物**：
   - `server/src/modules/intentions/services/intention.service.ts`
   - `server/src/modules/intentions/dto/create-intention.dto.ts`
   - `server/src/modules/intentions/dto/update-intention.dto.ts`
   - `server/src/modules/intentions/intentions.module.ts`
+- **v2.0 变更**：
+  - 过期时间计算：`expiresAt = startTime - 1小时`（取代旧的 submittedAt + acceptableWaitMinutes）
+  - 取消意向：仅 pending 状态可取消（删除 matched 状态）
+  - 意向状态四状态：pending/confirmed/cancelled/expired
+  - 意向不绑定单一比赛（删除 matchId）
 - **测试**（先写测试）：
   - 提交意向测试（提前1小时校验、场地/赛制最多3个、时间范围120-360分钟）
   - 修改意向测试（仍需满足提前1小时、可修改场地/赛制优先级）
-  - 取消意向测试（pending状态可取消、matched后不可取消）
+  - 取消意向测试（pending状态可取消、confirmed后不可取消）
   - 查询意向测试（按球员查询、状态筛选）
-  - 过期时间计算测试
+  - expiresAt 计算测试（= startTime - 1小时，边界值）
 - **关键路径**：`server/src/modules/intentions/services/intention.service.ts`
 
-#### Module 2.6 — 匹配引擎核心服务（MatchingEngineService）
-- **目标**：实现每5分钟触发的匹配算法（时间重叠、场地/赛制重叠、动态阈值、蛇形分队）。本模块需产出独立架构设计文档。
-- **MVP匹配逻辑**：基于球员综合能力值（baseAbilityScore + matchAdjustValue）进行分组匹配，不考虑具体位置差异。位置匹配在P1位置权重系统引入后扩展。
+#### Module 2.6 — 匹配引擎核心服务（MatchingEngineService）（v2.0 异步预匹配模式重构）
+- **目标**：实现每5分钟触发的预匹配算法（创建候选比赛、不锁定意向、不预订场地、不分队、邀请人数无上限）
+- **MVP匹配逻辑**：基于球员综合能力值（baseAbilityScore + matchAdjustValue）进行分组匹配，不考虑具体位置差异。
 - **依赖顺序**：Module 2.5 + Module 1.3 完成后
 - **交付物**：
-  - `server/src/modules/matching/services/matching-engine.service.ts`
-  - `server/src/modules/matching/services/team-balancer.service.ts`（蛇形选秀分队）
+  - `server/src/modules/matching/services/matching-engine.service.ts`（重写）
   - `server/src/modules/matching/matching.module.ts`
   - `server/src/modules/matching/matching.processor.ts`（Bull 队列处理器）
-  - `docs/design/matching-engine-architecture.md`（匹配引擎架构与算法设计文档）
-- **架构设计文档要求**：
-  - **调度策略**：使用 Bull Queue + Cron 每5分钟触发。若单次匹配耗时超过5分钟，设置 `job.lockDuration` 防止重复执行，同时记录耗时告警日志
-  - **背压策略**：当队列中已有匹配任务在执行时，新任务进入等待；若连续3次超时，触发降级（缩小匹配范围、提高阈值）
-  - **并发控制**：按 `region_code` 分片，每个地区独立队列，避免全表扫描
-  - **性能监控**：记录每次匹配的意向扫描数、分组数、匹配成功数、执行耗时
-  - **公平性保证**：相同能力值球员优先满足等待时间更长的意向
+- **v2.0 核心变更**：
+  - 匹配产出"候选比赛"（status=pending_players），意向保持 pending 不锁定
+  - 同一意向可同时参与多个候选比赛（**无上限**）
+  - 所有符合匹配条件的球员全部邀请，先到先得确认
+  - 比赛时间：start = max(参与者startTime)，duration = max(median(durationMinutes), 120)
+  - requiredPlayers = teamCount * playersPerTeam（精确值）
+  - 不分队（延后到比赛 confirmed 阶段）
+  - 不预订场地（延后到场地方确认阶段，仅乐观检查可用性）
+  - 不改意向状态（保持 pending）
+  - 维护反向索引 intentionId → matchId[]
+- **去除的逻辑**：
+  - 删除 `bookVenueTimeSlot()` 方法
+  - 删除意向状态更新（不再改为 matched）
+  - 删除蛇形分队调用（延后到比赛 confirmed）
+  - 删除 `matched` 集合排他约束
+  - 删除 `team-balancer.service.ts`（分队延后）
+- **调度策略**：Bull Queue + Cron 每5分钟触发。`job.lockDuration` 防止重复执行，按 `region_code` 分片并行
 - **测试**（先写测试）：
   - 时间重叠检测测试（完全重叠、部分重叠、不重叠）
   - 动态阈值计算测试（意向数量与阈值反比关系）
   - 候选集分组测试（能力值差距在阈值内分组）
-  - 人数满足测试（达到赛制最低要求才匹配）
-  - 蛇形分队测试（队伍能力值均衡性验证）
-  - 匹配失败处理测试（3小时提醒、半小时自动取消）
+  - 比赛时间计算测试（max startTime、median duration、120分钟下限）
+  - 意向多比赛参与测试（同一意向出现在多个候选比赛中）
+  - 反向索引更新测试（intentionId → matchId[] 正确映射）
+  - 乐观场地可用性检查测试（不加锁，允许少量误判）
   - 异常隔离测试（某分组异常不影响其他分组）
-  - **负载测试**：模拟100/500/1000个并发意向，验证匹配执行耗时 < 30秒，内存占用稳定
-  - **公平性测试**：相同条件的多组意向，验证等待时间长的优先匹配
-- **关键路径**：`server/src/modules/matching/services/matching-engine.service.ts`、`docs/design/matching-engine-architecture.md`
+  - **负载测试**：模拟 100/500/1000 个并发意向，验证匹配执行耗时 < 30秒
+- **关键路径**：`server/src/modules/matching/services/matching-engine.service.ts`
 
-#### Module 2.7 — 比赛确认服务（MatchConfirmationService）
-- **目标**：实现匹配成功后的确认流程、保证金模拟支付、系统确认比赛逻辑。模拟支付流程需贴近真实第三方支付交互模型。
-- **依赖顺序**：Module 2.6 + Module 1.5 完成后
+#### Module 2.7 — 比赛确认服务（MatchConfirmationService）（v2.0 二阶段确认重构）
+- **目标**：实现二阶段确认流程：球员先到先得确认（Saga支付） → 满员触发场地确认 → 场地方30分钟确认窗口
+- **依赖顺序**：Module 2.6 + Module 1.5 + Module 2.11 完成后
 - **交付物**：
-  - `server/src/modules/matches/services/match-confirmation.service.ts`
+  - `server/src/modules/matches/services/match-confirmation.service.ts`（重写）
   - `server/src/modules/payments/interfaces/payment-provider.interface.ts`（支付 provider 抽象接口）
   - `server/src/modules/payments/services/mock-payment.service.ts`（模拟支付实现）
   - `server/src/modules/payments/dto/create-payment-order.dto.ts`
   - `server/src/modules/payments/dto/payment-callback.dto.ts`
   - `server/src/modules/payments/payments.module.ts`
-- **模拟支付设计（贴近真实第三方）**：
-  - 流程：创建订单（生成唯一订单号、金额、过期时间）→ 调用支付（模拟用户确认）→ 异步回调（模拟第三方支付回调）→ 状态更新（根据回调结果更新 deposit_paid）
-  - 接口设计预留：MockPaymentService 实现 PaymentProviderInterface，后续接入微信/支付宝只需新增实现类并替换注入
-  - 幂等性：订单号唯一，重复回调不重复扣款/退款
-  - 超时处理：订单15分钟未支付自动关闭
+- **v2.0 球员确认流程（先到先得 + Saga支付）**：
+  - 悲观锁 Match 行 → 校验 pending_players 且 confirmedPlayers < requiredPlayers
+  - 【Saga Step 1】事务外支付（调用 PaymentProvider）
+  - 【Saga Step 2】事务内：MatchPlayer→confirmed、confirmedPlayers++、其他比赛 withdrawn、意向→confirmed
+  - 事务失败 → 【Saga 补偿】PaymentProvider.refund(orderNo)
+  - 检查满员 → 触发场地确认流程
+- **v2.0 满员后场地确认流程**：
+  - Match.status → pending_venue
+  - 创建 VenueBookingRequest (status=pending, deadline=now+30min)
+  - 通知场地方（App内通知 + 短信）
+  - 设置 30分钟超时自动处理（BullMQ delayed job）
+  - 通知未确认球员：比赛已满员，MatchPlayer 改 withdrawn，意向回 pending
+- **v2.0 场地方确认/拒绝**：
+  - 确认 → VenueBookingService.bookSlot（悲观锁）→ confirmed → 蛇形分队 → 通知 → 建群聊
+  - 拒绝 → cancelled → 释放球员（意向回退保护）→ 退款
+  - 超时自动 → bookSlot 尝试 → 成功 auto_confirmed / 失败 cancelled
+- **意向回退保护**：
+  - 场地方拒绝时检查意向当前状态
+  - 若意向已是 confirmed（球员已确认其他比赛）→ 仅将 MatchPlayer 改 withdrawn，不回退意向
+  - 若意向仍是 pending → 意向回 pending，MatchPlayer 改 withdrawn，退款
 - **测试**（先写测试）：
-  - 球员确认参赛测试（截止时间前可确认、截止后不可确认）
-  - 模拟支付全流程测试（创建订单 → 支付成功回调 → 状态更新）
-  - 支付回调幂等性测试（重复回调不重复处理）
-  - 支付超时测试（15分钟后订单自动关闭）
-  - 系统确认比赛测试（人数足够→confirmed、人数不够→failed）
-  - 场地自动预订测试（确认后时段标记为已预订）
-  - 群聊创建测试（confirmed 后生成 group_chat_id）
-- **关键路径**：`server/src/modules/payments/interfaces/payment-provider.interface.ts`、`server/src/modules/matches/services/match-confirmation.service.ts`
+  - 球员先到先得确认测试（前N名成功、第N+1名拒绝）
+  - Saga支付全流程测试（支付→事务成功→状态更新）
+  - Saga补偿测试（事务失败→自动退款）
+  - 满员触发场地确认测试（状态流转、创建 VenueBookingRequest）
+  - 场地方确认/拒绝测试
+  - 30分钟超时自动处理测试
+  - 意向回退保护测试（已在其他比赛confirmed不回退）
+  - 幂等性测试（重复确认请求返回 AlreadyConfirmedException）
+  - 并发测试（Promise.all 模拟多球员同时确认）
+- **关键路径**：`server/src/modules/matches/services/match-confirmation.service.ts`、`server/src/modules/payments/interfaces/payment-provider.interface.ts`
 
 #### Module 2.8 — 赛后反馈与调节值服务（FeedbackService）
 - **目标**：实现反馈提交、能力匹配调节值计算
@@ -399,6 +442,67 @@
   - 权限测试（仅比赛相关人员可发送/查看）
   - 群聊有效期测试（一周后不可发送新消息）
 - **关键路径**：`server/src/modules/messages/services/message.service.ts`
+
+#### Module 2.11 — 场地预订服务（VenueBookingService）（v2.0 新增）
+- **目标**：实现场地时段的悲观锁预订、释放、乐观可用性检查
+- **依赖顺序**：Module 1.5 完成后（需在 Module 2.7 之前完成）
+- **交付物**：
+  - `server/src/modules/venues/services/venue-booking.service.ts`
+  - `server/src/modules/venues/venues.module.ts`（更新：注册新服务）
+- **核心方法**：
+  - `bookSlot(manager, venueId, date, startTime, endTime, matchId)` — 悲观锁预订（SELECT FOR UPDATE → 检查重叠 → 插入 booked slot）
+  - `releaseSlot(manager, matchId)` — 释放已预订时段（删除 booked slot）
+  - `checkAvailability(venueId, startTime, endTime)` — 乐观可用性检查（不加锁，匹配引擎预检查）
+- **场地时段模型简化**：
+  - 仅记录已占用的时段（不预创建空闲记录）
+  - 判断可预订 = 目标时段不与任何已有记录重叠
+  - 预订 = 直接插入 booked slot
+  - 释放 = 删除 booked slot
+  - 不做"时段拆分"
+- **模块归属**：放在 venues 模块内，通过接口被 matching 和 matches 模块调用。导入方向：matching/matches → venues（单向）
+- **测试**（先写测试）：
+  - 悲观锁预订测试（成功预订、时段重叠拒绝）
+  - 释放测试（删除 booked slot、不存在不报错）
+  - 乐观可用性检查测试（正确判断重叠）
+  - 并发测试（Promise.all 多比赛竞争同一场地，仅一个成功）
+- **关键路径**：`server/src/modules/venues/services/venue-booking.service.ts`
+
+#### Module 2.12 — 比赛超时调度器（MatchExpirationScheduler）（v2.0 新增）
+- **目标**：定时处理候选比赛超时、场地确认超时、意向过期
+- **依赖顺序**：Module 2.7 + Module 2.11 完成后
+- **交付物**：
+  - `server/src/modules/matches/match-expiration.scheduler.ts`
+  - `server/src/modules/matches/matches.module.ts`（更新：注册调度器）
+- **每5分钟执行（BullMQ cron job）**：
+  1. **候选比赛球员确认超时**：`WHERE status='pending_players' AND confirm_deadline < now` → Match.status→expired → 释放 invited 球员
+  2. **场地方确认超时**：`WHERE status='pending_venue' AND venue_confirm_deadline < now` → bookSlot 尝试 → 成功 auto_confirmed / 失败 cancelled
+  3. **意向过期**：`WHERE status='pending' AND expires_at < now` → Intention.status→expired → 同步释放相关 MatchPlayer（仅 pending_players 状态比赛）
+- **并发安全**：
+  - 使用 `SKIP LOCKED` 避免多实例竞争
+  - BullMQ `job.lockDuration` 防止重复执行
+- **测试**（先写测试）：
+  - 候选比赛超时测试（confirmDeadline 到期 → expired → 释放 invited）
+  - 场地确认超时测试（成功预订 → auto_confirmed / 失败 → cancelled）
+  - 意向过期测试（expiresAt 到期 → expired → 释放 pending_players 的 MatchPlayer）
+  - SKIP LOCKED 测试（多实例不重复处理）
+- **关键路径**：`server/src/modules/matches/match-expiration.scheduler.ts`
+
+#### Module 2.13 — 支付补偿服务（PaymentCompensationService）（v2.0 新增）
+- **目标**：实现 Saga 模式的退款补偿，处理事务失败后的自动退款
+- **依赖顺序**：Module 2.7 完成后
+- **交付物**：
+  - `server/src/modules/payments/services/payment-compensation.service.ts`
+  - `server/src/modules/payments/payments.module.ts`（更新）
+- **核心逻辑**：
+  - 事务失败时触发补偿退款（调用 PaymentProvider.refund(orderNo)）
+  - 退款失败时记录异常日志 + 告警，人工介入
+  - 幂等性：重复补偿请求通过 orderNo 检查不重复执行
+  - 退款记录：记录退款订单号、原订单号、金额、时间、结果
+- **测试**（先写测试）：
+  - 退款成功测试（事务失败 → 自动退款 → 记录成功）
+  - 退款失败测试（退款接口报错 → 日志告警 → 不崩溃）
+  - 幂等性测试（重复退款请求不重复执行）
+- **关键路径**：`server/src/modules/payments/services/payment-compensation.service.ts`
 
 ---
 
@@ -495,17 +599,21 @@
   - 非管理员访问拒绝测试
 - **关键路径**：`server/src/modules/admin/controllers/admin.controller.ts`
 
-#### Module 3.8 — 核心业务流程端到端集成测试
-- **目标**：验证完整业务闭环：提交意向 → 触发匹配 → 确认参赛 → 完成比赛 → 提交反馈
+#### Module 3.8 — 核心业务流程端到端集成测试（v2.0 重构）
+- **目标**：验证完整业务闭环：提交意向 → 触发预匹配 → 创建候选比赛 → 球员先到先得确认 → 满员触发场地确认 → 比赛生效 → 提交反馈
 - **依赖顺序**：Phase 2 + Phase 3（Module 3.1~3.7）全部完成后
 - **交付物**：
   - `server/test/e2e/full-match-lifecycle.e2e-spec.ts`
   - `server/test/e2e/match-failure-lifecycle.e2e-spec.ts`（匹配失败流程）
+  - `server/test/e2e/concurrent-confirm.e2e-spec.ts`（v2.0 并发确认测试）
 - **测试场景**：
-  - **成功流程**：球员A/B/C注册 → 录入属性 → 提交同场地同时段意向 → 触发匹配 → 生成比赛 → 三人确认参赛+支付 → 系统确认比赛 → 比赛完成 → 互相反馈 → 调节值更新
-  - **失败流程**：球员A提交意向 → 到期前3小时提醒 → 到期前半小时自动取消 → 状态变为 expired
-  - **人数不足流程**：匹配成功 → 仅2人确认 → 截止时间后比赛 failed → 通知重新发送意向
-  - **边界测试**：比赛开始前1小时截止确认、保证金15分钟支付超时
+  - **成功流程**：球员A/B/C/D/E/F注册 → 录入属性 → 提交同场地同时段意向 → 触发预匹配 → 生成候选比赛(pending_players) → 6人确认+Saga支付 → 满员 → pending_venue → 场地方30分钟内确认 → 比赛confirmed → 蛇形分队 → 建群聊 → 比赛完成 → 互相反馈 → 调节值更新
+  - **场地方拒绝流程**：球员确认满员 → 场地方拒绝 → 比赛cancelled → 释放球员（意向回退保护）→ Saga退款
+  - **超时流程**：候选比赛confirmDeadline到期未满员 → expired → 释放invited球员
+  - **场地超时流程**：pending_venue 30分钟超时 → 系统自动bookSlot → 成功auto_confirmed / 失败cancelled
+  - **先到先得测试**：requiredPlayers=6，8人邀请，前6人确认成功，第7/8人拒绝
+  - **并发测试**：Promise.all 模拟多球员同时确认同一比赛，验证 confirmedPlayers 最终正确
+  - **多场地竞争测试**：Promise.all 模拟多比赛竞争同一场地时段，验证仅一个成功
 - **关键路径**：`server/test/e2e/full-match-lifecycle.e2e-spec.ts`
 
 #### Module 3.9 — Swagger/OpenAPI API 文档
@@ -541,7 +649,7 @@
 - **测试**（先写测试）：
   - 客户端连接测试（JWT认证后连接成功、无token拒绝）
   - 群聊消息实时推送测试（发送后所有在线成员收到）
-  - 比赛事件推送测试（match:invited、match:success、match:failed）
+  - 比赛事件推送测试（match:invited、match:confirmed、match:full、match:venue_confirmed、match:expired）
   - 房间隔离测试（不同比赛群聊消息不互通）
   - Redis Adapter 测试（模拟多实例，验证消息跨实例广播）
 - **关键路径**：`server/src/modules/messages/gateways/chat.gateway.ts`、`server/src/common/adapters/redis-io.adapter.ts`
@@ -744,9 +852,12 @@ Phase 2（核心逻辑）
   2.2 认证服务
   2.3 球员服务
   2.4 场地服务
-  2.5 意向服务
-  2.6 匹配引擎服务（+ 架构文档 + 负载测试）
-  2.7 比赛确认服务（+ 支付接口抽象）
+  2.5 意向服务（v2.0: expiresAt重构）
+  2.11 场地预订服务（v2.0 新增，需在 2.7 前完成）
+  2.6 匹配引擎服务（v2.0: 异步预匹配模式重构 + 负载测试）
+  2.7 比赛确认服务（v2.0: 二阶段确认 + Saga支付重构）
+  2.13 支付补偿服务（v2.0 新增，Saga退款补偿）
+  2.12 比赛超时调度器（v2.0 新增）
   2.8 反馈与调节值服务
   2.9 通知服务
   2.10 群聊消息服务

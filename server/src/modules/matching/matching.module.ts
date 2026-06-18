@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -6,6 +6,7 @@ import { Intention } from '@modules/intentions/entities/intention.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
+import { VenuesModule } from '@modules/venues/venues.module';
 import { MatchingEngineService } from './services/matching-engine.service';
 import { TeamBalancerService } from './services/team-balancer.service';
 import { MatchingProcessor } from './matching.processor';
@@ -20,6 +21,7 @@ import { MatchingScheduler } from './matching.scheduler';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Intention, Match, Format, SystemParam]),
+    VenuesModule,  // v2.0: 导入 VenueBookingService
     BullModule.registerQueueAsync({
       name: 'matching',
       imports: [ConfigModule],

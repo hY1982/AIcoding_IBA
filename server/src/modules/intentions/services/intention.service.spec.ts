@@ -173,7 +173,7 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
     acceptableWaitMinutes,
     endTime,
     status: 'pending',
-    matchId: null,
+    // v2.0: matchId removed
     regionCode: 'shenzhen_futian',
     submittedAt,
     updatedAt: now,
@@ -1033,7 +1033,7 @@ describe('IntentionService', () => {
       const mockIntention = createMockIntention({
         id: intentionId,
         playerId,
-        status: 'matched',
+        status: 'confirmed',  // v2.0: matched→confirmed
       });
 
       intentionRepo.createQueryBuilder!.mockReturnValue(
@@ -1303,7 +1303,7 @@ describe('IntentionService', () => {
       const mockIntention = createMockIntention({
         id: intentionId,
         playerId,
-        status: 'matched',
+        status: 'confirmed',  // v2.0: matched→confirmed
       });
 
       intentionRepo.createQueryBuilder!.mockReturnValue(
@@ -1404,13 +1404,13 @@ describe('IntentionService', () => {
       );
     });
 
-    it('should throw BadRequestException when intention is failed', async () => {
+    it('should throw BadRequestException when intention is expired', async () => {
       const intentionId = 1;
       const playerId = 1;
       const mockIntention = createMockIntention({
         id: intentionId,
         playerId,
-        status: 'failed',
+        status: 'expired',  // v2.0: failed→expired
       });
 
       intentionRepo.createQueryBuilder!.mockReturnValue(
@@ -1506,7 +1506,7 @@ describe('IntentionService', () => {
       const mockIntention = createMockIntention({
         id: intentionId,
         playerId,
-        status: 'matched',
+        status: 'confirmed',  // v2.0: matched→confirmed
       });
 
       intentionRepo.createQueryBuilder!.mockReturnValue(
@@ -1658,28 +1658,23 @@ describe('IntentionService', () => {
 
   describe('canTransitionStatus', () => {
     it('should allow valid transitions from pending', () => {
-      expect(service.canTransitionStatus('pending', 'matched')).toBe(true);
+      expect(service.canTransitionStatus('pending', 'confirmed')).toBe(true);
       expect(service.canTransitionStatus('pending', 'cancelled')).toBe(true);
       expect(service.canTransitionStatus('pending', 'expired')).toBe(true);
     });
 
-    it('should allow valid transitions from matched', () => {
-      expect(service.canTransitionStatus('matched', 'confirmed')).toBe(true);
-      expect(service.canTransitionStatus('matched', 'cancelled')).toBe(true);
-      expect(service.canTransitionStatus('matched', 'failed')).toBe(true);
+    it('should allow transition from confirmed back to pending (venue rejection)', () => {
+      expect(service.canTransitionStatus('confirmed', 'pending')).toBe(true);
     });
 
-    it('should reject transition from confirmed', () => {
-      expect(service.canTransitionStatus('confirmed', 'cancelled')).toBe(false);
+    it('should allow transition from cancelled back to pending (re-edit)', () => {
+      expect(service.canTransitionStatus('cancelled', 'pending')).toBe(true);
     });
 
     it('should reject invalid transitions', () => {
-      expect(service.canTransitionStatus('pending', 'confirmed')).toBe(false);
-      expect(service.canTransitionStatus('matched', 'expired')).toBe(false);
-      expect(service.canTransitionStatus('confirmed', 'matched')).toBe(false);
-      expect(service.canTransitionStatus('cancelled', 'pending')).toBe(false);
+      expect(service.canTransitionStatus('pending', 'expired')).toBe(true);
+      expect(service.canTransitionStatus('confirmed', 'cancelled')).toBe(false);
       expect(service.canTransitionStatus('expired', 'pending')).toBe(false);
-      expect(service.canTransitionStatus('failed', 'pending')).toBe(false);
     });
 
     it('should reject transitions to the same status', () => {

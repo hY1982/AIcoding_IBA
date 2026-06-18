@@ -1,7 +1,7 @@
 # 篮球匹配平台 — 完整技术方案与需求文档
 
-> 版本：v1.0  
-> 日期：2026-05-26  
+> 版本：v2.0  
+> 日期：2026-06-17（v2.0 核心业务流程重构：异步预匹配 + 先到先得确认 + 二阶段确认）  
 > 目标平台：iOS + Android（React Native）  
 > 团队规模：1-3人  
 > MVP支付：模拟支付，后续接入真实通道
@@ -25,21 +25,29 @@
 | | 意向场地和赛制多选（最多3个，按优先级排序） |
 | | 提交后可随时取消或修改（仍需满足提前1小时） |
 | | 首页显示意向状态：已提交意向等待匹配 |
-| **3. 系统自动匹配** | 后台每5分钟执行匹配任务 |
+| **3. 系统自动预匹配** | 后台每5分钟执行匹配任务 |
 | | 匹配条件：意向时间重叠、意向场地/赛制有重叠、综合能力值差距在动态阈值内 |
 | | 动态阈值：意向数量越大，允许的能力差距越小 |
-| | 人数达到赛制最低要求即匹配成功，尽量按上限匹配 |
+| | 匹配产出"候选比赛"（status=pending_players），意向保持 pending 不锁定 |
+| | 同一意向可同时参与多个候选比赛（无上限），所有符合匹配条件的球员全部邀请 |
 | | 赛制：短赛（先进5球或11分/19分），3v3/4v4/5v5，3-4队 |
-| **4. 匹配失败处理** | 到期前3小时未匹配成功 → 通知球员确认是否继续 |
-| | 到期前半小时仍未成功 → 自动取消意向 |
-| **5. 匹配成功与确认** | 系统生成比赛数据（参赛人员、赛制、开始时间、场地、队伍分配） |
-| | 发送通知给所有匹配球员确认 |
-| | 确认需缴纳场地费保证金（MVP模拟支付） |
+| | 比赛时间：开始时间 = max(所有参与者 startTime)，时长 = max(中位数 durationMinutes, 120分钟) |
+| | 意向过期时间 = startTime - 1小时（与确认截止时间对齐） |
+| **4. 球员先到先得确认** | 候选比赛向所有被邀请球员发送通知（可收到多个不同场地/赛制的邀请） |
+| | 球员可选择确认其中一个比赛，先到先得 |
+| | 确认需缴纳场地费保证金（MVP模拟支付，Saga模式：支付→事务→失败补偿退款） |
+| | 确认某个比赛后，该球员在其他候选比赛中的邀请自动退出（withdrawn） |
 | | 确认截止时间为比赛开始前1小时 |
-| | 确认后首页显示：比赛正在等待其他球员确认 |
-| **6. 系统确认比赛** | 截止时间后检查确认人数 |
-| | 人数足够 → 匹配成功通知、更新首页、通知场地方、自动预订场地时段、建立比赛群聊（有效期一周） |
-| | 人数不够 → 匹配失败通知，需重新发送意向 |
+| | 短赛队伍人数严格等于赛制规格：3v3=3人/队，4v4=4人/队，5v5=5人/队 |
+| **5. 满员触发场地确认** | 确认人数达到赛制要求（requiredPlayers）→ 比赛进入 pending_venue 状态 |
+| | 通知场地方确认预订（30分钟响应窗口） |
+| | 通知未确认的被邀请球员：比赛已满员，其邀请失效，意向回到 pending 重新参与匹配 |
+| | 场地方确认 → 悲观锁预订场地时段 → 比赛 confirmed → 蛇形分队 → 通知球员 → 建群聊 |
+| | 场地方拒绝 → 比赛 cancelled → 释放球员（意向回退保护）→ 退款 |
+| **6. 超时自动处理** | 30分钟超时 → 系统悲观锁尝试预订场地 |
+| | 预订成功 → 比赛 auto_confirmed → 分队 → 通知 |
+| | 预订失败（场地已被占）→ 比赛 cancelled → 释放球员 → 退款 |
+| | 候选比赛超时（confirmDeadline到期未满员）→ expired → 释放 invited 球员 |
 | **7. 赛后反馈** | 比赛结束1小时后自动发送反馈邀请 |
 | | 反馈内容：总体体验（5级+原因）、对其他每位球员的水平匹配评价、体育道德评价（球品/动作/守时） |
 | | 根据反馈计算能力匹配调节值（权重参数化，可后期调整） |
@@ -179,7 +187,8 @@ users (用户基表)
 ├── feedbacks (赛后反馈) 1:N
 │   └── feedback_player_ratings (球员互评) 1:N
 ├── venues (场地) N:1 (venue_managers)
-├── venue_time_slots (场地时段) N:1 (venues)
+├── venue_time_slots (场地已占用时段) N:1 (venues)
+├── venue_booking_requests (场地预订请求) N:1 (venues, matches)
 ├── formats (赛制) 独立表
 └── system_params (系统参数) 独立表
 ```
@@ -258,7 +267,7 @@ CREATE INDEX idx_venues_location ON venues USING GIST (point(longitude, latitude
 CREATE INDEX idx_venues_region ON venues(region_code);
 ```
 
-#### `venue_time_slots` — 场地可预订时段
+#### `venue_time_slots` — 场地已占用时段（v2.0：仅记录已占用时段，不预创建空闲记录）
 ```sql
 CREATE TABLE venue_time_slots (
     id              BIGSERIAL PRIMARY KEY,
@@ -266,11 +275,33 @@ CREATE TABLE venue_time_slots (
     slot_date       DATE NOT NULL,
     start_time      TIME NOT NULL,
     end_time        TIME NOT NULL,
-    is_booked       BOOLEAN DEFAULT FALSE,
-    match_id        BIGINT,
+    is_booked       BOOLEAN DEFAULT FALSE,      -- v2.0: true=已预订, false=不可用(维护等)
+    match_id        BIGINT,                      -- 关联比赛（is_booked=true时）
     created_at      TIMESTAMPTZ DEFAULT NOW()
 );
+-- v2.0 语义：判断可预订 = 目标时段不与任何已有记录重叠；预订 = 直接插入 booked slot；释放 = 删除 booked slot
 CREATE INDEX idx_slots_venue_date ON venue_time_slots(venue_id, slot_date);
+```
+
+#### `venue_booking_requests` — 场地预订请求（v2.0 新增）
+```sql
+CREATE TABLE venue_booking_requests (
+    id                  BIGSERIAL PRIMARY KEY,
+    match_id            BIGINT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+    venue_id            BIGINT NOT NULL REFERENCES venues(id),
+    slot_date           DATE NOT NULL,
+    start_time          TIME NOT NULL,
+    end_time            TIME NOT NULL,
+    status              VARCHAR(20) NOT NULL DEFAULT 'pending'
+                            CHECK (status IN ('pending', 'confirmed', 'auto_confirmed', 'rejected', 'cancelled')),
+    requested_at        TIMESTAMPTZ DEFAULT NOW(),
+    responded_at        TIMESTAMPTZ,             -- 场地方响应时间
+    response_deadline   TIMESTAMPTZ NOT NULL,    -- 请求时刻 + 30分钟
+    rejection_reason    VARCHAR(500)             -- 拒绝原因
+);
+CREATE INDEX idx_vbr_match ON venue_booking_requests(match_id);
+CREATE INDEX idx_vbr_venue_date ON venue_booking_requests(venue_id, slot_date);
+CREATE INDEX idx_vbr_status_deadline ON venue_booking_requests(status, response_deadline);  -- 超时调度器查询
 ```
 
 #### `players` — 球员
@@ -365,19 +396,20 @@ CREATE TABLE intentions (
     start_time          TIMESTAMPTZ NOT NULL,       -- 意向开始时间
     duration_minutes    INT NOT NULL CHECK (duration_minutes BETWEEN 120 AND 360),
     acceptable_wait_minutes INT NOT NULL DEFAULT 0, -- 可接受等待时长
-    end_time            TIMESTAMPTZ GENERATED ALWAYS AS (start_time + INTERVAL '1 minute' * duration_minutes) STORED,
+    end_time            TIMESTAMPTZ NOT NULL,       -- start_time + duration_minutes（应用层计算）
     status              VARCHAR(20) NOT NULL DEFAULT 'pending'
-                            CHECK (status IN ('pending', 'matched', 'confirmed', 'cancelled', 'expired', 'failed')),
-    match_id            BIGINT,                     -- 匹配成功后关联
+                            CHECK (status IN ('pending', 'confirmed', 'cancelled', 'expired')),
+    -- 注意：v2.0 移除 match_id 列，意向不再1:1绑定比赛，可同时参与多个候选比赛
     region_code         VARCHAR(20),                -- 分区键：按地区分区，匹配任务按region并行
     submitted_at        TIMESTAMPTZ DEFAULT NOW(),
     updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    expires_at          TIMESTAMPTZ NOT NULL        -- 意向过期时间（用于自动取消）
+    expires_at          TIMESTAMPTZ NOT NULL        -- 意向过期时间 = start_time - 1小时
 );
 CREATE INDEX idx_intentions_status ON intentions(status);
 CREATE INDEX idx_intentions_time ON intentions(start_time, end_time);
 CREATE INDEX idx_intentions_player ON intentions(player_id, status);
 CREATE INDEX idx_intentions_region_status_time ON intentions(region_code, status, start_time);  -- 匹配任务核心索引
+CREATE INDEX idx_intentions_expires_at ON intentions(expires_at);  -- 超时调度器高频查询
 ```
 
 #### `intention_venues` — 意向场地（多选）
@@ -410,13 +442,15 @@ CREATE TABLE matches (
     format_id       BIGINT NOT NULL REFERENCES formats(id),
     start_time      TIMESTAMPTZ NOT NULL,
     end_time        TIMESTAMPTZ NOT NULL,
-    status          VARCHAR(20) NOT NULL DEFAULT 'pending_confirmation'
-                            CHECK (status IN ('pending_confirmation', 'confirmed', 'in_progress', 'completed', 'cancelled', 'failed')),
+    status          VARCHAR(20) NOT NULL DEFAULT 'pending_players'
+                            CHECK (status IN ('pending_players', 'pending_venue', 'confirmed', 'in_progress', 'completed', 'cancelled', 'expired')),
     team_count      INT NOT NULL,
     players_per_team INT NOT NULL,
-    total_players   INT NOT NULL,
+    required_players INT NOT NULL,               -- v2.0: team_count * players_per_team
     confirmed_players INT DEFAULT 0,
     deposit_amount  DECIMAL(10,2) NOT NULL,     -- 保证金金额
+    confirm_deadline TIMESTAMPTZ,               -- v2.0: 球员确认截止时间 = start_time - 1小时
+    venue_confirm_deadline TIMESTAMPTZ,          -- v2.0: 场地方确认截止时间 = 满员时刻 + 30分钟
     group_chat_id   VARCHAR(100),               -- 群聊房间ID
     region_code     VARCHAR(20),                -- 分区键，与intentions一致
     created_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -426,24 +460,29 @@ CREATE INDEX idx_matches_status ON matches(status);
 CREATE INDEX idx_matches_time ON matches(start_time);
 CREATE INDEX idx_matches_venue ON matches(venue_id, start_time);
 CREATE INDEX idx_matches_region ON matches(region_code);
+CREATE INDEX idx_matches_confirm_deadline ON matches(status, confirm_deadline);  -- v2.0: 超时调度器复合索引
 ```
 
-#### `match_players` — 比赛球员关联
+#### `match_players` — 比赛球员关联（v2.0 重构）
 ```sql
 CREATE TABLE match_players (
     id              BIGSERIAL PRIMARY KEY,
     match_id        BIGINT NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
     player_id       BIGINT NOT NULL REFERENCES players(id),
-    team_number     INT,                        -- 队伍编号 1,2,3,4
+    intention_id    BIGINT REFERENCES intentions(id),  -- v2.0: 关联产生该邀请的意向
+    team_number     INT,                        -- 队伍编号 1,2,3,4（confirmed后分队时赋值）
     is_confirmed    BOOLEAN DEFAULT FALSE,      -- 是否确认参赛
-    is_reserve      BOOLEAN DEFAULT FALSE,      -- 是否预备队员(P1)
     confirmed_at    TIMESTAMPTZ,
     deposit_paid    BOOLEAN DEFAULT FALSE,      -- 是否已付保证金
-    status          VARCHAR(20) DEFAULT 'invited' CHECK (status IN ('invited', 'confirmed', 'declined', 'no_show')),
-    UNIQUE(match_id, player_id)
+    deposit_order_no VARCHAR(100),              -- v2.0: 支付订单号（Saga补偿用）
+    status          VARCHAR(20) DEFAULT 'invited'
+                        CHECK (status IN ('invited', 'confirmed', 'withdrawn', 'no_show')),
+                        -- v2.0: declined→withdrawn（统一表达"释放"语义）
+    UNIQUE(match_id, intention_id)              -- v2.0: 改为 (match_id, intention_id)
 );
 CREATE INDEX idx_mp_match ON match_players(match_id);
 CREATE INDEX idx_mp_player ON match_players(player_id);
+CREATE INDEX idx_mp_intention ON match_players(intention_id);  -- v2.0: 按意向查询
 ```
 
 #### `match_teams` — 比赛队伍
@@ -652,7 +691,10 @@ src/
 | GET | `/venues` | 球员查询场地列表 |
 | GET | `/venues/:id` | 场地详情 |
 | PUT | `/venues/:id` | 更新场地信息 |
-| GET | `/venues/:id/slots` | 查询场地可预订时段 |
+| GET | `/venues/:id/slots` | 查询场地已占用时段（v2.0：仅返回已占用记录） |
+| GET | `/venues/:id/bookings` | v2.0: 场地预订请求列表（场地方查看待确认的预订） |
+| PUT | `/venues/:id/bookings/:bookingId/confirm` | v2.0: 场地方确认预订 |
+| PUT | `/venues/:id/bookings/:bookingId/reject` | v2.0: 场地方拒绝预订（需填写拒绝原因） |
 
 #### 意向模块 `/intentions`
 
@@ -667,12 +709,12 @@ src/
 #### 比赛模块 `/matches`
 
 | 方法 | 路径 | 说明 |
-|------|------|
-| GET | `/matches/my` | 我的比赛列表 |
-| GET | `/matches/:id` | 比赛详情 |
-| POST | `/matches/:id/confirm` | 确认参赛 |
-| POST | `/matches/:id/decline` | 拒绝参赛 |
-| GET | `/matches/:id/players` | 参赛球员列表 |
+|------|------|------|
+| GET | `/matches/my` | 我的比赛列表（含候选比赛邀请） |
+| GET | `/matches/:id` | 比赛详情（含邀请状态、确认人数、场地状态） |
+| POST | `/matches/:id/confirm` | v2.0: 确认参赛（先到先得+Saga支付） |
+| POST | `/matches/:id/decline` | 拒绝参赛（MatchPlayer → withdrawn） |
+| GET | `/matches/:id/players` | 参赛球员列表（含邀请/确认状态） |
 | GET | `/matches/:id/messages` | 群聊消息历史 |
 | POST | `/matches/:id/messages` | 发送群聊消息 |
 
@@ -693,16 +735,21 @@ src/
 | GET | `/admin/stats` | 数据统计 |
 | PUT | `/admin/params` | 调整系统参数 |
 
-### 4.4 WebSocket 事件
+### 4.4 WebSocket 事件（v2.0 更新）
 
 | 事件名 | 方向 | 说明 |
 |--------|------|------|
-| `match:invited` | Server→Client | 被邀请参赛 |
-| `match:confirmed` | Server→Client | 有球员确认参赛 |
-| `match:success` | Server→Client | 比赛确认成功 |
-| `match:failed` | Server→Client | 比赛人数不足取消 |
-| `intention:matched` | Server→Client | 意向匹配成功 |
+| `match:invited` | Server→Client | 被邀请参加候选比赛（v2.0：可同时收到多个） |
+| `match:confirmed` | Server→Client | 有球员确认参赛（实时更新确认人数） |
+| `match:full` | Server→Client | v2.0: 比赛已满员（通知未确认球员邀请失效） |
+| `match:venue_confirmed` | Server→Client | v2.0: 场地方已确认，比赛正式生效 |
+| `match:venue_rejected` | Server→Client | v2.0: 场地方拒绝，比赛取消 |
+| `match:expired` | Server→Client | v2.0: 候选比赛超时未满员 |
+| `match:cancelled` | Server→Client | v2.0: 比赛取消（含退款通知） |
+| `intention:confirmed` | Server→Client | v2.0: 意向已确认某个比赛 |
 | `intention:expired` | Server→Client | 意向过期 |
+| `venue:booking_requested` | Server→Client | v2.0: 场地方收到新的预订确认请求 |
+| `venue:booking_deadline` | Server→Client | v2.0: 场地预订确认即将到期（5分钟提醒） |
 | `message:new` | Server→Client | 新群聊消息 |
 | `chat:send` | Client→Server | 发送群聊消息 |
 
@@ -774,20 +821,29 @@ function calculateBaseAbility(player: PlayerAttributes): number {
 // function calculatePositionAbility(player: PlayerAttributes, position: string): number { ... }
 ```
 
-### 5.2 匹配算法流程
+### 5.2 匹配算法流程（v2.0 异步预匹配模式）
 
 ```
 每5分钟由Bull队列触发：
-1. 查询所有 status='pending' 且 start_time > now() + 1小时的意向
-2. 按 (意向场地优先级, 意向赛制优先级, 开始时间窗口) 分组
-3. 对每个分组：
-   a. 获取该分组下所有意向球员的综合能力值
-   b. 计算动态阈值：threshold = max(min_threshold, base_threshold - intention_count * factor)
-   c. 使用聚类/范围分组算法，将能力值差距在阈值内的球员分到同一候选集
-   d. 检查候选集人数是否满足赛制的最低要求
-   e. 满足则按能力值均衡原则分配队伍（蛇形选秀算法），生成 match 记录
-   f. 更新意向状态为 'matched'，发送通知
-4. 处理匹配失败的意向（到期前3小时/半小时逻辑）
+1. 查询所有 status='pending' 且 expires_at > now() 的意向
+2. 按 region_code 分区并行处理（避免全表扫描瓶颈）
+3. 对每个地区：
+   a. 计算两两意向的兼容性评分（时间重叠、场地/赛制重叠、能力值差距在动态阈值内）
+   b. 动态阈值：threshold = max(min_threshold, base_threshold - intention_count * factor)
+   c. 使用贪心团聚类，将互相兼容的意向归入同一候选集
+      - 关键：同一意向可出现在多个候选集中（无上限）
+   d. 对每个候选集：
+      - matchStartTime = max(所有参与者的 startTime)
+      - matchDuration = max(median(所有参与者的 durationMinutes), 120)
+      - requiredPlayers = teamCount * playersPerTeam（精确值）
+      - 乐观检查场地可用性（不加锁，允许少量误判）
+      - 创建候选比赛 Match (status='pending_players', confirmDeadline=matchStartTime-1h)
+      - 为候选集内所有意向创建 MatchPlayer (status='invited')
+      - 不修改意向状态（保持 pending）
+      - 不预订场地（延后到场地方确认阶段）
+      - 不分队（延后到比赛 confirmed 阶段）
+   e. 维护反向索引：intentionId → matchId[]（避免重复遍历）
+4. 通知所有被邀请球员（WebSocket + App内通知 + 短信）
 5. 匹配任务失败自动重试3次，异常隔离不影响其他分组匹配
 ```
 

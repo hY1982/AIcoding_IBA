@@ -146,7 +146,7 @@ describe('Match Entity', () => {
       }
     });
 
-    it('should have status as enum non-nullable with default pending_confirmation', async () => {
+    it('should have status as enum non-nullable with default pending_players', async () => {
       const columns = await dataSource.query(
         `SELECT column_name, data_type, is_nullable, column_default, udt_name
          FROM information_schema.columns
@@ -156,11 +156,11 @@ describe('Match Entity', () => {
       expect(columns[0].data_type).toBe('USER-DEFINED');
       expect(columns[0].udt_name).toBe('matches_status_enum');
       expect(columns[0].is_nullable).toBe('NO');
-      expect(columns[0].column_default).toContain('pending_confirmation');
+      expect(columns[0].column_default).toContain('pending_players');
     });
 
-    it('should have team_count, players_per_team, total_players as int non-nullable', async () => {
-      for (const col of ['team_count', 'players_per_team', 'total_players']) {
+    it('should have team_count, players_per_team, required_players as int non-nullable', async () => {
+      for (const col of ['team_count', 'players_per_team', 'required_players']) {
         const columns = await dataSource.query(
           `SELECT column_name, data_type, is_nullable
            FROM information_schema.columns
@@ -276,7 +276,7 @@ describe('Match Entity', () => {
       const match = await createTestMatch(dataSource, {
         teamCount: 3,
         playersPerTeam: 3,
-        totalPlayers: 9,
+        requiredPlayers: 9,
         depositAmount: '50.00',
         groupChatId: 'room_123',
         regionCode: 'shenzhen_futian',
@@ -287,10 +287,10 @@ describe('Match Entity', () => {
       expect(match.formatId).toBeDefined();
       expect(match.startTime).toBeInstanceOf(Date);
       expect(match.endTime).toBeInstanceOf(Date);
-      expect(match.status).toBe('pending_confirmation');
+      expect(match.status).toBe('pending_players');
       expect(match.teamCount).toBe(3);
       expect(match.playersPerTeam).toBe(3);
-      expect(match.totalPlayers).toBe(9);
+      expect(match.requiredPlayers).toBe(9);
       expect(match.confirmedPlayers).toBe(0);
       expect(match.depositAmount).toBe('50.00');
       expect(match.groupChatId).toBe('room_123');
@@ -299,9 +299,9 @@ describe('Match Entity', () => {
       expect(match.updatedAt).toBeInstanceOf(Date);
     });
 
-    it('should default status to pending_confirmation', async () => {
+    it('should default status to pending_players', async () => {
       const match = await createTestMatch(dataSource);
-      expect(match.status).toBe('pending_confirmation');
+      expect(match.status).toBe('pending_players');
     });
 
     it('should default confirmed_players to 0', async () => {
@@ -320,9 +320,9 @@ describe('Match Entity', () => {
         endTime: new Date(),
         teamCount: 3,
         playersPerTeam: 3,
-        totalPlayers: 9,
+        requiredPlayers: 9,
         depositAmount: '50.00',
-        status: 'invalid_status' as 'pending_confirmation',
+        status: 'invalid_status' as 'pending_players',
       });
 
       await expect(matchRepo.save(invalidMatch)).rejects.toThrow();

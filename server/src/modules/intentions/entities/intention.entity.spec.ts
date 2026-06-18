@@ -415,7 +415,7 @@ describe('Intention Entity', () => {
       expect(saved.durationMinutes).toBe(180);
       expect(saved.acceptableWaitMinutes).toBe(30);
       expect(saved.status).toBe('pending');
-      expect(saved.matchId).toBeNull();
+      // v2.0: matchId removed
       expect(saved.regionCode).toBe('shenzhen_futian');
       expect(saved.submittedAt).toBeInstanceOf(Date);
       expect(saved.updatedAt).toBeInstanceOf(Date);
@@ -594,7 +594,7 @@ describe('Intention Entity', () => {
       });
       const saved = await intentionRepo.save(intention);
 
-      expect(saved.matchId).toBeNull();
+      // v2.0: matchId removed
       expect(saved.regionCode).toBeNull();
     });
   });

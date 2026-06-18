@@ -20,26 +20,23 @@ import { IntentionStatus, INTENTION_STATUSES } from '@shared/intention';
 /**
  * Intention entity representing a player's match intention.
  *
- * Core business entity for the matching engine. Each intention captures
- * a player's desired match time, duration, acceptable wait time, and
- * preferred venues/formats.
+ * v2.0 重构：
+ * - 移除 matchId 列（意向不再 1:1 绑定比赛，可同时参与多个候选比赛）
+ * - expiresAt 改为 startTime - 1小时（与确认截止时间对齐）
+ * - status 枚举仅保留四状态：pending/confirmed/cancelled/expired
+ * - 新增 idx_intentions_expires_at 索引（超时调度器高频查询）
  *
  * Design decisions:
  * - end_time is computed in @BeforeInsert/@BeforeUpdate hooks (start_time + duration_minutes)
- *   PostgreSQL GENERATED column requires immutable expressions, which prohibits
- *   referencing other columns with variable interval calculations. Application-layer
- *   computation provides equivalent consistency with greater flexibility.
- * - expires_at is computed in application layer (submitted_at + acceptable_wait_minutes)
+ * - expires_at = start_time - 1小时，在应用层计算
  * - region_code is auto-populated by backend from player region or preferred venue region
- * - match_id is a plain bigint column until Module 1.5 creates the matches table
- *
- * TODO(Module 1.5): Add foreign key constraint on match_id -> matches(id)
  */
 @Entity('intentions')
 @Index(['status'])
 @Index(['startTime', 'endTime'])
 @Index(['playerId', 'status'])
 @Index(['regionCode', 'status', 'startTime'])
+@Index(['expiresAt'])  // v2.0: 超时调度器高频查询
 @Check(
   'CHK_intentions_duration',
   '"duration_minutes" >= 120 AND "duration_minutes" <= 360',
@@ -114,19 +111,6 @@ export class Intention {
   status!: IntentionStatus;
 
   /**
-   * 匹配成功后关联的比赛 ID。
-   * TODO(Module 1.5): 创建 matches 表后，通过 Migration 补充外键约束：
-   * ALTER TABLE intentions ADD CONSTRAINT FK_intentions_match
-   *   FOREIGN KEY (match_id) REFERENCES matches(id)
-   */
-  @Column({
-    name: 'match_id',
-    type: 'bigint',
-    nullable: true,
-  })
-  matchId!: number | null;
-
-  /**
    * 地区编码，分区键。
    * 填充策略：由后端自动计算，优先从 player 地区获取，
    * 其次从 intention_venues 中优先级最高的场地地区获取。
@@ -148,9 +132,8 @@ export class Intention {
 
   /**
    * 意向过期时间。
-   * 生成规则：submitted_at + acceptable_wait_minutes。
-   * 在应用层（Module 2.5 意向服务或实体生命周期钩子）中强制保证，
-   * 不可由用户直接设置。
+   * v2.0 规则：expiresAt = startTime - 1小时（与确认截止时间对齐）。
+   * 在应用层（Module 2.5 意向服务或实体生命周期钩子）中强制保证。
    */
   @Column({
     name: 'expires_at',
@@ -182,12 +165,9 @@ export class Intention {
       this.startTime.getTime() + this.durationMinutes * 60 * 1000;
     this.endTime = new Date(endTimeMs);
 
-    // expires_at = submitted_at + acceptable_wait_minutes
-    // submittedAt is set by @CreateDateColumn just before insert
-    // 业务规则：修改 acceptable_wait_minutes 会同步延长/缩短过期时间
-    const waitMinutes = this.acceptableWaitMinutes ?? 30;
-    const baseTime = this.submittedAt || new Date();
-    const expiresMs = baseTime.getTime() + waitMinutes * 60 * 1000;
+    // v2.0: expires_at = start_time - 1小时
+    // 与确认截止时间对齐，语义清晰
+    const expiresMs = this.startTime.getTime() - 60 * 60 * 1000;
     this.expiresAt = new Date(expiresMs);
   }
 }

@@ -1,6 +1,6 @@
 import { DataSource, Repository } from 'typeorm';
 import { MatchingEngineService } from './matching-engine.service';
-import { TeamBalancerService } from './team-balancer.service';
+import { VenueBookingService } from '@modules/venues/services/venue-booking.service';
 import { Intention } from '@modules/intentions/entities/intention.entity';
 import { IntentionVenue } from '@modules/intentions/entities/intention-venue.entity';
 import { IntentionFormat } from '@modules/intentions/entities/intention-format.entity';
@@ -86,14 +86,19 @@ describe('MatchingEngine Integration Tests', () => {
     systemParamRepo = dataSource.getRepository(SystemParam);
     userRepo = dataSource.getRepository(User);
 
-    const teamBalancer = new TeamBalancerService();
+    const mockVenueBookingService = {
+      checkAvailability: jest.fn().mockResolvedValue(true),
+      bookSlot: jest.fn().mockResolvedValue(true),
+      releaseSlot: jest.fn().mockResolvedValue(undefined),
+    } as unknown as VenueBookingService;
+
     matchingService = new MatchingEngineService(
       intentionRepo,
       matchRepo,
       formatRepo,
       systemParamRepo,
       dataSource,
-      teamBalancer,
+      mockVenueBookingService,
     );
 
     intentionService = new IntentionService(
@@ -275,7 +280,7 @@ describe('MatchingEngine Integration Tests', () => {
 
       const match = matches[0];
       expect(match.status).toBe('pending_confirmation');
-      expect(match.totalPlayers).toBe(9);
+      expect(match.requiredPlayers).toBe(9);
 
       const matchPlayers = await matchPlayerRepo.find({ where: { matchId: match.id } });
       expect(matchPlayers.length).toBe(9);

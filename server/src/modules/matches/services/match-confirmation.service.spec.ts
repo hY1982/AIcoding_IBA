@@ -93,15 +93,17 @@ function createMockMatch(overrides: Partial<Match> = {}): Match {
     formatId: 20,
     startTime: twoHoursLater,
     endTime: new Date(twoHoursLater.getTime() + 2 * 60 * 60 * 1000),
-    status: 'pending_confirmation',
+    status: 'pending_players',
     teamCount: 3,
     playersPerTeam: 3,
-    totalPlayers: 9,
+    requiredPlayers: 9,
     confirmedPlayers: 0,
     version: 1,
     depositAmount: '50.00',
     groupChatId: null,
     regionCode: 'shenzhen_futian',
+    confirmDeadline: null,
+    venueConfirmDeadline: null,
     createdAt: now,
     updatedAt: now,
     matchPlayers: Promise.resolve([]),
@@ -121,13 +123,14 @@ function createMockMatchPlayer(
     matchId: 1,
     playerId: 100,
     teamNumber: 1,
-    isReserve: false,
+    intentionId: 1,
     confirmedAt: null,
     depositPaid: false,
-    orderNo: null,
+    depositOrderNo: null,
     status: 'invited',
     match: {} as any,
     player: {} as any,
+    intention: null,
     get isConfirmed() {
       return this.status === 'confirmed';
     },
@@ -309,7 +312,7 @@ describe('MatchConfirmationService', () => {
 
       expect(matchPlayerRepo.update).toHaveBeenCalledWith(
         { matchId, playerId },
-        { orderNo: null },
+        { depositOrderNo: null },
       );
     });
 
@@ -378,7 +381,7 @@ describe('MatchConfirmationService', () => {
       const mockPlayer = createMockMatchPlayer({
         matchId,
         playerId,
-        status: 'declined',
+        status: 'withdrawn',  // v2.0: declined→withdrawn
       });
 
       dataSource.transaction.mockImplementation(async (cb: any) => {
@@ -696,7 +699,7 @@ describe('MatchConfirmationService', () => {
 
       const result = await service.finalizeMatch(matchId);
 
-      expect(result.status).toBe('failed');
+      expect(result.status).toBe('pending_players');  // v2.0: failed→pending_players (人数不足不触发failed)
       expect(result.confirmedPlayers).toBe(2);
       expect(result.requiredPlayers).toBe(6);
     });
@@ -787,7 +790,7 @@ describe('MatchConfirmationService', () => {
         })
         .mockResolvedValueOnce({
           matchId: 2,
-          status: 'failed',
+          status: 'expired',
           confirmedPlayers: 2,
           requiredPlayers: 6,
         });
@@ -834,7 +837,7 @@ describe('MatchConfirmationService', () => {
       const mockPlayer = createMockMatchPlayer({
         matchId,
         playerId,
-        orderNo,
+        depositOrderNo: orderNo,
         depositPaid: false,
         status: 'invited',
       });
@@ -931,7 +934,7 @@ describe('MatchConfirmationService', () => {
         matchId: 1,
         playerId: 100,
         depositPaid: false,
-        orderNo: 'mock_123',
+        depositOrderNo: 'mock_123',
       });
 
       matchPlayerRepo.findOne!.mockResolvedValue(mockPlayer);
@@ -955,7 +958,7 @@ describe('MatchConfirmationService', () => {
         matchId: 1,
         playerId: 100,
         depositPaid: false,
-        orderNo: 'mock_123',
+        depositOrderNo: 'mock_123',
       });
 
       matchPlayerRepo.findOne!.mockResolvedValue(mockPlayer);
@@ -976,7 +979,7 @@ describe('MatchConfirmationService', () => {
         matchId: 1,
         playerId: 100,
         depositPaid: false,
-        orderNo: null,
+        depositOrderNo: null,
       });
 
       matchPlayerRepo.findOne!.mockResolvedValue(mockPlayer);
