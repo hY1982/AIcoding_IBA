@@ -1,9 +1,9 @@
 /**
  * =============================================================================
- * Human-Driven Stress Test — 200 人大规模压力测试场景
+ * Human-Driven Stress Test — 2000 人大规模压力测试场景
  * =============================================================================
  *
- * 200 个 bot 球员 + 1 场地经理(2 场地)，随机意向(今天 8:00-20:00)，
+ * 2000 个 bot 球员 + 1 场地经理(2 场地)，随机意向(当前时间 +1~5h)，
  * 自动匹配，终端富表格展示。
  *
  * 用法:
@@ -216,7 +216,7 @@ export async function runHumanDrivenStressScenario(
       }
     }
 
-    // 1.2 批量注册 200 球员
+    // 1.2 批量注册 2000 球员
     report.printInfo('步骤 1.2', `注册 ${players.length} 个球员 (batch=${STRESS_BATCH_SIZE})`);
 
     await runBatch(
@@ -393,47 +393,44 @@ export async function runHumanDrivenStressScenario(
     // ═══════════════════════════════════════════════════════════
     report.startPhase('Phase 4: 随机意向生成');
 
-    // 计算合法 startTime 范围（使用上海时区）
-    const shNow = getShanghaiNow();
-    const shY = shNow.getUTCFullYear(), shM = shNow.getUTCMonth(), shD = shNow.getUTCDate();
-    const earliest = new Date(Math.max(
-      createShanghaiDate(shY, shM, shD, 8, 0, 0).getTime(),
-      Date.now() + 1 * 60 * 60 * 1000, // 至少提前 1 小时
-    ));
-    const latest = createShanghaiDate(shY, shM, shD, 19, 30, 0);
+    // 合法 startTime 范围说明（每批提交前会重新计算 earliest，确保时间始终有效）
+    console.log(`  ${BLUE}合法 startTime 范围:${RESET} 当前时间 +1h15m ~ +5h（每批刷新 earliest）`);
 
-    if (earliest >= latest) {
-      console.log(`\n${YELLOW}  ⚠️  当前时间 ${formatLocalTime(new Date())}，合法意向时间范围不足 (需 >= 08:00 且 <= 19:30)${RESET}`);
-      console.log(`  ${YELLOW}   earliest=${formatLocalTime(earliest)}, latest=${formatLocalTime(latest)}${RESET}`);
-      console.log(`  ${YELLOW}   建议次日 10:00 后运行此场景${RESET}\n`);
-      report.addFailure('意向时间', '合法 startTime 范围不足，无法生成意向');
-      report.endPhase();
-    } else {
-      console.log(`  ${BLUE}合法 startTime 范围:${RESET} ${formatLocalTime(earliest)} ~ ${formatLocalTime(latest)}`);
+    const eligiblePlayers = players.filter((b) => b.playerId && b.accessToken);
+    const totalBatches = Math.ceil(eligiblePlayers.length / STRESS_BATCH_SIZE);
+    const humanPauseAfter = 5; // 前 5 批 (=100 人) 后暂停等真人
 
-      const eligiblePlayers = players.filter((b) => b.playerId && b.accessToken);
+    // 分批提交意向，每批重新生成时间参数避免 stale 时间导致失败
+    const allIntentionParams: CreateIntentionPayload[] = [];
+    let processedCount = 0;
 
-      // 分批：前 100 + 后 100
-      const batchA = eligiblePlayers.slice(0, 100);
-      const batchB = eligiblePlayers.slice(100);
+    for (let b = 0; b < totalBatches; b++) {
+      const batchStart = b * STRESS_BATCH_SIZE;
+      const batchEnd = Math.min(batchStart + STRESS_BATCH_SIZE, eligiblePlayers.length);
+      const batch = eligiblePlayers.slice(batchStart, batchEnd);
 
-      // 预生成每个 bot 的随机意向参数
-      const allIntentionParams: CreateIntentionPayload[] = eligiblePlayers.map(() =>
-        generateRandomIntention(earliest.getTime(), latest.getTime(), stressVenues, formats),
+      // 每批重新计算 fresh 时间范围（+15min buffer 抵消提交延迟）
+      const batchNow = Date.now();
+      const batchEarliest = new Date(batchNow + 75 * 60 * 1000);  // now + 1h15m
+      const batchLatest = new Date(batchNow + 5 * 60 * 60 * 1000); // now + 5h
+
+      // 为本批生成意向参数
+      const batchParams = batch.map(() =>
+        generateRandomIntention(batchEarliest.getTime(), batchLatest.getTime(), stressVenues, formats),
       );
-      const intentionParamsA = allIntentionParams.slice(0, 100);
-      const intentionParamsB = allIntentionParams.slice(100);
+      allIntentionParams.push(...batchParams);
 
-      // ---- Phase 4a: 前 100 个 bot 提交意向 ----
-      report.printInfo('步骤 4a', `${batchA.length} 个球员提交意向（第一批）`);
+      if (b % 10 === 0 || b === totalBatches - 1) {
+        report.printInfo(`批次 ${b + 1}/${totalBatches}`, `${batch.length} 个球员 | 范围 ${formatLocalTime(batchEarliest)} ~ ${formatLocalTime(batchLatest)}`);
+      }
 
       await runBatch(
-        batchA,
+        batch,
         STRESS_BATCH_SIZE,
         async (bot, idx) => {
           const api = apiClient.clone();
           api.setTokens(bot.accessToken!, bot.refreshToken!);
-          const params = intentionParamsA[idx];
+          const params = batchParams[idx];
 
           const result = await safeBotRun(bot, '意向', `提交-${bot.nickname}`, async () => {
             const intention = await api.createIntention(params);
@@ -453,104 +450,75 @@ export async function runHumanDrivenStressScenario(
         STRESS_BATCH_DELAY_MS,
       );
 
-      // ⏸️ 暂停等待真人提交意向
-      if (!autoMode) {
-        await interactive.pauseForHuman(' 第一批 100 bot 已提交意向，请提交你的意向', [
+      processedCount += batch.length;
+
+      // ⏸️ 前 100 人后暂停等待真人提交意向
+      if (!autoMode && b === humanPauseAfter - 1) {
+        await interactive.pauseForHuman(` 前 ${processedCount} 个 bot 已提交意向，请提交你的意向`, [
           { step: 1, description: '在 Mobile App 注册并登录' },
           { step: 2, description: '提交一个匹配上述时间/场地/赛制的意向' },
           { step: 3, description: '提交后按 Enter 继续 (或按 Enter 跳过)' },
         ]);
       }
-
-      // ---- Phase 4b: 后 100 个 bot 提交意向 ----
-      if (batchB.length > 0) {
-        report.printInfo('步骤 4b', `${batchB.length} 个球员提交意向（第二批）`);
-
-        await runBatch(
-          batchB,
-          STRESS_BATCH_SIZE,
-          async (bot, idx) => {
-            const api = apiClient.clone();
-            api.setTokens(bot.accessToken!, bot.refreshToken!);
-            const params = intentionParamsB[idx];
-
-            const result = await safeBotRun(bot, '意向', `提交-${bot.nickname}`, async () => {
-              const intention = await api.createIntention(params);
-              bot.intentionId = intention?.id;
-              bot.intentionStartTime = params.startTime;
-              return intention;
-            }, metrics);
-
-            if (result.success) {
-              report.addSuccess('意向提交', `${bot.nickname} id=${bot.intentionId} start=${new Date(params.startTime).toLocaleTimeString('zh-CN', TZ_OPTS)} dur=${params.durationMinutes}min`, result.durationMs);
-            } else {
-              const errMsg = result.error?.message || '未知错误';
-              console.log(`  ${RED}❌ 意向失败 | ${bot.nickname} | ${errMsg}${RESET}`);
-              report.addFailure('意向提交', `${bot.nickname} ${errMsg}`, result.durationMs);
-            }
-          },
-          STRESS_BATCH_DELAY_MS,
-        );
-      }
-
-      // 意向分布统计（基于全量）
-      const successBots = eligiblePlayers.filter((b) => b.intentionId);
-      const failedBots = eligiblePlayers.filter((b) => !b.intentionId);
-
-      // 按小时统计（上海时区）
-      const hourDist: Record<number, number> = {};
-      const formatDist: Record<string, number> = {};
-      const venueDist: Record<string, number> = {};
-      for (let i = 0; i < successBots.length; i++) {
-        const params = allIntentionParams[eligiblePlayers.indexOf(successBots[i])];
-        const h = new Date(params.startTime).toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour: 'numeric', hour12: false });
-        const hour = parseInt(h, 10);
-        hourDist[hour] = (hourDist[hour] || 0) + 1;
-        for (const f of params.formatIds) {
-          const fmt = formats.find((ff) => ff.id === f.formatId);
-          const key = fmt?.name || `format_${f.formatId}`;
-          formatDist[key] = (formatDist[key] || 0) + 1;
-        }
-        for (const v of params.venueIds) {
-          const sv = stressVenues.find((s) => s.venueId === v.venueId);
-          const key = sv?.venueName || `venue_${v.venueId}`;
-          venueDist[key] = (venueDist[key] || 0) + 1;
-        }
-      }
-
-      // 打印分布表
-      console.log(`\n${CYAN}${BOLD}  意向分布统计${RESET}`);
-      console.log(`${DIM}  ${'─'.repeat(50)}${RESET}`);
-
-      // 按小时
-      const hourRows = Object.entries(hourDist)
-        .sort(([a], [b]) => Number(a) - Number(b))
-        .map(([h, c]) => ({ 'Hour': `${h}:00`, 'Count': c, 'Bar': '█'.repeat(Math.min(c, 40)) }));
-      printTable(
-        [{ header: 'Hour', key: 'Hour', align: 'right' }, { header: 'Count', key: 'Count', align: 'right' }, { header: 'Distribution', key: 'Bar' }],
-        hourRows,
-        { title: 'By Hour (Shanghai)' },
-      );
-
-      // 按赛制
-      const fmtRows = Object.entries(formatDist).map(([k, c]) => ({ 'Format': k, 'Count': c }));
-      printTable(
-        [{ header: 'Format', key: 'Format' }, { header: 'Count', key: 'Count', align: 'right' }],
-        fmtRows,
-        { title: 'By Format' },
-      );
-
-      // 按场地
-      const venRows = Object.entries(venueDist).map(([k, c]) => ({ 'Venue': k, 'Count': c }));
-      printTable(
-        [{ header: 'Venue', key: 'Venue' }, { header: 'Count', key: 'Count', align: 'right' }],
-        venRows,
-        { title: 'By Venue' },
-      );
-
-      report.printInfo('意向汇总', `${successBots.length} 成功 / ${failedBots.length} 失败 / ${eligiblePlayers.length} 总计`);
-      report.endPhase();
     }
+
+    // 意向分布统计（基于全量生成参数）
+    const successBots = eligiblePlayers.filter((b) => b.intentionId);
+    const failedBots = eligiblePlayers.filter((b) => !b.intentionId);
+
+    // 按小时统计（上海时区）
+    const hourDist: Record<number, number> = {};
+    const formatDist: Record<string, number> = {};
+    const venueDist: Record<string, number> = {};
+    for (let i = 0; i < allIntentionParams.length; i++) {
+      const params = allIntentionParams[i];
+      const h = new Date(params.startTime).toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour: 'numeric', hour12: false });
+      const hour = parseInt(h, 10);
+      hourDist[hour] = (hourDist[hour] || 0) + 1;
+      for (const f of params.formatIds) {
+        const fmt = formats.find((ff) => ff.id === f.formatId);
+        const key = fmt?.name || `format_${f.formatId}`;
+        formatDist[key] = (formatDist[key] || 0) + 1;
+      }
+      for (const v of params.venueIds) {
+        const sv = stressVenues.find((s) => s.venueId === v.venueId);
+        const key = sv?.venueName || `venue_${v.venueId}`;
+        venueDist[key] = (venueDist[key] || 0) + 1;
+      }
+    }
+
+    // 打印分布表
+    console.log(`\n${CYAN}${BOLD}  意向分布统计${RESET}`);
+    console.log(`${DIM}  ${'─'.repeat(50)}${RESET}`);
+
+    // 按小时
+    const hourRows = Object.entries(hourDist)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([h, c]) => ({ 'Hour': `${h}:00`, 'Count': c, 'Bar': '█'.repeat(Math.min(c, 40)) }));
+    printTable(
+      [{ header: 'Hour', key: 'Hour', align: 'right' }, { header: 'Count', key: 'Count', align: 'right' }, { header: 'Distribution', key: 'Bar' }],
+      hourRows,
+      { title: 'By Hour (Shanghai)' },
+    );
+
+    // 按赛制
+    const fmtRows = Object.entries(formatDist).map(([k, c]) => ({ 'Format': k, 'Count': c }));
+    printTable(
+      [{ header: 'Format', key: 'Format' }, { header: 'Count', key: 'Count', align: 'right' }],
+      fmtRows,
+      { title: 'By Format' },
+    );
+
+    // 按场地
+    const venRows = Object.entries(venueDist).map(([k, c]) => ({ 'Venue': k, 'Count': c }));
+    printTable(
+      [{ header: 'Venue', key: 'Venue' }, { header: 'Count', key: 'Count', align: 'right' }],
+      venRows,
+      { title: 'By Venue' },
+    );
+
+    report.printInfo('意向汇总', `${successBots.length} 成功 / ${failedBots.length} 失败 / ${eligiblePlayers.length} 总计`);
+    report.endPhase();
 
     // ═══════════════════════════════════════════════════════════
     // Phase 5: 匹配前诊断 + 自动匹配

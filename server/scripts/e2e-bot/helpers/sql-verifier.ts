@@ -140,17 +140,18 @@ export class SqlVerifier {
     }
   }
 
-  // 6. 意向状态一致性
+  // 6. MatchPlayer → Intention 引用完整性
   private async checkIntentionStatusConsistency(): Promise<IntegrityResult> {
-    const sql = `SELECT COUNT(*) as bad FROM intentions i
-      WHERE i.status = 'matched' AND i.match_id IS NULL`;
+    const sql = `SELECT COUNT(*) as orphan FROM match_players mp
+      LEFT JOIN intentions i ON mp.intention_id = i.id
+      WHERE mp.intention_id IS NOT NULL AND i.id IS NULL`;
     const rows = await this.dataSource.query(sql);
-    const bad = Number(rows[0]?.bad || 0);
+    const orphan = Number(rows[0]?.orphan || 0);
     return {
-      label: '意向状态一致性（matched 意向有 matchId）',
-      passed: bad === 0,
-      expected: '0 异常',
-      actual: `${bad} 异常`,
+      label: 'MatchPlayer→Intention 引用完整性',
+      passed: orphan === 0,
+      expected: '0 孤立引用',
+      actual: `${orphan} 孤立引用`,
       sql,
     };
   }

@@ -360,104 +360,46 @@ describe('MatchingEngineService', () => {
   // ==================== Grouping Logic ====================
 
   describe('compatible clustering (integration)', () => {
-    it('should cluster intentions by five-dimensional compatibility scoring', async () => {
+    it('should form separate groups for different venues with enough players', async () => {
       const mockParam = createMockSystemParamThreshold();
       systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
 
+      // v2.0: 按 venue+format 笛卡尔积分组，每组需 ≥ minPlayers (3v3=6) 人才能形成比赛
+      const makeIntention = (id: number, venueId: number) =>
+        createMockIntention({
+          id, playerId: id,
+          player: createMockPlayer({ id, totalAbilityScore: 70 + id }),
+          startTime: new Date('2026-06-15T14:00:00Z'),
+          intentionVenues: [{ id, intentionId: id, venueId, priority: 1, venue: {} as any, intention: {} as any }],
+          intentionFormats: [{ id, intentionId: id, formatId: 1, priority: 1, format: {} as any, intention: {} as any }],
+        });
+
+      // venue 1: 6 players, venue 2: 6 players → 2 groups, each ≥ 6
       const intentions = [
-        createMockIntention({
-          id: 1,
-          playerId: 1,
-          startTime: new Date('2026-06-15T14:00:00Z'),
-          intentionVenues: [
-            {
-              id: 1,
-              intentionId: 1,
-              venueId: 1,
-              priority: 1,
-              venue: {} as any,
-              intention: {} as any,
-            },
-          ],
-          intentionFormats: [
-            {
-              id: 1,
-              intentionId: 1,
-              formatId: 1,
-              priority: 1,
-              format: {} as any,
-              intention: {} as any,
-            },
-          ],
-        }),
-        createMockIntention({
-          id: 2,
-          playerId: 2,
-          startTime: new Date('2026-06-15T14:00:00Z'),
-          intentionVenues: [
-            {
-              id: 2,
-              intentionId: 2,
-              venueId: 1,
-              priority: 1,
-              venue: {} as any,
-              intention: {} as any,
-            },
-          ],
-          intentionFormats: [
-            {
-              id: 2,
-              intentionId: 2,
-              formatId: 1,
-              priority: 1,
-              format: {} as any,
-              intention: {} as any,
-            },
-          ],
-        }),
-        // Different venue - should be separate group
-        createMockIntention({
-          id: 3,
-          playerId: 3,
-          startTime: new Date('2026-06-15T14:00:00Z'),
-          intentionVenues: [
-            {
-              id: 3,
-              intentionId: 3,
-              venueId: 2,
-              priority: 1,
-              venue: {} as any,
-              intention: {} as any,
-            },
-          ],
-          intentionFormats: [
-            {
-              id: 3,
-              intentionId: 3,
-              formatId: 1,
-              priority: 1,
-              format: {} as any,
-              intention: {} as any,
-            },
-          ],
-        }),
+        ...Array.from({ length: 6 }, (_, i) => makeIntention(i + 1, 1)),
+        ...Array.from({ length: 6 }, (_, i) => makeIntention(i + 7, 2)),
       ];
 
       intentionRepo.createQueryBuilder!.mockReturnValue(
         createMockQueryBuilder<Intention>(intentions),
       );
 
-      dataSource.transaction.mockImplementation(async (cb: any) => {
-        return cb(dataSource.manager);
-      });
+      formatRepo.findOneBy!.mockResolvedValue(createMockFormat());
 
-      teamBalancer.snakeDraft.mockReturnValue([
-        { teamNumber: 1, players: [], avgAbility: 75 },
-      ]);
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = dataSource.manager;
+        manager.save.mockImplementation((entity: any, data: any) => {
+          const item = data !== undefined ? data : entity;
+          return Promise.resolve({ ...item, id: 1 });
+        });
+        manager.create.mockImplementation((_entity: any, data: any) => data);
+        manager.update.mockResolvedValue({ affected: 1 });
+        return cb(manager);
+      });
 
       const result = await service.runMatching('shenzhen_futian');
 
-      // Should form 2 clusters: venue 1 and venue 2 (no common venue → incompatible)
+      // Should form 2 groups: venue 1 and venue 2
       expect(result.groupsProcessed).toBe(2);
     });
   });
@@ -534,8 +476,8 @@ describe('MatchingEngineService', () => {
 
       const result = await service.runMatching('shenzhen_futian');
 
+      // v2.0: 不分队（延后到 confirmed），只验证比赛创建成功
       expect(result.matchesCreated).toBeGreaterThanOrEqual(1);
-      expect(teamBalancer.snakeDraft).toHaveBeenCalled();
     });
 
     it('should not create match when candidate set is too small', async () => {
@@ -837,8 +779,10 @@ describe('MatchingEngineService', () => {
 
       const result = await service.runMatching('shenzhen_futian');
 
-      // Should process 2 groups, one failed but didn't crash
-      expect(result.groupsProcessed).toBe(2);
+      // v2.0: formatRepo 异常被 try-catch 隔离，不影响整体流程
+      // group 1 format 查询失败被跳过，group 2 人数不足也被跳过
+      expect(result.intentionsScanned).toBe(2);
+      expect(result.groupsProcessed).toBe(0); // 无有效候选组
     });
   });
 
@@ -973,7 +917,8 @@ describe('MatchingEngineService', () => {
 
       await service.runMatching('shenzhen_futian');
 
-      expect(mockVenueSlotQb.setLock).toHaveBeenCalledWith('pessimistic_write');
+      // v2.0: 使用 venueBookingService.checkAvailability 乐观检查（不再加锁）
+      expect(venueBookingService.checkAvailability).toHaveBeenCalled();
     });
 
     it('should handle no available venue time slot gracefully', async () => {
@@ -1314,14 +1259,14 @@ describe('MatchingEngineService', () => {
       systemParamRepo.findOneBy!.mockResolvedValue(mockParam);
 
       const now = new Date();
-      // Intention 1: no venue/format → skipped by buildPlayerInfos → unmatched → eligible for expiry
-      // Intention 2: normal venue/format → forms cluster → excluded from expiry
+      // Intention 1: already expired (expiresAt in the past) → eligible for expiry processing
+      // Intention 2: not expired → excluded from expiry
       const intentions = [
         createMockIntention({
           id: 1,
           playerId: 1,
           status: 'pending',
-          expiresAt: new Date(now.getTime() + 10 * 60 * 1000), // 10分钟后过期
+          expiresAt: new Date(now.getTime() - 10 * 60 * 1000), // v2.0: expiresAt <= now 才处理
           player: createMockPlayer({ id: 1, totalAbilityScore: 75 }),
           intentionVenues: [], // 无场地 → buildPlayerInfos 跳过
           intentionFormats: [],
@@ -1547,76 +1492,10 @@ describe('MatchingEngineService', () => {
     });
   });
 
-  // ==================== Compatible Clustering ====================
+  // ==================== Compatibility Matrix (v2.0) ====================
 
-  describe('buildCompatibleClusters', () => {
-    it('should group identical intentions into one cluster', () => {
-      const infos = Array.from({ length: 6 }, (_, i) =>
-        createTestPlayerInfo({ intentionId: i + 1, playerId: i + 1 }),
-      );
-      const matrix = (service as any).buildCompatibilityMatrix(infos);
-      const clusters = (service as any).buildCompatibleClusters(infos, matrix);
-      expect(clusters.length).toBe(1);
-      expect(clusters[0].playerInfos.length).toBe(6);
-    });
-
-    it('should enforce clique constraint: A-B compatible, B-C compatible, A-C not → separate clusters', () => {
-      // A and B share venue 1; B and C share venue 2; A and C share nothing
-      const a = createTestPlayerInfo({
-        intentionId: 1, playerId: 1,
-        venueIds: [1], venuePriorities: new Map([[1, 1]]),
-      });
-      const b = createTestPlayerInfo({
-        intentionId: 2, playerId: 2,
-        venueIds: [1, 2], venuePriorities: new Map([[1, 1], [2, 1]]),
-      });
-      const c = createTestPlayerInfo({
-        intentionId: 3, playerId: 3,
-        venueIds: [2], venuePriorities: new Map([[2, 1]]),
-      });
-      const infos = [a, b, c];
-      const matrix = (service as any).buildCompatibilityMatrix(infos);
-      const clusters = (service as any).buildCompatibleClusters(infos, matrix);
-      // A and C are not compatible → B must choose one side
-      expect(clusters.length).toBe(2);
-    });
-
-    it('should separate intentions with no common venue', () => {
-      const a = createTestPlayerInfo({
-        intentionId: 1, playerId: 1,
-        venueIds: [1], venuePriorities: new Map([[1, 1]]),
-      });
-      const b = createTestPlayerInfo({
-        intentionId: 2, playerId: 2,
-        venueIds: [2], venuePriorities: new Map([[2, 1]]),
-      });
-      const infos = [a, b];
-      const matrix = (service as any).buildCompatibilityMatrix(infos);
-      const clusters = (service as any).buildCompatibleClusters(infos, matrix);
-      expect(clusters.length).toBe(2);
-    });
-
-    it('should detect empty global overlap window via computeOverlapWindow', () => {
-      // 直接测试 computeOverlapWindow 返回 isEmpty=true 的场景
-      const infos = [
-        createTestPlayerInfo({
-          intentionId: 1, playerId: 1,
-          startTime: new Date('2026-06-15T14:00:00Z'),
-          acceptableWaitMinutes: 10,
-        }),
-        createTestPlayerInfo({
-          intentionId: 2, playerId: 2,
-          startTime: new Date('2026-06-15T15:00:00Z'),
-          acceptableWaitMinutes: 10,
-        }),
-      ];
-      const result = (service as any).computeOverlapWindow(infos);
-      expect(result.isEmpty).toBe(true);
-    });
-
-    it('should verify clique constraint prevents A-C incompatible pair in same cluster', () => {
-      // A-B pairwise compatible, B-C pairwise compatible, but A-C not compatible
-      // Clique constraint prevents all 3 from entering same cluster
+  describe('compatibility matrix (v2.0)', () => {
+    it('should verify A-B compatible, B-C compatible, A-C not compatible via matrix', () => {
       const a = createTestPlayerInfo({
         intentionId: 1, playerId: 1,
         startTime: new Date('2026-06-15T14:00:00Z'),
@@ -1656,83 +1535,43 @@ describe('MatchingEngineService', () => {
       // Overlap: [14:30, 14:45] = 15 min; min(45,45)=45 → timeScore = 15/45
       expect(matrix[0][1].timeScore).toBeCloseTo(15 / 45, 2);
     });
-  });
 
-  // ==================== Venue/Format Selection ====================
-
-  describe('selectBestVenue', () => {
-    it('should select venue with highest weighted score', () => {
+    it('should mark no-common-venue pair as incompatible in matrix', () => {
       const a = createTestPlayerInfo({
-        venueIds: [1, 2], venuePriorities: new Map([[1, 1], [2, 2]]),
-      });
-      const b = createTestPlayerInfo({
-        intentionId: 2, playerId: 2,
-        venueIds: [1, 3], venuePriorities: new Map([[1, 1], [3, 2]]),
-      });
-      // Global intersection = {1}. venue 1: 1/1 + 1/1 = 2.0
-      const result = (service as any).selectBestVenue([a, b]);
-      expect(result).toBe(1);
-    });
-
-    it('should prefer global intersection over individual preferences', () => {
-      const a = createTestPlayerInfo({
-        venueIds: [1, 2], venuePriorities: new Map([[1, 1], [2, 1]]),
-      });
-      const b = createTestPlayerInfo({
-        intentionId: 2, playerId: 2,
-        venueIds: [2, 3], venuePriorities: new Map([[2, 1], [3, 1]]),
-      });
-      // Global intersection = {2}. Even though venue 1 has priority=1 from A, it's not in the intersection.
-      const result = (service as any).selectBestVenue([a, b]);
-      expect(result).toBe(2);
-    });
-
-    it('should pick smaller venueId on tie (deterministic tie-breaker)', () => {
-      const a = createTestPlayerInfo({
-        venueIds: [5], venuePriorities: new Map([[5, 1]]),
+        intentionId: 1, playerId: 1,
+        venueIds: [1], venuePriorities: new Map([[1, 1]]),
       });
       const b = createTestPlayerInfo({
         intentionId: 2, playerId: 2,
         venueIds: [2], venuePriorities: new Map([[2, 1]]),
       });
-      // No global intersection → fallback to all venues. venue 5: 1.0, venue 2: 1.0 → tie → pick 2
-      const result = (service as any).selectBestVenue([a, b]);
-      expect(result).toBe(2);
-    });
-  });
-
-  describe('selectBestFormat', () => {
-    it('should select format with highest weighted score from global intersection', () => {
-      const a = createTestPlayerInfo({
-        formatIds: [1, 2], formatPriorities: new Map([[1, 1], [2, 3]]),
-      });
-      const b = createTestPlayerInfo({
-        intentionId: 2, playerId: 2,
-        formatIds: [1, 3], formatPriorities: new Map([[1, 2], [3, 1]]),
-      });
-      // Global intersection = {1}. format 1: 1/1 + 1/2 = 1.5
-      const result = (service as any).selectBestFormat([a, b]);
-      expect(result).toBe(1);
+      const infos = [a, b];
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      expect(matrix[0][1].compatible).toBe(false);
     });
 
-    it('should pick smaller formatId on tie', () => {
-      const a = createTestPlayerInfo({
-        formatIds: [10], formatPriorities: new Map([[10, 1]]),
-      });
-      const b = createTestPlayerInfo({
-        intentionId: 2, playerId: 2,
-        formatIds: [3], formatPriorities: new Map([[3, 1]]),
-      });
-      // No global intersection → fallback. format 10: 1.0, format 3: 1.0 → tie → pick 3
-      const result = (service as any).selectBestFormat([a, b]);
-      expect(result).toBe(3);
+    it('should detect no time overlap as incompatible via matrix', () => {
+      const infos = [
+        createTestPlayerInfo({
+          intentionId: 1, playerId: 1,
+          startTime: new Date('2026-06-15T14:00:00Z'),
+          acceptableWaitMinutes: 10,
+        }),
+        createTestPlayerInfo({
+          intentionId: 2, playerId: 2,
+          startTime: new Date('2026-06-15T15:00:00Z'),
+          acceptableWaitMinutes: 10,
+        }),
+      ];
+      const matrix = (service as any).buildCompatibilityMatrix(infos);
+      expect(matrix[0][1].compatible).toBe(false);
     });
   });
 
   // ==================== Performance ====================
 
   describe('performance', () => {
-    it('should cluster 500 intentions within 2 seconds', () => {
+    it('should build compatibility matrix for 500 intentions within 2 seconds', () => {
       const now = new Date('2026-06-15T10:00:00Z');
       const infos = Array.from({ length: 500 }, (_, i) =>
         createTestPlayerInfo({
@@ -1750,14 +1589,13 @@ describe('MatchingEngineService', () => {
       );
 
       const start = Date.now();
-      const matrix = (service as any).buildCompatibilityMatrix(infos);
-      (service as any).buildCompatibleClusters(infos, matrix);
+      (service as any).buildCompatibilityMatrix(infos);
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeLessThan(2000);
     });
 
-    it('should cluster 1000 intentions within 5 seconds', () => {
+    it('should build compatibility matrix for 1000 intentions within 5 seconds', () => {
       const now = new Date('2026-06-15T10:00:00Z');
       const infos = Array.from({ length: 1000 }, (_, i) =>
         createTestPlayerInfo({
@@ -1775,11 +1613,177 @@ describe('MatchingEngineService', () => {
       );
 
       const start = Date.now();
-      const matrix = (service as any).buildCompatibilityMatrix(infos);
-      (service as any).buildCompatibleClusters(infos, matrix);
+      (service as any).buildCompatibilityMatrix(infos);
       const elapsed = Date.now() - start;
 
       expect(elapsed).toBeLessThan(5000);
+    });
+  });
+
+  // ==================== segmentByAbility (v2.1) ====================
+
+  describe('segmentByAbility', () => {
+    // 3v3: teamSize=3, teamCountMin=2 → minPlayers=6, teamCountMax=4 → maxPlayers=12
+    const MIN_3v3 = 6;
+    const MAX_3v3 = 12;
+    const MAX_SPREAD = 12;
+
+    function makePlayers(count: number, abilityFn: (i: number) => number): any[] {
+      return Array.from({ length: count }, (_, i) =>
+        createTestPlayerInfo({
+          intentionId: i + 1,
+          playerId: i + 1,
+          totalAbilityScore: abilityFn(i),
+        }),
+      );
+    }
+
+    it('should split 30 players (ability 50~79) into 2-3 segments for 3v3', () => {
+      // 30 players, ability scores 50..79 (spread=29)
+      // maxPlayers=12 → segments of up to 12; sorted already
+      const players = makePlayers(30, (i) => 50 + i);
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, MAX_SPREAD);
+
+      // Expect 2 segments of 12 (spread=11 each ≤ 12), tail of 6 (spread=5 ≤ 12) → 3 segments
+      expect(segments.length).toBeGreaterThanOrEqual(2);
+      expect(segments.length).toBeLessThanOrEqual(3);
+
+      // Every segment must have ≥ minPlayers
+      for (const seg of segments) {
+        expect(seg.length).toBeGreaterThanOrEqual(MIN_3v3);
+      }
+
+      // Every segment spread ≤ maxSpread
+      for (const seg of segments) {
+        const spread = seg[seg.length - 1].totalAbilityScore - seg[0].totalAbilityScore;
+        expect(spread).toBeLessThanOrEqual(MAX_SPREAD);
+      }
+    });
+
+    it('should discard tail when remaining players < minPlayers', () => {
+      // 10 players, ability 50..59. maxPlayers=12 → first chunk=10 (ok, 10≥6)
+      // But let's test with maxPlayers=9: first chunk=9 (spread=8≤12 → ok), tail=1 (< 6 → discard)
+      const players = makePlayers(10, (i) => 50 + i);
+      const segments = (service as any).segmentByAbility(players, 9, MIN_3v3, MAX_SPREAD);
+
+      // First segment: 9 players [50..58], spread=8 ≤ 12 → ok
+      // Tail: 1 player [59] → < 6 → discarded
+      expect(segments.length).toBe(1);
+      expect(segments[0].length).toBe(9);
+    });
+
+    it('should reject segment when spread exceeds maxSpread', () => {
+      // 11 players: [50,51,52,53,54,55,56,57,58,59, 80]
+      // maxPlayers=12 → one chunk of 11, spread = 80-50 = 30 > 12 → rejected
+      const players = makePlayers(11, (i) => (i < 10 ? 50 + i : 80));
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, MAX_SPREAD);
+
+      // The single chunk of 11 has spread=30 > 12 → rejected, no segments
+      expect(segments.length).toBe(0);
+    });
+
+    it('should isolate outlier while keeping valid segment', () => {
+      // 13 players: [50..59 (10 players), 80, 81, 82]
+      // maxPlayers=12 → chunk1 = [50..61] (12 players, includes 80? No.)
+      // Actually sorted: [50,51,52,53,54,55,56,57,58,59,80,81,82]
+      // chunk1 = first 12 = [50..59,80,81], spread=81-50=31 > 12 → rejected
+      // chunk2 = [82], length=1 < 6 → break
+      // Result: 0 segments (because chunk1 straddles the gap)
+      // Better scenario: 22 players [50..59 (10), 60..69 (10), 80, 81]
+      // chunk1 = [50..61] (first 12), spread = 61-50=11 ≤ 12 → ok
+      // chunk2 = [62..73] (next 10), spread = 69-62=7... wait let me recalculate
+      // Actually: sorted = [50,51,...,59,60,61,...,69,80,81]
+      // chunk1 = [50..61] spread=11 ok; chunk2 = [62..69,80,81] length=10, spread=81-62=19>12 → rejected
+      // So: 1 valid segment
+      const players = makePlayers(22, (i) => {
+        if (i < 20) return 50 + i; // 50..69
+        return 80 + (i - 20);     // 80, 81
+      });
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, MAX_SPREAD);
+
+      // chunk1: [50..61] 12 players, spread=11 ≤ 12 → valid
+      // chunk2: [62..69, 80, 81] 10 players, spread=81-62=19 > 12 → rejected
+      expect(segments.length).toBe(1);
+      expect(segments[0].length).toBe(12);
+      // Outliers (80, 81) are not in any segment
+      const allIds = segments.flat().map((p: any) => p.totalAbilityScore);
+      expect(allIds).not.toContain(80);
+      expect(allIds).not.toContain(81);
+    });
+
+    it('should return empty array when input < minPlayers', () => {
+      const players = makePlayers(3, (i) => 50 + i);
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, MAX_SPREAD);
+      expect(segments.length).toBe(0);
+    });
+
+    it('should return empty array for empty input', () => {
+      const segments = (service as any).segmentByAbility([], MAX_3v3, MIN_3v3, MAX_SPREAD);
+      expect(segments.length).toBe(0);
+    });
+
+    it('should handle exactly minPlayers as one segment', () => {
+      // 6 players, all within spread
+      const players = makePlayers(6, (i) => 70 + i); // [70..75], spread=5 ≤ 12
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, MAX_SPREAD);
+      expect(segments.length).toBe(1);
+      expect(segments[0].length).toBe(6);
+    });
+
+    it('should sort by ability ascending then by intentionId for stability', () => {
+      // Same ability scores, different intentionIds
+      const players = [
+        createTestPlayerInfo({ intentionId: 5, playerId: 5, totalAbilityScore: 70 }),
+        createTestPlayerInfo({ intentionId: 2, playerId: 2, totalAbilityScore: 70 }),
+        createTestPlayerInfo({ intentionId: 8, playerId: 8, totalAbilityScore: 70 }),
+        createTestPlayerInfo({ intentionId: 1, playerId: 1, totalAbilityScore: 70 }),
+        createTestPlayerInfo({ intentionId: 3, playerId: 3, totalAbilityScore: 70 }),
+        createTestPlayerInfo({ intentionId: 7, playerId: 7, totalAbilityScore: 70 }),
+      ];
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, MAX_SPREAD);
+      expect(segments.length).toBe(1);
+      const ids = segments[0].map((p: any) => p.intentionId);
+      // Should be sorted by intentionId when ability is equal
+      expect(ids).toEqual([1, 2, 3, 5, 7, 8]);
+    });
+
+    it('should handle 2000 players and produce matches with spread ≤ maxSpread', () => {
+      // Simulate 2000 players with normally distributed ability (50~87)
+      const players = makePlayers(2000, (i) => {
+        // Spread across 50..87 (range=37), roughly normal via modular
+        return 50 + (i * 37) / 2000;
+      });
+
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, MAX_SPREAD);
+
+      // With 2000 players, maxPlayers=12 → up to 166 segments
+      expect(segments.length).toBeGreaterThan(0);
+
+      // Every segment must respect constraints
+      for (const seg of segments) {
+        expect(seg.length).toBeGreaterThanOrEqual(MIN_3v3);
+        expect(seg.length).toBeLessThanOrEqual(MAX_3v3);
+        const spread = seg[seg.length - 1].totalAbilityScore - seg[0].totalAbilityScore;
+        expect(spread).toBeLessThanOrEqual(MAX_SPREAD);
+      }
+
+      // All segments sorted ascending
+      for (const seg of segments) {
+        for (let j = 1; j < seg.length; j++) {
+          expect(seg[j].totalAbilityScore).toBeGreaterThanOrEqual(seg[j - 1].totalAbilityScore);
+        }
+      }
+    });
+
+    it('should respect custom maxSpread from threshold params', () => {
+      // 12 players with spread=11, custom maxSpread=5 → should be rejected
+      const players = makePlayers(12, (i) => 50 + i); // [50..61], spread=11
+      const segments = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, 5);
+      expect(segments.length).toBe(0);
+
+      // Same players with maxSpread=15 → should be accepted
+      const segments2 = (service as any).segmentByAbility(players, MAX_3v3, MIN_3v3, 15);
+      expect(segments2.length).toBe(1);
     });
   });
 

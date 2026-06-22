@@ -102,9 +102,9 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
 
   humanDrivenStress: {
     id: 'humanDrivenStress',
-    name: '200 人大规模压力测试',
-    description: '200 bot 球员 + 1 场地经理(2 场地)。随机意向(今天 8:00-20:00)、自动匹配、终端表格展示',
-    bots: { playerCount: 200, venueManagerCount: 1 },
+    name: '2000 人大规模压力测试',
+    description: '2000 bot 球员 + 1 场地经理(2 场地)。随机意向(当前时间 +1~5h)、自动匹配、终端表格展示',
+    bots: { playerCount: 2000, venueManagerCount: 1 },
     format: 'mixed',
     startTimeHoursAhead: 0,   // 场景内部随机生成，不使用此值
     durationMinutes: 120,      // 默认值，实际由随机覆盖

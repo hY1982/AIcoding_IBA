@@ -28,6 +28,8 @@ export interface MatchThresholdParams {
   base_threshold: number;
   min_threshold: number;
   intention_count_factor: number;
+  /** v2.1: 分段匹配时段内能力值最大跨度（超过则不分段，等待更多兼容意向） */
+  max_ability_spread?: number;
 }
 
 /**
@@ -115,14 +117,18 @@ export function isAbilityAdjustWeights(value: unknown): value is AbilityAdjustWe
 export function isMatchThresholdParams(value: unknown): value is MatchThresholdParams {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  return (
+  const valid =
     typeof v.base_threshold === 'number' &&
     v.base_threshold >= 0 &&
     typeof v.min_threshold === 'number' &&
     v.min_threshold >= 0 &&
     typeof v.intention_count_factor === 'number' &&
-    v.intention_count_factor >= 0
-  );
+    v.intention_count_factor >= 0;
+  // max_ability_spread 为可选字段，若存在则必须为正数
+  if (v.max_ability_spread !== undefined) {
+    return valid && typeof v.max_ability_spread === 'number' && v.max_ability_spread > 0;
+  }
+  return valid;
 }
 
 /**

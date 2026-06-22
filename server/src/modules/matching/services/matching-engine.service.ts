@@ -69,6 +69,9 @@ const MATCH_SCORE_WEIGHTS = {
 /** 时间粗分区剪枝阈值：startTime 差距超过此值直接标记不兼容 */
 const TIME_COARSE_PARTITION_MS = 6 * 60 * 60 * 1000; // 6 小时
 
+/** 段内能力值最大跨度默认值（超过则不分段，等待更多兼容意向），可通过 system_params 覆盖 */
+const DEFAULT_MAX_ABILITY_SPREAD = 12;
+
 /**
  * 匹配引擎核心服务 — v2.0 异步预匹配模式
  *
@@ -149,7 +152,7 @@ export class MatchingEngineService {
     // 5. v2.0: 按 venue+format 分组创建候选比赛
     const groups = await this.buildCandidateGroups(playerInfos, matrix, thresholdParams);
     this.logger.log(
-      `扫描到 ${intentions.length} 个意向，形成 ${groups.length} 个候选组`,
+      `扫描到 ${intentions.length} 个意向，形成 ${groups.length} 个候选组（含能力值分段），maxSpread=${thresholdParams.max_ability_spread ?? DEFAULT_MAX_ABILITY_SPREAD}`,
     );
 
     let matchesCreated = 0;
@@ -205,6 +208,7 @@ export class MatchingEngineService {
         base_threshold: 20.0,
         min_threshold: 5.0,
         intention_count_factor: 0.5,
+        max_ability_spread: 12,
       };
     }
 
@@ -449,7 +453,7 @@ export class MatchingEngineService {
       }
     }
 
-    // 2. 过滤 + 构建候选组
+    // 2. 过滤 + 能力值分段 + 构建候选组
     const groups: CandidateGroup[] = [];
 
     for (const [key, players] of groupMap) {
@@ -457,44 +461,58 @@ export class MatchingEngineService {
       const venueId = parseInt(venueIdStr, 10);
       const formatId = parseInt(formatIdStr, 10);
 
-      // 获取赛制信息
-      const format = await this.formatRepo.findOneBy({ id: formatId });
-      if (!format) continue;
+      try {
+        // 获取赛制信息
+        const format = await this.formatRepo.findOneBy({ id: formatId });
+        if (!format) continue;
 
-      const minPlayers = format.teamCountMin * format.teamSize;
+        const minPlayers = format.teamCountMin * format.teamSize;
+        const maxPlayers = format.teamCountMax * format.teamSize;
 
-      // v2.0: 使用兼容性矩阵过滤组内不兼容的成员
-      // 保留与组内大多数成员兼容的球员
-      const compatiblePlayers = this.filterCompatiblePlayers(
-        players,
-        matrix,
-        idToIndex,
-        thresholdParams,
-      );
+        // 使用兼容性矩阵过滤组内不兼容的成员（仅硬约束过滤）
+        const compatiblePlayers = this.filterCompatiblePlayers(
+          players,
+          matrix,
+          idToIndex,
+        );
 
-      if (compatiblePlayers.length < minPlayers) {
-        continue;
+        if (compatiblePlayers.length < minPlayers) {
+          continue;
+        }
+
+        // v2.1: 按能力值排序后分段，每段形成一个独立的候选比赛
+        const maxSpread = thresholdParams.max_ability_spread ?? DEFAULT_MAX_ABILITY_SPREAD;
+        const segments = this.segmentByAbility(
+          compatiblePlayers,
+          maxPlayers,
+          minPlayers,
+          maxSpread,
+        );
+
+        for (const segment of segments) {
+          const matchStartTime = new Date(
+            Math.max(...segment.map((p) => p.startTime.getTime())),
+          );
+          const matchDuration = this.calculateMatchDuration(segment, format);
+          const matchEndTime = new Date(matchStartTime.getTime() + matchDuration);
+          const confirmDeadline = new Date(matchStartTime.getTime() - 60 * 60 * 1000);
+
+          groups.push({
+            venueId,
+            formatId,
+            format,
+            players: segment,
+            matchStartTime,
+            matchEndTime,
+            confirmDeadline,
+          });
+        }
+      } catch (error) {
+        this.logger.error(
+          `候选组构建异常 (venueId=${venueId}, formatId=${formatId}): ${(error as Error).message}`,
+        );
+        // 单个组异常不影响其他组的构建
       }
-
-      // 3. 计算比赛时间
-      const matchStartTime = new Date(
-        Math.max(...compatiblePlayers.map((p) => p.startTime.getTime())),
-      );
-      const matchDuration = this.calculateMatchDuration(compatiblePlayers, format);
-      const matchEndTime = new Date(matchStartTime.getTime() + matchDuration);
-
-      // 4. confirmDeadline = startTime - 1小时
-      const confirmDeadline = new Date(matchStartTime.getTime() - 60 * 60 * 1000);
-
-      groups.push({
-        venueId,
-        formatId,
-        format,
-        players: compatiblePlayers,
-        matchStartTime,
-        matchEndTime,
-        confirmDeadline,
-      });
     }
 
     // 5. 按组内平均兼容性评分降序排序（优先处理质量最高的组）
@@ -510,28 +528,21 @@ export class MatchingEngineService {
   /**
    * 使用兼容性矩阵过滤组内成员。
    *
-   * 保留与组内至少半数其他成员兼容的球员，
-   * 并使用动态阈值限制能力值差距。
+   * v2.1: 仅保留兼容性矩阵的「半数兼容」硬约束过滤。
+   * 能力值过滤已下沉到 segmentByAbility 分段算法中。
    */
   private filterCompatiblePlayers(
     players: PlayerIntentionInfo[],
     matrix: CompatibilityResult[][],
     idToIndex: Map<number, number>,
-    thresholdParams: MatchThresholdParams,
   ): PlayerIntentionInfo[] {
     if (players.length <= 2) return players;
 
-    const threshold = this.calculateDynamicThreshold(
-      players.length,
-      thresholdParams,
-    );
-
-    // 保留与组内至少半数其他成员兼容的球员
+    // 保留与组内至少半数其他成员兼容的球员（仅硬约束过滤）
     return players.filter((player, i) => {
       const playerIdx = idToIndex.get(player.intentionId)!;
       let compatibleCount = 0;
       let totalChecked = 0;
-      let abilityInRange = true;
 
       for (let j = 0; j < players.length; j++) {
         if (i === j) continue;
@@ -540,14 +551,53 @@ export class MatchingEngineService {
         if (matrix[playerIdx][otherIdx].compatible) {
           compatibleCount++;
         }
-        // 检查能力值差距
-        if (Math.abs(player.totalAbilityScore - players[j].totalAbilityScore) > threshold * 2) {
-          abilityInRange = false;
-        }
       }
 
-      return compatibleCount >= Math.floor(totalChecked / 2) && abilityInRange;
+      return compatibleCount >= Math.floor(totalChecked / 2);
     });
+  }
+
+  /**
+   * v2.1: 按能力值排序后分段，每段 spread ≤ maxSpread。
+   * 返回多个子数组，每个子数组可形成一个候选比赛。
+   *
+   * 能力值差距过大的意向不会进入同一分段，而是等待后续轮次
+   * 与更兼容的新意向匹配（或过期退出）。
+   */
+  private segmentByAbility(
+    players: PlayerIntentionInfo[],
+    maxPlayers: number,
+    minPlayers: number,
+    maxSpread: number,
+  ): PlayerIntentionInfo[][] {
+    if (players.length < minPlayers) return [];
+
+    // 按能力值升序，相同能力值按 intentionId 保证稳定性
+    const sorted = [...players].sort(
+      (a, b) => a.totalAbilityScore - b.totalAbilityScore || a.intentionId - b.intentionId,
+    );
+
+    const segments: PlayerIntentionInfo[][] = [];
+    let i = 0;
+
+    while (i < sorted.length) {
+      const end = Math.min(i + maxPlayers, sorted.length);
+      const segment = sorted.slice(i, end);
+
+      if (segment.length < minPlayers) break; // 尾部不足，等待下轮
+
+      const spread =
+        segment[segment.length - 1].totalAbilityScore - segment[0].totalAbilityScore;
+
+      if (spread <= maxSpread) {
+        segments.push(segment);
+      }
+      // spread 超标：丢弃该段（等待更多兼容意向加入后下轮重新匹配）
+
+      i += maxPlayers;
+    }
+
+    return segments;
   }
 
   /**
