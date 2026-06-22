@@ -53,7 +53,7 @@ export async function runMatchingPhase(
     const pendingMatches = await dbTools.getPendingConfirmationMatches();
     for (const m of pendingMatches) {
       matchIds.push(Number(m.id));
-      report.addSuccess(`比赛记录`, `matchId=${m.id} totalPlayers=${m.total_players} status=pending_confirmation`);
+      report.addSuccess(`比赛记录`, `matchId=${m.id} requiredPlayers=${m.required_players} status=pending_players`);
     }
 
     if (pendingMatches.length === 0) {

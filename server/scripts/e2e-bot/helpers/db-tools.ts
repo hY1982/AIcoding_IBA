@@ -190,9 +190,9 @@ export class DbTools {
   /**
    * 查询所有 pending_confirmation 比赛
    */
-  async getPendingConfirmationMatches(): Promise<Array<{ id: number; total_players: number }>> {
+  async getPendingConfirmationMatches(): Promise<Array<{ id: number; required_players: number }>> {
     const result = await this.dataSource.query(
-      `SELECT id, total_players FROM matches WHERE status = 'pending_confirmation'`,
+      `SELECT id, required_players FROM matches WHERE status = 'pending_players'`,
     );
     return result;
   }
@@ -273,12 +273,12 @@ export class DbTools {
   async getVenueSlotStatus(): Promise<Array<{
     venue_name: string; slot_date: string; start_time: string;
     end_time: string; is_booked: boolean; match_id: number | null;
-    match_status: string | null; total_players: number | null;
+    match_status: string | null; required_players: number | null;
   }>> {
     return this.dataSource.query(`
       SELECT v.name AS venue_name, vts.slot_date, vts.start_time,
              vts.end_time, vts.is_booked, vts.match_id,
-             m.status AS match_status, m.total_players
+             m.status AS match_status, m.required_players
       FROM venue_time_slots vts
       JOIN venues v ON v.id = vts.venue_id
       LEFT JOIN matches m ON m.id = vts.match_id

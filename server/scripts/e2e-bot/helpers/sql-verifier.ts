@@ -91,16 +91,16 @@ export class SqlVerifier {
 
   // 4. 比赛状态一致性
   private async checkMatchStatusConsistency(): Promise<IntegrityResult> {
-    const sql = `SELECT m.id, m.status, m.total_players,
+    const sql = `SELECT m.id, m.status, m.required_players,
       COUNT(mp.id) as actual_players,
       COUNT(CASE WHEN mp.status = 'confirmed' THEN 1 END) as confirmed_count
       FROM matches m
       LEFT JOIN match_players mp ON mp.match_id = m.id
-      GROUP BY m.id, m.status, m.total_players`;
+      GROUP BY m.id, m.status, m.required_players`;
     const rows = await this.dataSource.query(sql);
     let issues = 0;
     for (const row of rows) {
-      if (row.status === 'confirmed' && Number(row.confirmed_count) < Number(row.total_players)) {
+      if (row.status === 'confirmed' && Number(row.confirmed_count) < Number(row.required_players)) {
         // confirmed 比赛应该有足够确认人数
         issues++;
       }

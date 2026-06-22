@@ -746,7 +746,7 @@ export async function runHumanDrivenStressScenario(
           slot_date: typeof r.slot_date === 'string' ? r.slot_date.split('T')[0] : String(r.slot_date),
           time_range: `${r.start_time}-${r.end_time}`,
           booked: r.is_booked ? 'Yes' : 'No',
-          match_info: r.match_id ? `#${r.match_id} ${r.match_status || ''} (${r.total_players || '?'}p)` : '-',
+          match_info: r.match_id ? `#${r.match_id} ${r.match_status || ''} (${r.required_players || '?'}p)` : '-',
         }));
 
         printTable(slotColumns, slotRows, {
@@ -765,7 +765,7 @@ export async function runHumanDrivenStressScenario(
 
       const summaryStats = await dataSource.query(
         `SELECT COUNT(*) as total_matches,
-                COALESCE(SUM(total_players), 0) as total_matched_players
+                COALESCE(SUM(required_players), 0) as total_matched_players
          FROM matches`,
       );
       const abilityStats = await dataSource.query(
