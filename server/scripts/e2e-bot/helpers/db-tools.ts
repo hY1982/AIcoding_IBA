@@ -244,6 +244,9 @@ export class DbTools {
 
   /**
    * 查询所有已匹配意向的详情（含场地/赛制名称）
+   *
+   * v2.0: intentions 表不再含 match_id，通过 match_players.intention_id 关联
+   * v2.0: 同一意向可参与多个候选比赛（一对多）
    */
   async getMatchedIntentions(): Promise<Array<{
     intention_id: number; player_id: number; nickname: string;
@@ -253,17 +256,18 @@ export class DbTools {
     return this.dataSource.query(`
       SELECT i.id AS intention_id, i.player_id, u.nickname,
              i.start_time, i.duration_minutes, i.acceptable_wait_minutes,
-             i.status, i.match_id,
+             i.status, mp.match_id,
              v.name AS venue_name, f.name AS format_name
-      FROM intentions i
+      FROM match_players mp
+      JOIN intentions i ON i.id = mp.intention_id
       LEFT JOIN players p ON p.id = i.player_id
       LEFT JOIN users u ON u.id = p.user_id
       LEFT JOIN intention_venues iv ON iv.intention_id = i.id AND iv.priority = 1
       LEFT JOIN venues v ON v.id = iv.venue_id
       LEFT JOIN intention_formats ifmt ON ifmt.intention_id = i.id AND ifmt.priority = 1
       LEFT JOIN formats f ON f.id = ifmt.format_id
-      WHERE i.match_id IS NOT NULL
-      ORDER BY i.match_id, i.id
+      WHERE mp.intention_id IS NOT NULL
+      ORDER BY mp.match_id, i.id
     `);
   }
 
