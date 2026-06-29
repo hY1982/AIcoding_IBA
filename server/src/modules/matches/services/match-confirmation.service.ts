@@ -592,6 +592,83 @@ export class MatchConfirmationService {
    * - 释放所有 confirmed 球员（意向回退保护）
    * - 退款
    */
+  /**
+   * v2.2: 关闭比赛（时间临近或人数不足）。
+   *
+   * - Match.status → 'cancelled'，设置 cancelledReason
+   * - 所有 MatchPlayer.status='invited' → 'expired'
+   * - 意向保持 pending（不修改 intention.status），可参与下轮匹配
+   * - 若已预订场地 → 释放场地时段
+   *
+   * @param matchId - 比赛 ID
+   * @param reason - 关闭原因（'insufficient_players' | 'time_expired' | 'venue_unavailable'）
+   */
+  async closeMatch(
+    matchId: number,
+    reason: 'insufficient_players' | 'time_expired' | 'venue_unavailable',
+  ): Promise<{ success: boolean; message: string }> {
+    return this.dataSource.transaction(async (manager) => {
+      const match = await manager
+        .createQueryBuilder(Match, 'match')
+        .setLock('pessimistic_write')
+        .where('match.id = :matchId', { matchId })
+        .getOne();
+
+      if (!match) {
+        throw new NotFoundException(`比赛不存在: matchId=${matchId}`);
+      }
+
+      if (match.status !== 'pending_players' && match.status !== 'pending_venue') {
+        throw new ConflictException(`比赛状态为 ${match.status}，不可关闭`);
+      }
+
+      // 1. Match → cancelled + cancelledReason
+      await manager
+        .createQueryBuilder()
+        .update(Match)
+        .set({ status: 'cancelled', cancelledReason: reason })
+        .where('id = :id', { id: match.id })
+        .execute();
+
+      // 2. invited players → expired
+      await manager
+        .createQueryBuilder()
+        .update(MatchPlayer)
+        .set({ status: 'expired' })
+        .where('match_id = :matchId', { matchId })
+        .andWhere('status = :status', { status: 'invited' })
+        .execute();
+
+      // 3. confirmed players → withdrawn + 退款
+      const confirmedPlayers = await manager.find(MatchPlayer, {
+        where: { matchId, status: 'confirmed', depositPaid: true },
+      });
+
+      for (const player of confirmedPlayers) {
+        await manager.update(
+          MatchPlayer,
+          { id: player.id },
+          { status: 'withdrawn' },
+        );
+
+        if (player.depositOrderNo) {
+          await this.compensatePayment(player.depositOrderNo, match.depositAmount);
+        }
+      }
+
+      // 4. 释放场地（若已预订）
+      await this.venueBookingService.releaseSlot(manager, matchId);
+
+      this.logger.log(
+        `Match closed: matchId=${matchId}, reason=${reason}, ` +
+          `expiredInvited=${await manager.count(MatchPlayer, { where: { matchId, status: 'expired' } })}, ` +
+          `withdrawnConfirmed=${confirmedPlayers.length}`,
+      );
+
+      return { success: true, message: `比赛已关闭: ${reason}` };
+    });
+  }
+
   private async handleVenueRejection(
     manager: EntityManager,
     match: Match,
@@ -605,11 +682,11 @@ export class MatchConfirmationService {
       rejectionReason: reason,
     });
 
-    // Match → cancelled
+    // Match → cancelled + cancelledReason
     await manager
       .createQueryBuilder()
       .update(Match)
-      .set({ status: 'cancelled' })
+      .set({ status: 'cancelled', cancelledReason: 'venue_unavailable' })
       .where('id = :id', { id: match.id })
       .execute();
 

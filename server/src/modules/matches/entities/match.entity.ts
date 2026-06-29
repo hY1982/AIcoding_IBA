@@ -210,6 +210,23 @@ export class Match {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
 
+  /**
+   * v2.2: 比赛关闭/取消原因。
+   * 用于区分不同类型的比赛终止：
+   * - 'insufficient_players': 确认截止时人数不足
+   * - 'time_expired': 等待超时未达下限
+   * - 'venue_unavailable': 场地不可用
+   * - 'player_cancelled': 球员取消
+   * - null: 正常进行或尚未关闭
+   */
+  @Column({
+    name: 'cancelled_reason',
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+  })
+  cancelledReason!: string | null;
+
   @OneToMany(() => MatchPlayer, (mp) => mp.match, {
     cascade: true,
     lazy: true,

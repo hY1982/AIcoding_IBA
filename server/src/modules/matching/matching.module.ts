@@ -9,6 +9,7 @@ import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { VenuesModule } from '@modules/venues/venues.module';
 import { MatchingEngineService } from './services/matching-engine.service';
 import { TeamBalancerService } from './services/team-balancer.service';
+import { MatchPoolService } from './services/match-pool.service';
 import { MatchingProcessor } from './matching.processor';
 import { MatchingScheduler } from './matching.scheduler';
 
@@ -49,9 +50,10 @@ import { MatchingScheduler } from './matching.scheduler';
   providers: [
     MatchingEngineService,
     TeamBalancerService,
+    MatchPoolService,
     MatchingProcessor,
     MatchingScheduler,
   ],
-  exports: [MatchingEngineService, TeamBalancerService],
+  exports: [MatchingEngineService, TeamBalancerService, MatchPoolService],
 })
 export class MatchingModule {}

@@ -145,6 +145,19 @@ export class Intention {
   @OneToMany(() => IntentionVenue, (iv) => iv.intention, { cascade: true })
   intentionVenues!: IntentionVenue[];
 
+  /**
+   * v2.2: 场地屏蔽截止时间。
+   * 当场地时段被预订时，与该时段冲突的意向分身被标记为 excluded。
+   * 此字段记录屏蔽截止时间，在此之前该意向不参与匹配池化。
+   * null 表示未被屏蔽。
+   */
+  @Column({
+    name: 'excluded_until',
+    type: 'timestamptz',
+    nullable: true,
+  })
+  excludedUntil!: Date | null;
+
   @OneToMany(() => IntentionFormat, (ifmt) => ifmt.intention, { cascade: true })
   intentionFormats!: IntentionFormat[];
 

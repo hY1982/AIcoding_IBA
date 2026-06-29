@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
+import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
 import { VenueTimeSlot } from '../entities/venue-time-slot.entity';
 import { VenueUnavailableSlot } from '../entities/venue-unavailable-slot.entity';
+import { Intention } from '@modules/intentions/entities/intention.entity';
 
 /**
  * VenueBookingService — v2.0 场地预订服务。
@@ -185,6 +186,157 @@ export class VenueBookingService {
     );
 
     return !hasUnavailableConflict;
+  }
+
+  /**
+   * v2.2: 场地时段屏蔽 — 当场地被预订后，屏蔽与该时段冲突的 pending 意向。
+   *
+   * 逻辑：
+   * 1. 查询所有 pending 且未被屏蔽的意向
+   * 2. 筛选 venueId 匹配且时间窗口与 [slotStart, slotEnd] 重叠的意向
+   * 3. 设置 excludedUntil = slotEnd（屏蔽到时段结束）
+   * 4. 若意向的所有分身都被屏蔽 → 通知用户"该时段场地已被预订"
+   *
+   * @param venueId - 场地 ID
+   * @param slotStart - 屏蔽时段开始时间
+   * @param slotEnd - 屏蔽时段结束时间
+   * @returns 被屏蔽的意向数量
+   */
+  async excludeAvatars(
+    manager: EntityManager,
+    venueId: number,
+    slotStart: Date,
+    slotEnd: Date,
+  ): Promise<number> {
+    // 查询所有 pending 且未被屏蔽（或屏蔽已过期）的意向
+    const intentions = await manager.find(Intention, {
+      where: [
+        { status: 'pending', excludedUntil: undefined },
+        { status: 'pending', excludedUntil: LessThanOrEqual(new Date()) },
+      ],
+      relations: ['intentionVenues'],
+    });
+
+    let excludedCount = 0;
+
+    for (const intention of intentions) {
+      // 检查该意向是否包含目标场地
+      const hasVenue = intention.intentionVenues?.some(
+        (iv) => iv.venueId === venueId,
+      );
+      if (!hasVenue) continue;
+
+      // 检查时间窗口是否重叠
+      // 意向时间窗口: [startTime, startTime + acceptableWaitMinutes]
+      const windowEnd = new Date(
+        intention.startTime.getTime() + intention.acceptableWaitMinutes * 60 * 1000,
+      );
+
+      const overlaps =
+        intention.startTime < slotEnd && slotStart < windowEnd;
+
+      if (overlaps) {
+        // 设置屏蔽截止时间 = max(当前屏蔽, slotEnd)
+        const newExcludedUntil = intention.excludedUntil && intention.excludedUntil > slotEnd
+          ? intention.excludedUntil
+          : slotEnd;
+
+        await manager.update(
+          Intention,
+          { id: intention.id },
+          { excludedUntil: newExcludedUntil },
+        );
+
+        excludedCount++;
+        this.logger.log(
+          `Intention excluded: intentionId=${intention.id}, venueId=${venueId}, ` +
+            `excludedUntil=${newExcludedUntil.toISOString()}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Venue exclusion completed: venueId=${venueId}, excludedIntentions=${excludedCount}`,
+    );
+
+    return excludedCount;
+  }
+
+  /**
+   * v2.2: 解除场地屏蔽 — 当预订取消后，恢复被屏蔽的意向。
+   *
+   * 逻辑：
+   * 1. 查询所有 excludedUntil >= slotStart 的意向
+   * 2. 检查该意向是否仍与其他已预订时段冲突
+   * 3. 若无冲突 → 清除 excludedUntil
+   *
+   * @param venueId - 场地 ID
+   * @param slotStart - 原屏蔽时段开始时间
+   * @param slotEnd - 原屏蔽时段结束时间
+   * @returns 解除屏蔽的意向数量
+   */
+  async releaseExcludedAvatars(
+    manager: EntityManager,
+    venueId: number,
+    slotStart: Date,
+    slotEnd: Date,
+  ): Promise<number> {
+    // 查询所有被屏蔽且包含该场地的意向
+    const intentions = await manager.find(Intention, {
+      where: {
+        status: 'pending',
+        excludedUntil: MoreThanOrEqual(slotStart),
+      },
+      relations: ['intentionVenues'],
+    });
+
+    let releasedCount = 0;
+
+    for (const intention of intentions) {
+      const hasVenue = intention.intentionVenues?.some(
+        (iv) => iv.venueId === venueId,
+      );
+      if (!hasVenue) continue;
+
+      // 检查该意向是否仍与其他已预订时段冲突
+      const windowEnd = new Date(
+        intention.startTime.getTime() + intention.acceptableWaitMinutes * 60 * 1000,
+      );
+
+      // 查询该场地在意向时间窗口内的其他已预订时段
+      const otherBookedSlots = await manager
+        .createQueryBuilder(VenueTimeSlot, 'slot')
+        .where('slot.venue_id = :venueId', { venueId })
+        .andWhere('slot.is_booked = true')
+        .andWhere('slot.start_time < :windowEnd', { windowEnd: windowEnd.toISOString() })
+        .andWhere('slot.end_time > :startTime', { startTime: intention.startTime.toISOString() })
+        .getMany();
+
+      const stillConflicts = otherBookedSlots.some((slot) => {
+        const slotStartTime = new Date(slot.startTime);
+        const slotEndTime = new Date(slot.endTime);
+        return intention.startTime < slotEndTime && slotStartTime < windowEnd;
+      });
+
+      if (!stillConflicts) {
+        await manager.update(
+          Intention,
+          { id: intention.id },
+          { excludedUntil: null },
+        );
+
+        releasedCount++;
+        this.logger.log(
+          `Intention exclusion released: intentionId=${intention.id}, venueId=${venueId}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Venue exclusion release completed: venueId=${venueId}, releasedIntentions=${releasedCount}`,
+    );
+
+    return releasedCount;
   }
 
   /**

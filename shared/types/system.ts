@@ -6,6 +6,7 @@ export const SYSTEM_PARAM_KEYS = [
   'match_threshold_params',
   'base_ability_weights',
   'group_chat_expiry_days',
+  'pooling_params',
 ] as const;
 export type SystemParamKey = (typeof SYSTEM_PARAM_KEYS)[number];
 
@@ -55,6 +56,15 @@ export interface GroupChatExpiryDays {
 }
 
 /**
+ * 比赛池化参数
+ * 用于 Module 2.6（匹配引擎服务 v2.2）
+ */
+export interface PoolingParams {
+  max_ability_spread: number;
+  min_pool_size: number;
+}
+
+/**
  * 系统参数值映射 — 将键名映射到对应的 TypeScript 接口类型
  * 保证类型安全：通过 SystemParamKey 可推导 param_value 的具体结构
  */
@@ -63,6 +73,7 @@ export interface SystemParamValueMap {
   match_threshold_params: MatchThresholdParams;
   base_ability_weights: BaseAbilityWeights;
   group_chat_expiry_days: GroupChatExpiryDays;
+  pooling_params: PoolingParams;
 }
 
 /**
@@ -158,6 +169,18 @@ export function isGroupChatExpiryDays(value: unknown): value is GroupChatExpiryD
 }
 
 /**
+ * 类型守卫：判断 value 是否符合 PoolingParams 结构
+ */
+export function isPoolingParams(value: unknown): value is PoolingParams {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.max_ability_spread === 'number' && v.max_ability_spread > 0 &&
+    typeof v.min_pool_size === 'number' && v.min_pool_size > 0
+  );
+}
+
+/**
  * 根据 paramKey 获取对应的类型守卫函数
  */
 export function getSystemParamGuard<K extends SystemParamKey>(
@@ -172,6 +195,8 @@ export function getSystemParamGuard<K extends SystemParamKey>(
       return isBaseAbilityWeights as (value: unknown) => value is SystemParamValueMap[K];
     case 'group_chat_expiry_days':
       return isGroupChatExpiryDays as (value: unknown) => value is SystemParamValueMap[K];
+    case 'pooling_params':
+      return isPoolingParams as (value: unknown) => value is SystemParamValueMap[K];
     default:
       // exhaustive check
       return (_value: unknown): _value is SystemParamValueMap[K] => false;
