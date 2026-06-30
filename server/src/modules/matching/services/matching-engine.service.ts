@@ -115,12 +115,18 @@ export class MatchingEngineService {
     let groupsProcessed = 0;
 
     // 6. FOR EACH 比赛池: 分段并创建比赛
+    let failedDueToVenueUnavailable = 0;
+    let failedDueToFormatMissing = 0;
+    let failedDueToException = 0;
+    let failedDueToSegmentInsufficient = 0;
+
     for (const pool of poolingResult.pools) {
       try {
         const format = await this.formatRepo.findOneBy({ id: pool.formatId });
         if (!format) {
           this.logger.warn(`赛制不存在: formatId=${pool.formatId}`);
           matchesFailed++;
+          failedDueToFormatMissing++;
           continue;
         }
 
@@ -129,6 +135,14 @@ export class MatchingEngineService {
           format,
           poolingParams,
         );
+
+        if (segmentResult.segments.length === 0) {
+          this.logger.warn(
+            `池内分段后无有效比赛段: venueId=${pool.venueId}, formatId=${pool.formatId}, ` +
+              `avatars=${pool.avatars.length}, discarded=${segmentResult.discardedAvatars}`,
+          );
+          failedDueToSegmentInsufficient += segmentResult.discardedAvatars;
+        }
 
         for (const segment of segmentResult.segments) {
           groupsProcessed++;
@@ -164,6 +178,7 @@ export class MatchingEngineService {
               `场地不可用: venueId=${pool.venueId}, time=${slotDate} ${startTimeStr}-${endTimeStr}`,
             );
             matchesFailed++;
+            failedDueToVenueUnavailable++;
             continue;
           }
 
@@ -178,6 +193,7 @@ export class MatchingEngineService {
           `比赛池处理失败: venueId=${pool.venueId}, formatId=${pool.formatId}, error=${(error as Error).message}`,
         );
         matchesFailed++;
+        failedDueToException++;
       }
     }
 
@@ -188,7 +204,9 @@ export class MatchingEngineService {
     this.logger.log(
       `匹配完成: intentions=${intentions.length}, pools=${poolingResult.pools.length}, ` +
         `segments=${groupsProcessed}, matchesCreated=${matchesCreated}, matchesFailed=${matchesFailed}, ` +
-        `reused=${reusedCount}, expired=${expiredCount}, duration=${durationMs}ms`,
+        `reused=${reusedCount}, expired=${expiredCount}, duration=${durationMs}ms, ` +
+        `failedReasons={venueUnavailable:${failedDueToVenueUnavailable}, formatMissing:${failedDueToFormatMissing}, ` +
+        `exception:${failedDueToException}, segmentInsufficient:${failedDueToSegmentInsufficient}}`,
     );
 
     return {

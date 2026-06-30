@@ -1,0 +1,2016 @@
+{
+  "generated": "2026-06-22T02:48:02.533Z",
+  "scenario": "humanDrivenStress",
+  "accounts": [
+    {
+      "idx": 1,
+      "phone": "13800001896",
+      "password": "BotTest123!",
+      "nickname": "吴俊杰_P01",
+      "role": "player",
+      "playerId": 3,
+      "ability": "65.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 2,
+      "phone": "13800002580",
+      "password": "BotTest123!",
+      "nickname": "高宇飞_P02",
+      "role": "player",
+      "playerId": 14,
+      "ability": "73.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 3,
+      "phone": "13800003488",
+      "password": "BotTest123!",
+      "nickname": "杨伟_P03",
+      "role": "player",
+      "playerId": 4,
+      "ability": "71.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 4,
+      "phone": "13800004499",
+      "password": "BotTest123!",
+      "nickname": "吴辉_P04",
+      "role": "player",
+      "playerId": 5,
+      "ability": "61.4",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 5,
+      "phone": "13800005094",
+      "password": "BotTest123!",
+      "nickname": "郭强_P05",
+      "role": "player",
+      "playerId": 6,
+      "ability": "73.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 6,
+      "phone": "13800006404",
+      "password": "BotTest123!",
+      "nickname": "赵子轩_P06",
+      "role": "player",
+      "playerId": 7,
+      "ability": "72.4",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 7,
+      "phone": "13800007638",
+      "password": "BotTest123!",
+      "nickname": "赵天宇_P07",
+      "role": "player",
+      "playerId": 8,
+      "ability": "70.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 8,
+      "phone": "13800008160",
+      "password": "BotTest123!",
+      "nickname": "罗宇飞_P08",
+      "role": "player",
+      "playerId": 9,
+      "ability": "73.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 9,
+      "phone": "13800009578",
+      "password": "BotTest123!",
+      "nickname": "张天宇_P09",
+      "role": "player",
+      "playerId": 10,
+      "ability": "65.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 10,
+      "phone": "13800010239",
+      "password": "BotTest123!",
+      "nickname": "徐天宇_P10",
+      "role": "player",
+      "playerId": 1,
+      "ability": "74.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 11,
+      "phone": "13800011180",
+      "password": "BotTest123!",
+      "nickname": "张浩_P11",
+      "role": "player",
+      "playerId": 2,
+      "ability": "57.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 12,
+      "phone": "13800012999",
+      "password": "BotTest123!",
+      "nickname": "陈宇飞_P12",
+      "role": "player",
+      "playerId": 11,
+      "ability": "55.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 13,
+      "phone": "13800013214",
+      "password": "BotTest123!",
+      "nickname": "王文博_P13",
+      "role": "player",
+      "playerId": 12,
+      "ability": "65.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 14,
+      "phone": "13800014840",
+      "password": "BotTest123!",
+      "nickname": "郭浩_P14",
+      "role": "player",
+      "playerId": 13,
+      "ability": "63.4",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 15,
+      "phone": "13800015914",
+      "password": "BotTest123!",
+      "nickname": "高军_P15",
+      "role": "player",
+      "playerId": 15,
+      "ability": "69.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 16,
+      "phone": "13800016965",
+      "password": "BotTest123!",
+      "nickname": "林军_P16",
+      "role": "player",
+      "playerId": 16,
+      "ability": "67.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 17,
+      "phone": "13800017350",
+      "password": "BotTest123!",
+      "nickname": "李勇_P17",
+      "role": "player",
+      "playerId": 17,
+      "ability": "78.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 18,
+      "phone": "13800018875",
+      "password": "BotTest123!",
+      "nickname": "徐强_P18",
+      "role": "player",
+      "playerId": 18,
+      "ability": "71.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 19,
+      "phone": "13800019088",
+      "password": "BotTest123!",
+      "nickname": "罗强_P19",
+      "role": "player",
+      "playerId": 19,
+      "ability": "59.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 20,
+      "phone": "13800020285",
+      "password": "BotTest123!",
+      "nickname": "王明_P20",
+      "role": "player",
+      "playerId": 20,
+      "ability": "73.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 21,
+      "phone": "13800021036",
+      "password": "BotTest123!",
+      "nickname": "赵军_P21",
+      "role": "player",
+      "playerId": 21,
+      "ability": "72.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 22,
+      "phone": "13800022680",
+      "password": "BotTest123!",
+      "nickname": "郭文博_P22",
+      "role": "player",
+      "playerId": 23,
+      "ability": "60.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 23,
+      "phone": "13800023743",
+      "password": "BotTest123!",
+      "nickname": "孙杰_P23",
+      "role": "player",
+      "playerId": 24,
+      "ability": "65.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 24,
+      "phone": "13800024483",
+      "password": "BotTest123!",
+      "nickname": "刘涛_P24",
+      "role": "player",
+      "playerId": 25,
+      "ability": "60.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 25,
+      "phone": "13800025008",
+      "password": "BotTest123!",
+      "nickname": "徐志远_P25",
+      "role": "player",
+      "playerId": 26,
+      "ability": "62.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 26,
+      "phone": "13800026780",
+      "password": "BotTest123!",
+      "nickname": "林嘉豪_P26",
+      "role": "player",
+      "playerId": 27,
+      "ability": "66.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 27,
+      "phone": "13800027062",
+      "password": "BotTest123!",
+      "nickname": "杨磊_P27",
+      "role": "player",
+      "playerId": 28,
+      "ability": "63.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 28,
+      "phone": "13800028713",
+      "password": "BotTest123!",
+      "nickname": "林鹏_P28",
+      "role": "player",
+      "playerId": 29,
+      "ability": "64.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 29,
+      "phone": "13800029836",
+      "password": "BotTest123!",
+      "nickname": "黄涛_P29",
+      "role": "player",
+      "playerId": 30,
+      "ability": "55.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 30,
+      "phone": "13800030588",
+      "password": "BotTest123!",
+      "nickname": "林涛_P30",
+      "role": "player",
+      "playerId": 31,
+      "ability": "79.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 31,
+      "phone": "13800031241",
+      "password": "BotTest123!",
+      "nickname": "胡俊杰_P31",
+      "role": "player",
+      "playerId": 22,
+      "ability": "53.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 32,
+      "phone": "13800032774",
+      "password": "BotTest123!",
+      "nickname": "郭勇_P32",
+      "role": "player",
+      "playerId": 32,
+      "ability": "64.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 33,
+      "phone": "13800033626",
+      "password": "BotTest123!",
+      "nickname": "何伟_P33",
+      "role": "player",
+      "playerId": 33,
+      "ability": "64.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 34,
+      "phone": "13800034508",
+      "password": "BotTest123!",
+      "nickname": "郭明_P34",
+      "role": "player",
+      "playerId": 34,
+      "ability": "73.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 35,
+      "phone": "13800035203",
+      "password": "BotTest123!",
+      "nickname": "高浩_P35",
+      "role": "player",
+      "playerId": 35,
+      "ability": "69.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 36,
+      "phone": "13800036489",
+      "password": "BotTest123!",
+      "nickname": "周俊杰_P36",
+      "role": "player",
+      "playerId": 36,
+      "ability": "79.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 37,
+      "phone": "13800037207",
+      "password": "BotTest123!",
+      "nickname": "罗鹏_P37",
+      "role": "player",
+      "playerId": 37,
+      "ability": "71.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 38,
+      "phone": "13800038161",
+      "password": "BotTest123!",
+      "nickname": "罗强_P38",
+      "role": "player",
+      "playerId": 38,
+      "ability": "70.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 39,
+      "phone": "13800039314",
+      "password": "BotTest123!",
+      "nickname": "何强_P39",
+      "role": "player",
+      "playerId": 39,
+      "ability": "70.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 40,
+      "phone": "13800040765",
+      "password": "BotTest123!",
+      "nickname": "黄子轩_P40",
+      "role": "player",
+      "playerId": 40,
+      "ability": "52.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 41,
+      "phone": "13800041212",
+      "password": "BotTest123!",
+      "nickname": "郭俊杰_P41",
+      "role": "player",
+      "playerId": 41,
+      "ability": "50.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 42,
+      "phone": "13800042559",
+      "password": "BotTest123!",
+      "nickname": "杨磊_P42",
+      "role": "player",
+      "playerId": 42,
+      "ability": "61.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 43,
+      "phone": "13800043502",
+      "password": "BotTest123!",
+      "nickname": "赵辉_P43",
+      "role": "player",
+      "playerId": 43,
+      "ability": "80.4",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 44,
+      "phone": "13800044828",
+      "password": "BotTest123!",
+      "nickname": "高涛_P44",
+      "role": "player",
+      "playerId": 44,
+      "ability": "57.4",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 45,
+      "phone": "13800045941",
+      "password": "BotTest123!",
+      "nickname": "陈宇飞_P45",
+      "role": "player",
+      "playerId": 45,
+      "ability": "69.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 46,
+      "phone": "13800046839",
+      "password": "BotTest123!",
+      "nickname": "杨宇飞_P46",
+      "role": "player",
+      "playerId": 46,
+      "ability": "64.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 47,
+      "phone": "13800047963",
+      "password": "BotTest123!",
+      "nickname": "赵浩_P47",
+      "role": "player",
+      "playerId": 47,
+      "ability": "64.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 48,
+      "phone": "13800048290",
+      "password": "BotTest123!",
+      "nickname": "刘浩_P48",
+      "role": "player",
+      "playerId": 48,
+      "ability": "57.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 49,
+      "phone": "13800049534",
+      "password": "BotTest123!",
+      "nickname": "胡杰_P49",
+      "role": "player",
+      "playerId": 49,
+      "ability": "64.6",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 50,
+      "phone": "13800050717",
+      "password": "BotTest123!",
+      "nickname": "徐勇_P50",
+      "role": "player",
+      "playerId": 50,
+      "ability": "61.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 51,
+      "phone": "13800051560",
+      "password": "BotTest123!",
+      "nickname": "黄天宇_P51",
+      "role": "player",
+      "playerId": 51,
+      "ability": "65.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 52,
+      "phone": "13800052813",
+      "password": "BotTest123!",
+      "nickname": "胡涛_P52",
+      "role": "player",
+      "playerId": 52,
+      "ability": "66.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 53,
+      "phone": "13800053558",
+      "password": "BotTest123!",
+      "nickname": "吴军_P53",
+      "role": "player",
+      "playerId": 53,
+      "ability": "62.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 54,
+      "phone": "13800054983",
+      "password": "BotTest123!",
+      "nickname": "赵勇_P54",
+      "role": "player",
+      "playerId": 54,
+      "ability": "56.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 55,
+      "phone": "13800055096",
+      "password": "BotTest123!",
+      "nickname": "杨杰_P55",
+      "role": "player",
+      "playerId": 55,
+      "ability": "59.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 56,
+      "phone": "13800056791",
+      "password": "BotTest123!",
+      "nickname": "吴浩_P56",
+      "role": "player",
+      "playerId": 56,
+      "ability": "56.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 57,
+      "phone": "13800057548",
+      "password": "BotTest123!",
+      "nickname": "胡志远_P57",
+      "role": "player",
+      "playerId": 57,
+      "ability": "71.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 58,
+      "phone": "13800058952",
+      "password": "BotTest123!",
+      "nickname": "徐浩_P58",
+      "role": "player",
+      "playerId": 58,
+      "ability": "61.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 59,
+      "phone": "13800059738",
+      "password": "BotTest123!",
+      "nickname": "赵嘉豪_P59",
+      "role": "player",
+      "playerId": 59,
+      "ability": "63.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 60,
+      "phone": "13800060021",
+      "password": "BotTest123!",
+      "nickname": "罗嘉豪_P60",
+      "role": "player",
+      "playerId": 60,
+      "ability": "59.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 61,
+      "phone": "13800061555",
+      "password": "BotTest123!",
+      "nickname": "何军_P61",
+      "role": "player",
+      "playerId": 61,
+      "ability": "60.4",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 62,
+      "phone": "13800062359",
+      "password": "BotTest123!",
+      "nickname": "胡杰_P62",
+      "role": "player",
+      "playerId": 62,
+      "ability": "59.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 63,
+      "phone": "13800063833",
+      "password": "BotTest123!",
+      "nickname": "黄明_P63",
+      "role": "player",
+      "playerId": 63,
+      "ability": "72.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 64,
+      "phone": "13800064418",
+      "password": "BotTest123!",
+      "nickname": "何伟_P64",
+      "role": "player",
+      "playerId": 64,
+      "ability": "70.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 65,
+      "phone": "13800065188",
+      "password": "BotTest123!",
+      "nickname": "陈明_P65",
+      "role": "player",
+      "playerId": 66,
+      "ability": "69.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 66,
+      "phone": "13800066759",
+      "password": "BotTest123!",
+      "nickname": "郭文博_P66",
+      "role": "player",
+      "playerId": 65,
+      "ability": "73.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 67,
+      "phone": "13800067051",
+      "password": "BotTest123!",
+      "nickname": "罗子轩_P67",
+      "role": "player",
+      "playerId": 67,
+      "ability": "57.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 68,
+      "phone": "13800068567",
+      "password": "BotTest123!",
+      "nickname": "赵文博_P68",
+      "role": "player",
+      "playerId": 68,
+      "ability": "62.7",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 69,
+      "phone": "13800069141",
+      "password": "BotTest123!",
+      "nickname": "张辉_P69",
+      "role": "player",
+      "playerId": 69,
+      "ability": "68.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 70,
+      "phone": "13800070948",
+      "password": "BotTest123!",
+      "nickname": "徐勇_P70",
+      "role": "player",
+      "playerId": 70,
+      "ability": "69.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 71,
+      "phone": "13800071987",
+      "password": "BotTest123!",
+      "nickname": "张军_P71",
+      "role": "player",
+      "playerId": 71,
+      "ability": "72.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 72,
+      "phone": "13800072652",
+      "password": "BotTest123!",
+      "nickname": "马磊_P72",
+      "role": "player",
+      "playerId": 72,
+      "ability": "67.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 73,
+      "phone": "13800073751",
+      "password": "BotTest123!",
+      "nickname": "孙宇飞_P73",
+      "role": "player",
+      "playerId": 73,
+      "ability": "66.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 74,
+      "phone": "13800074706",
+      "password": "BotTest123!",
+      "nickname": "周勇_P74",
+      "role": "player",
+      "playerId": 74,
+      "ability": "60.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 75,
+      "phone": "13800075969",
+      "password": "BotTest123!",
+      "nickname": "马明_P75",
+      "role": "player",
+      "playerId": 75,
+      "ability": "76.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 76,
+      "phone": "13800076437",
+      "password": "BotTest123!",
+      "nickname": "林俊杰_P76",
+      "role": "player",
+      "playerId": 76,
+      "ability": "71.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 77,
+      "phone": "13800077846",
+      "password": "BotTest123!",
+      "nickname": "罗子轩_P77",
+      "role": "player",
+      "playerId": 77,
+      "ability": "64.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 78,
+      "phone": "13800078612",
+      "password": "BotTest123!",
+      "nickname": "李军_P78",
+      "role": "player",
+      "playerId": 78,
+      "ability": "56.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 79,
+      "phone": "13800079026",
+      "password": "BotTest123!",
+      "nickname": "朱强_P79",
+      "role": "player",
+      "playerId": 79,
+      "ability": "56.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 80,
+      "phone": "13800080045",
+      "password": "BotTest123!",
+      "nickname": "徐俊杰_P80",
+      "role": "player",
+      "playerId": 80,
+      "ability": "71.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 81,
+      "phone": "13800081276",
+      "password": "BotTest123!",
+      "nickname": "黄文博_P81",
+      "role": "player",
+      "playerId": 81,
+      "ability": "79.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 82,
+      "phone": "13800082719",
+      "password": "BotTest123!",
+      "nickname": "何俊杰_P82",
+      "role": "player",
+      "playerId": 82,
+      "ability": "79.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 83,
+      "phone": "13800083434",
+      "password": "BotTest123!",
+      "nickname": "周志远_P83",
+      "role": "player",
+      "playerId": 83,
+      "ability": "80.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 84,
+      "phone": "13800084402",
+      "password": "BotTest123!",
+      "nickname": "李杰_P84",
+      "role": "player",
+      "playerId": 84,
+      "ability": "70.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 85,
+      "phone": "13800085182",
+      "password": "BotTest123!",
+      "nickname": "朱明_P85",
+      "role": "player",
+      "playerId": 85,
+      "ability": "78.7",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 86,
+      "phone": "13800086438",
+      "password": "BotTest123!",
+      "nickname": "刘磊_P86",
+      "role": "player",
+      "playerId": 86,
+      "ability": "61.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 87,
+      "phone": "13800087100",
+      "password": "BotTest123!",
+      "nickname": "陈明_P87",
+      "role": "player",
+      "playerId": 87,
+      "ability": "68.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 88,
+      "phone": "13800088905",
+      "password": "BotTest123!",
+      "nickname": "杨浩_P88",
+      "role": "player",
+      "playerId": 88,
+      "ability": "64.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 89,
+      "phone": "13800089792",
+      "password": "BotTest123!",
+      "nickname": "郭俊杰_P89",
+      "role": "player",
+      "playerId": 89,
+      "ability": "67.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 90,
+      "phone": "13800090995",
+      "password": "BotTest123!",
+      "nickname": "杨军_P90",
+      "role": "player",
+      "playerId": 90,
+      "ability": "74.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 91,
+      "phone": "13800091430",
+      "password": "BotTest123!",
+      "nickname": "何浩_P91",
+      "role": "player",
+      "playerId": 91,
+      "ability": "77.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 92,
+      "phone": "13800092531",
+      "password": "BotTest123!",
+      "nickname": "李嘉豪_P92",
+      "role": "player",
+      "playerId": 92,
+      "ability": "59.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 93,
+      "phone": "13800093386",
+      "password": "BotTest123!",
+      "nickname": "孙磊_P93",
+      "role": "player",
+      "playerId": 93,
+      "ability": "56.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 94,
+      "phone": "13800094946",
+      "password": "BotTest123!",
+      "nickname": "黄明_P94",
+      "role": "player",
+      "playerId": 94,
+      "ability": "61.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 95,
+      "phone": "13800095131",
+      "password": "BotTest123!",
+      "nickname": "孙明_P95",
+      "role": "player",
+      "playerId": 95,
+      "ability": "68.6",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 96,
+      "phone": "13800096038",
+      "password": "BotTest123!",
+      "nickname": "马磊_P96",
+      "role": "player",
+      "playerId": 96,
+      "ability": "62.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 97,
+      "phone": "13800097176",
+      "password": "BotTest123!",
+      "nickname": "胡涛_P97",
+      "role": "player",
+      "playerId": 97,
+      "ability": "71.2",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 98,
+      "phone": "13800098449",
+      "password": "BotTest123!",
+      "nickname": "杨强_P98",
+      "role": "player",
+      "playerId": 98,
+      "ability": "63.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 99,
+      "phone": "13800099662",
+      "password": "BotTest123!",
+      "nickname": "杨辉_P99",
+      "role": "player",
+      "playerId": 99,
+      "ability": "63.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 100,
+      "phone": "13800100550",
+      "password": "BotTest123!",
+      "nickname": "孙军_P100",
+      "role": "player",
+      "playerId": 100,
+      "ability": "61.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 101,
+      "phone": "13800101303",
+      "password": "BotTest123!",
+      "nickname": "张宇飞_P101",
+      "role": "player",
+      "playerId": 101,
+      "ability": "78.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 102,
+      "phone": "13800102219",
+      "password": "BotTest123!",
+      "nickname": "马辉_P102",
+      "role": "player",
+      "playerId": 102,
+      "ability": "71.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 103,
+      "phone": "13800103257",
+      "password": "BotTest123!",
+      "nickname": "吴强_P103",
+      "role": "player",
+      "playerId": 103,
+      "ability": "73.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 104,
+      "phone": "13800104694",
+      "password": "BotTest123!",
+      "nickname": "罗志远_P104",
+      "role": "player",
+      "playerId": 105,
+      "ability": "66.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 105,
+      "phone": "13800105365",
+      "password": "BotTest123!",
+      "nickname": "朱辉_P105",
+      "role": "player",
+      "playerId": 104,
+      "ability": "71.5",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 106,
+      "phone": "13800106716",
+      "password": "BotTest123!",
+      "nickname": "罗强_P106",
+      "role": "player",
+      "playerId": 106,
+      "ability": "59.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 107,
+      "phone": "13800107183",
+      "password": "BotTest123!",
+      "nickname": "高明_P107",
+      "role": "player",
+      "playerId": 107,
+      "ability": "59.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 108,
+      "phone": "13800108346",
+      "password": "BotTest123!",
+      "nickname": "王子轩_P108",
+      "role": "player",
+      "playerId": 108,
+      "ability": "58.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 109,
+      "phone": "13800109378",
+      "password": "BotTest123!",
+      "nickname": "陈军_P109",
+      "role": "player",
+      "playerId": 109,
+      "ability": "62.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 110,
+      "phone": "13800110188",
+      "password": "BotTest123!",
+      "nickname": "马磊_P110",
+      "role": "player",
+      "playerId": 110,
+      "ability": "69.9",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 111,
+      "phone": "13800111203",
+      "password": "BotTest123!",
+      "nickname": "孙俊杰_P111",
+      "role": "player",
+      "playerId": 111,
+      "ability": "63.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 112,
+      "phone": "13800112158",
+      "password": "BotTest123!",
+      "nickname": "马子轩_P112",
+      "role": "player",
+      "playerId": 112,
+      "ability": "57.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 113,
+      "phone": "13800113742",
+      "password": "BotTest123!",
+      "nickname": "罗勇_P113",
+      "role": "player",
+      "playerId": 113,
+      "ability": "62.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 114,
+      "phone": "13800114963",
+      "password": "BotTest123!",
+      "nickname": "周磊_P114",
+      "role": "player",
+      "playerId": 114,
+      "ability": "64.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 115,
+      "phone": "13800115836",
+      "password": "BotTest123!",
+      "nickname": "罗嘉豪_P115",
+      "role": "player",
+      "playerId": 115,
+      "ability": "52.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 116,
+      "phone": "13800116729",
+      "password": "BotTest123!",
+      "nickname": "罗子轩_P116",
+      "role": "player",
+      "playerId": 116,
+      "ability": "76.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 117,
+      "phone": "13800117429",
+      "password": "BotTest123!",
+      "nickname": "何辉_P117",
+      "role": "player",
+      "playerId": 117,
+      "ability": "71.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 118,
+      "phone": "13800118904",
+      "password": "BotTest123!",
+      "nickname": "林伟_P118",
+      "role": "player",
+      "playerId": 118,
+      "ability": "75.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 119,
+      "phone": "13800119307",
+      "password": "BotTest123!",
+      "nickname": "赵宇飞_P119",
+      "role": "player",
+      "playerId": 119,
+      "ability": "61.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 120,
+      "phone": "13800120607",
+      "password": "BotTest123!",
+      "nickname": "周明_P120",
+      "role": "player",
+      "playerId": 120,
+      "ability": "64.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 121,
+      "phone": "13800121476",
+      "password": "BotTest123!",
+      "nickname": "张志远_P121",
+      "role": "player",
+      "playerId": 121,
+      "ability": "59.1",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 122,
+      "phone": "13800122705",
+      "password": "BotTest123!",
+      "nickname": "徐强_P122",
+      "role": "player",
+      "playerId": 122,
+      "ability": "67.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 123,
+      "phone": "13800123540",
+      "password": "BotTest123!",
+      "nickname": "黄勇_P123",
+      "role": "player",
+      "playerId": 123,
+      "ability": "69.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 124,
+      "phone": "13800124335",
+      "password": "BotTest123!",
+      "nickname": "张俊杰_P124",
+      "role": "player",
+      "playerId": 124,
+      "ability": "70.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 125,
+      "phone": "13800125975",
+      "password": "BotTest123!",
+      "nickname": "罗明_P125",
+      "role": "player",
+      "playerId": 129,
+      "ability": "70.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 126,
+      "phone": "13800126931",
+      "password": "BotTest123!",
+      "nickname": "张嘉豪_P126",
+      "role": "player",
+      "playerId": 130,
+      "ability": "66.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 127,
+      "phone": "13800127751",
+      "password": "BotTest123!",
+      "nickname": "黄俊杰_P127",
+      "role": "player",
+      "playerId": 131,
+      "ability": "66.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 128,
+      "phone": "13800128011",
+      "password": "BotTest123!",
+      "nickname": "王军_P128",
+      "role": "player",
+      "playerId": 132,
+      "ability": "65.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 129,
+      "phone": "13800129293",
+      "password": "BotTest123!",
+      "nickname": "孙鹏_P129",
+      "role": "player",
+      "playerId": 133,
+      "ability": "75.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 130,
+      "phone": "13800130426",
+      "password": "BotTest123!",
+      "nickname": "吴宇飞_P130",
+      "role": "player",
+      "playerId": 134,
+      "ability": "65.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 131,
+      "phone": "13800131564",
+      "password": "BotTest123!",
+      "nickname": "罗天宇_P131",
+      "role": "player",
+      "playerId": 125,
+      "ability": "64.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 132,
+      "phone": "13800132864",
+      "password": "BotTest123!",
+      "nickname": "何强_P132",
+      "role": "player",
+      "playerId": 126,
+      "ability": "60.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 133,
+      "phone": "13800133184",
+      "password": "BotTest123!",
+      "nickname": "吴杰_P133",
+      "role": "player",
+      "playerId": 127,
+      "ability": "65.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 134,
+      "phone": "13800134055",
+      "password": "BotTest123!",
+      "nickname": "罗志远_P134",
+      "role": "player",
+      "playerId": 128,
+      "ability": "60.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 135,
+      "phone": "13800135327",
+      "password": "BotTest123!",
+      "nickname": "李伟_P135",
+      "role": "player",
+      "playerId": 135,
+      "ability": "67.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 136,
+      "phone": "13800136114",
+      "password": "BotTest123!",
+      "nickname": "张明_P136",
+      "role": "player",
+      "playerId": 136,
+      "ability": "68.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 137,
+      "phone": "13800137797",
+      "password": "BotTest123!",
+      "nickname": "徐伟_P137",
+      "role": "player",
+      "playerId": 137,
+      "ability": "60.8",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 138,
+      "phone": "13800138813",
+      "password": "BotTest123!",
+      "nickname": "赵子轩_P138",
+      "role": "player",
+      "playerId": 138,
+      "ability": "71.2",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 139,
+      "phone": "13800139765",
+      "password": "BotTest123!",
+      "nickname": "徐鹏_P139",
+      "role": "player",
+      "playerId": 139,
+      "ability": "58.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 140,
+      "phone": "13800140626",
+      "password": "BotTest123!",
+      "nickname": "王俊杰_P140",
+      "role": "player",
+      "playerId": 140,
+      "ability": "61.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 141,
+      "phone": "13800141081",
+      "password": "BotTest123!",
+      "nickname": "李强_P141",
+      "role": "player",
+      "playerId": 141,
+      "ability": "77.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 142,
+      "phone": "13800142682",
+      "password": "BotTest123!",
+      "nickname": "刘浩_P142",
+      "role": "player",
+      "playerId": 142,
+      "ability": "63.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 143,
+      "phone": "13800143448",
+      "password": "BotTest123!",
+      "nickname": "徐磊_P143",
+      "role": "player",
+      "playerId": 144,
+      "ability": "57.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 144,
+      "phone": "13800144231",
+      "password": "BotTest123!",
+      "nickname": "罗宇飞_P144",
+      "role": "player",
+      "playerId": 143,
+      "ability": "65.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 145,
+      "phone": "13800145411",
+      "password": "BotTest123!",
+      "nickname": "周天宇_P145",
+      "role": "player",
+      "playerId": 145,
+      "ability": "68.5",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 146,
+      "phone": "13800146250",
+      "password": "BotTest123!",
+      "nickname": "黄杰_P146",
+      "role": "player",
+      "playerId": 146,
+      "ability": "76.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 147,
+      "phone": "13800147331",
+      "password": "BotTest123!",
+      "nickname": "何勇_P147",
+      "role": "player",
+      "playerId": 147,
+      "ability": "70.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 148,
+      "phone": "13800148973",
+      "password": "BotTest123!",
+      "nickname": "徐子轩_P148",
+      "role": "player",
+      "playerId": 148,
+      "ability": "67.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 149,
+      "phone": "13800149584",
+      "password": "BotTest123!",
+      "nickname": "马嘉豪_P149",
+      "role": "player",
+      "playerId": 149,
+      "ability": "67.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 150,
+      "phone": "13800150824",
+      "password": "BotTest123!",
+      "nickname": "徐子轩_P150",
+      "role": "player",
+      "playerId": 150,
+      "ability": "74.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 151,
+      "phone": "13800151112",
+      "password": "BotTest123!",
+      "nickname": "高宇飞_P151",
+      "role": "player",
+      "playerId": 151,
+      "ability": "64.9",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 152,
+      "phone": "13800152409",
+      "password": "BotTest123!",
+      "nickname": "孙涛_P152",
+      "role": "player",
+      "playerId": 152,
+      "ability": "64.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 153,
+      "phone": "13800153862",
+      "password": "BotTest123!",
+      "nickname": "孙军_P153",
+      "role": "player",
+      "playerId": 153,
+      "ability": "66.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 154,
+      "phone": "13800154876",
+      "password": "BotTest123!",
+      "nickname": "周宇飞_P154",
+      "role": "player",
+      "playerId": 154,
+      "ability": "66.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 155,
+      "phone": "13800155303",
+      "password": "BotTest123!",
+      "nickname": "朱天宇_P155",
+      "role": "player",
+      "playerId": 155,
+      "ability": "69.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 156,
+      "phone": "13800156418",
+      "password": "BotTest123!",
+      "nickname": "陈伟_P156",
+      "role": "player",
+      "playerId": 156,
+      "ability": "66.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 157,
+      "phone": "13800157147",
+      "password": "BotTest123!",
+      "nickname": "孙强_P157",
+      "role": "player",
+      "playerId": 157,
+      "ability": "80.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 158,
+      "phone": "13800158786",
+      "password": "BotTest123!",
+      "nickname": "孙军_P158",
+      "role": "player",
+      "playerId": 158,
+      "ability": "79.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 159,
+      "phone": "13800159346",
+      "password": "BotTest123!",
+      "nickname": "马强_P159",
+      "role": "player",
+      "playerId": 159,
+      "ability": "58.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 160,
+      "phone": "13800160600",
+      "password": "BotTest123!",
+      "nickname": "杨磊_P160",
+      "role": "player",
+      "playerId": 160,
+      "ability": "53.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 161,
+      "phone": "13800161038",
+      "password": "BotTest123!",
+      "nickname": "张嘉豪_P161",
+      "role": "player",
+      "playerId": 162,
+      "ability": "54.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 162,
+      "phone": "13800162102",
+      "password": "BotTest123!",
+      "nickname": "赵志远_P162",
+      "role": "player",
+      "playerId": 161,
+      "ability": "56.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 163,
+      "phone": "13800163286",
+      "password": "BotTest123!",
+      "nickname": "张志远_P163",
+      "role": "player",
+      "playerId": 163,
+      "ability": "67.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 164,
+      "phone": "13800164204",
+      "password": "BotTest123!",
+      "nickname": "高子轩_P164",
+      "role": "player",
+      "playerId": 165,
+      "ability": "76.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 165,
+      "phone": "13800165931",
+      "password": "BotTest123!",
+      "nickname": "李子轩_P165",
+      "role": "player",
+      "playerId": 164,
+      "ability": "58.0",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 166,
+      "phone": "13800166517",
+      "password": "BotTest123!",
+      "nickname": "吴宇飞_P166",
+      "role": "player",
+      "playerId": 166,
+      "ability": "71.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 167,
+      "phone": "13800167719",
+      "password": "BotTest123!",
+      "nickname": "赵俊杰_P167",
+      "role": "player",
+      "playerId": 168,
+      "ability": "61.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 168,
+      "phone": "13800168381",
+      "password": "BotTest123!",
+      "nickname": "郭勇_P168",
+      "role": "player",
+      "playerId": 167,
+      "ability": "75.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 169,
+      "phone": "13800169870",
+      "password": "BotTest123!",
+      "nickname": "郭宇飞_P169",
+      "role": "player",
+      "playerId": 169,
+      "ability": "71.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 170,
+      "phone": "13800170296",
+      "password": "BotTest123!",
+      "nickname": "杨文博_P170",
+      "role": "player",
+      "playerId": 170,
+      "ability": "72.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 171,
+      "phone": "13800171995",
+      "password": "BotTest123!",
+      "nickname": "张磊_P171",
+      "role": "player",
+      "playerId": 171,
+      "ability": "75.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 172,
+      "phone": "13800172832",
+      "password": "BotTest123!",
+      "nickname": "高辉_P172",
+      "role": "player",
+      "playerId": 172,
+      "ability": "69.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 173,
+      "phone": "13800173574",
+      "password": "BotTest123!",
+      "nickname": "徐子轩_P173",
+      "role": "player",
+      "playerId": 173,
+      "ability": "64.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 174,
+      "phone": "13800174085",
+      "password": "BotTest123!",
+      "nickname": "李浩_P174",
+      "role": "player",
+      "playerId": 174,
+      "ability": "65.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 175,
+      "phone": "13800175046",
+      "password": "BotTest123!",
+      "nickname": "周嘉豪_P175",
+      "role": "player",
+      "playerId": 175,
+      "ability": "62.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 176,
+      "phone": "13800176695",
+      "password": "BotTest123!",
+      "nickname": "林辉_P176",
+      "role": "player",
+      "playerId": 176,
+      "ability": "73.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 177,
+      "phone": "13800177442",
+      "password": "BotTest123!",
+      "nickname": "林鹏_P177",
+      "role": "player",
+      "playerId": 177,
+      "ability": "64.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 178,
+      "phone": "13800178995",
+      "password": "BotTest123!",
+      "nickname": "赵浩_P178",
+      "role": "player",
+      "playerId": 178,
+      "ability": "71.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 179,
+      "phone": "13800179759",
+      "password": "BotTest123!",
+      "nickname": "张杰_P179",
+      "role": "player",
+      "playerId": 179,
+      "ability": "64.9",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 180,
+      "phone": "13800180119",
+      "password": "BotTest123!",
+      "nickname": "李军_P180",
+      "role": "player",
+      "playerId": 180,
+      "ability": "64.9",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 181,
+      "phone": "13800181251",
+      "password": "BotTest123!",
+      "nickname": "林浩_P181",
+      "role": "player",
+      "playerId": 181,
+      "ability": "52.1",
+      "intention": "OK"
+    },
+    {
+      "idx": 182,
+      "phone": "13800182369",
+      "password": "BotTest123!",
+      "nickname": "杨辉_P182",
+      "role": "player",
+      "playerId": 182,
+      "ability": "62.2",
+      "intention": "OK"
+    },
+    {
+      "idx": 183,
+      "phone": "13800183968",
+      "password": "BotTest123!",
+      "nickname": "林辉_P183",
+      "role": "player",
+      "playerId": 183,
+      "ability": "64.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 184,
+      "phone": "13800184503",
+      "password": "BotTest123!",
+      "nickname": "赵天宇_P184",
+      "role": "player",
+      "playerId": 184,
+      "ability": "78.8",
+      "intention": "OK"
+    },
+    {
+      "idx": 185,
+      "phone": "13800185864",
+      "password": "BotTest123!",
+      "nickname": "马天宇_P185",
+      "role": "player",
+      "playerId": 185,
+      "ability": "70.7",
+      "intention": "OK"
+    },
+    {
+      "idx": 186,
+      "phone": "13800186675",
+      "password": "BotTest123!",
+      "nickname": "何鹏_P186",
+      "role": "player",
+      "playerId": 186,
+      "ability": "66.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 187,
+      "phone": "13800187572",
+      "password": "BotTest123!",
+      "nickname": "罗强_P187",
+      "role": "player",
+      "playerId": 187,
+      "ability": "52.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 188,
+      "phone": "13800188673",
+      "password": "BotTest123!",
+      "nickname": "马志远_P188",
+      "role": "player",
+      "playerId": 188,
+      "ability": "71.0",
+      "intention": "OK"
+    },
+    {
+      "idx": 189,
+      "phone": "13800189178",
+      "password": "BotTest123!",
+      "nickname": "郭明_P189",
+      "role": "player",
+      "playerId": 189,
+      "ability": "78.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 190,
+      "phone": "13800190092",
+      "password": "BotTest123!",
+      "nickname": "吴文博_P190",
+      "role": "player",
+      "playerId": 190,
+      "ability": "69.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 191,
+      "phone": "13800191039",
+      "password": "BotTest123!",
+      "nickname": "陈辉_P191",
+      "role": "player",
+      "playerId": 191,
+      "ability": "75.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 192,
+      "phone": "13800192396",
+      "password": "BotTest123!",
+      "nickname": "罗浩_P192",
+      "role": "player",
+      "playerId": 192,
+      "ability": "64.9",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 193,
+      "phone": "13800193600",
+      "password": "BotTest123!",
+      "nickname": "马志远_P193",
+      "role": "player",
+      "playerId": 193,
+      "ability": "56.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 194,
+      "phone": "13800194311",
+      "password": "BotTest123!",
+      "nickname": "刘磊_P194",
+      "role": "player",
+      "playerId": 194,
+      "ability": "62.1",
+      "intention": "FAIL"
+    },
+    {
+      "idx": 195,
+      "phone": "13800195152",
+      "password": "BotTest123!",
+      "nickname": "马天宇_P195",
+      "role": "player",
+      "playerId": 195,
+      "ability": "55.5",
+      "intention": "OK"
+    },
+    {
+      "idx": 196,
+      "phone": "13800196175",
+      "password": "BotTest123!",
+      "nickname": "杨子轩_P196",
+      "role": "player",
+      "playerId": 196,
+      "ability": "64.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 197,
+      "phone": "13800197004",
+      "password": "BotTest123!",
+      "nickname": "刘辉_P197",
+      "role": "player",
+      "playerId": 197,
+      "ability": "64.3",
+      "intention": "OK"
+    },
+    {
+      "idx": 198,
+      "phone": "13800198058",
+      "password": "BotTest123!",
+      "nickname": "罗子轩_P198",
+      "role": "player",
+      "playerId": 198,
+      "ability": "71.6",
+      "intention": "OK"
+    },
+    {
+      "idx": 199,
+      "phone": "13800199468",
+      "password": "BotTest123!",
+      "nickname": "朱志远_P199",
+      "role": "player",
+      "playerId": 199,
+      "ability": "75.4",
+      "intention": "OK"
+    },
+    {
+      "idx": 200,
+      "phone": "13800200008",
+      "password": "BotTest123!",
+      "nickname": "赵俊杰_P200",
+      "role": "player",
+      "playerId": 200,
+      "ability": "76.9",
+      "intention": "OK"
+    },
+    {
+      "idx": 201,
+      "phone": "13800202596",
+      "password": "BotTest123!",
+      "nickname": "梦之队篮球俱乐部_VM01",
+      "role": "venue_mgr",
+      "playerId": "-",
+      "ability": "-",
+      "intention": "-"
+    }
+  ]
+}

@@ -149,6 +149,8 @@ export class VenueBookingService {
    * 注意：这是乐观检查，匹配阶段允许少量误判。
    * 精确锁定推迟到场地方确认阶段的 bookSlot。
    *
+   * v2.2 修复：支持子时段匹配。请求时段被包含在可用时段内即视为可用。
+   *
    * @param venueId - 场地 ID
    * @param slotDate - 日期 YYYY-MM-DD
    * @param startTime - 开始时间 HH:mm:ss
@@ -161,7 +163,7 @@ export class VenueBookingService {
     startTime: string,
     endTime: string,
   ): Promise<boolean> {
-    // 检查已预订时段
+    // 检查已预订时段：请求时段与已预订时段重叠则不可用
     const bookedSlots = await this.slotRepo
       .createQueryBuilder('slot')
       .where('slot.venue_id = :venueId', { venueId })
@@ -174,7 +176,7 @@ export class VenueBookingService {
 
     if (hasBookedConflict) return false;
 
-    // 检查不可用时段
+    // 检查不可用时段：请求时段与不可用时段重叠则不可用
     const unavailableSlots = await this.unavailableSlotRepo
       .createQueryBuilder('us')
       .where('us.venue_id = :venueId', { venueId })
@@ -185,7 +187,23 @@ export class VenueBookingService {
       this.timesOverlap(startTime, endTime, slot.startTime, slot.endTime),
     );
 
-    return !hasUnavailableConflict;
+    if (hasUnavailableConflict) return false;
+
+    // v2.2: 检查请求时段是否被包含在可用时段内
+    // 查询该场地当日所有未预订的可用时段
+    const availableSlots = await this.slotRepo
+      .createQueryBuilder('slot')
+      .where('slot.venue_id = :venueId', { venueId })
+      .andWhere('slot.slot_date = :slotDate', { slotDate })
+      .andWhere('slot.is_booked = false')
+      .getMany();
+
+    // 请求时段必须被至少一个可用时段完全包含
+    const isContained = availableSlots.some((slot) =>
+      slot.startTime <= startTime && slot.endTime >= endTime,
+    );
+
+    return isContained;
   }
 
   /**

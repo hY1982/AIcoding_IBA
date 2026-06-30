@@ -362,9 +362,14 @@ export async function runHumanDrivenStressScenario(
       if (result.success && result.result) {
         const venueId = result.result.id;
 
-        // 创建 1 个大时段: 08:00-20:00（匹配引擎预订时自动拆分）
+        // v2.2: 创建多个细分时段覆盖全天，确保匹配引擎能找到精确匹配的子时段
         const slots = [
-          { slotDate: todayStr, startTime: '08:00', endTime: '20:00' },
+          { slotDate: todayStr, startTime: '08:00', endTime: '10:00' },
+          { slotDate: todayStr, startTime: '10:00', endTime: '12:00' },
+          { slotDate: todayStr, startTime: '12:00', endTime: '14:00' },
+          { slotDate: todayStr, startTime: '14:00', endTime: '16:00' },
+          { slotDate: todayStr, startTime: '16:00', endTime: '18:00' },
+          { slotDate: todayStr, startTime: '18:00', endTime: '20:00' },
         ];
 
         const slotResult = await safeBotRun(vm, '时段', `发布-V${venueId}`, async () => {
