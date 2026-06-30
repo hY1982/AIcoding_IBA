@@ -302,6 +302,18 @@ export class ApiClient {
   }
 
   // ─────────────────────────────────────────────
+  // 场地管理员功能
+  // ─────────────────────────────────────────────
+
+  async confirmVenueBooking(venueId: number, bookingId: number): Promise<any> {
+    return this.put(`/venues/${venueId}/bookings/${bookingId}/confirm`, {});
+  }
+
+  async getVenueBookings(venueId: number): Promise<any> {
+    return this.get(`/venues/${venueId}/bookings`);
+  }
+
+  // ─────────────────────────────────────────────
   // 公开端点
   // ─────────────────────────────────────────────
 

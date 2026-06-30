@@ -25,6 +25,13 @@ export const BATCH_DELAY_MS = 100;
 export const STRESS_BATCH_SIZE = 20;      // 注册/意向批大小
 export const STRESS_BATCH_DELAY_MS = 200;  // 批间延迟稍长，避免 DB 过载
 
+// 40分钟动态测试配置
+export const TEST_DURATION_MS = 40 * 60 * 1000;       // 总测试时长 40 分钟
+export const MATCHING_INTERVAL_MS = 5 * 60 * 1000;    // 每 5 分钟触发一次匹配
+export const MULTI_SELECT_RATE_MIN = 0.3;             // 多选意向最小比例 30%
+export const MULTI_SELECT_RATE_MAX = 0.5;             // 多选意向最大比例 50%
+export const INTENTION_SUBMISSION_WINDOW_MS = 40 * 60 * 1000; // 意向提交时间窗口 40 分钟
+
 // 超时保护
 export const SCENARIO_TIMEOUT_MS = 60_000;
 export const STRESS_TIMEOUT_MS = 120_000;

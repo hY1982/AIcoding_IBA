@@ -100,6 +100,58 @@ export class MetricsCollector {
     this.records = [];
     this.startTime = Date.now();
   }
+
+  /**
+   * 获取匹配执行频率统计（按时间窗口聚合）
+   */
+  getMatchingFrequencyStats(windowMs: number = 5 * 60 * 1000): Array<{
+    windowStart: string;
+    successCount: number;
+    errorCount: number;
+    avgDurationMs: number;
+    p95DurationMs: number;
+  }> {
+    if (this.records.length === 0) return [];
+
+    const matchingRecords = this.records.filter((r) => r.label.includes('匹配引擎'));
+    if (matchingRecords.length === 0) return [];
+
+    const windows = new Map<number, MetricsRecord[]>();
+    for (const r of matchingRecords) {
+      const windowStart = Math.floor(r.timestamp / windowMs) * windowMs;
+      if (!windows.has(windowStart)) windows.set(windowStart, []);
+      windows.get(windowStart)!.push(r);
+    }
+
+    const result: Array<{
+      windowStart: string;
+      successCount: number;
+      errorCount: number;
+      avgDurationMs: number;
+      p95DurationMs: number;
+    }> = [];
+
+    for (const [windowStart, recs] of Array.from(windows)) {
+      const successCount = recs.filter((r) => r.status === 'success').length;
+      const errorCount = recs.filter((r) => r.status === 'error').length;
+      const durations = recs.map((r) => r.durationMs).sort((a, b) => a - b);
+      const avgDurationMs = durations.length > 0
+        ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+        : 0;
+      const p95Idx = Math.ceil(0.95 * durations.length) - 1;
+      const p95DurationMs = durations.length > 0 ? durations[Math.max(0, p95Idx)] : 0;
+
+      result.push({
+        windowStart: new Date(windowStart).toISOString(),
+        successCount,
+        errorCount,
+        avgDurationMs,
+        p95DurationMs,
+      });
+    }
+
+    return result.sort((a, b) => a.windowStart.localeCompare(b.windowStart));
+  }
 }
 
 function computeTimingStats(durations: number[]): TimingStats {

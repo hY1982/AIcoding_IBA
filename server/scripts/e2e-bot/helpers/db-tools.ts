@@ -289,4 +289,143 @@ export class DbTools {
       ORDER BY vts.venue_id, vts.slot_date, vts.start_time
     `);
   }
+
+  /**
+   * 查询比赛球员的详细状态
+   */
+  async getMatchPlayerStatuses(matchId: number): Promise<Array<{
+    player_id: number;
+    status: string;
+    team_number: number;
+    deposit_paid: boolean;
+    deposit_order_no: string | null;
+  }>> {
+    return this.dataSource.query(
+      `SELECT mp.player_id, mp.status, mp.team_number,
+              mp.deposit_paid, mp.deposit_order_no
+       FROM match_players mp
+       WHERE mp.match_id = $1
+       ORDER BY mp.team_number, mp.player_id`,
+      [matchId],
+    );
+  }
+
+  /**
+   * 查询模拟支付订单
+   */
+  async getMockOrders(matchId: number): Promise<Array<{
+    order_no: string;
+    player_id: number;
+    status: string;
+    amount: string;
+  }>> {
+    try {
+      return this.dataSource.query(
+        `SELECT order_no, player_id, status, amount
+         FROM mock_orders
+         WHERE match_id = $1`,
+        [matchId],
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 查询场地预订请求状态
+   */
+  async getVenueBookingRequests(venueId: number): Promise<Array<{
+    id: number;
+    match_id: number;
+    status: string;
+    requested_at: Date;
+  }>> {
+    try {
+      return this.dataSource.query(
+        `SELECT id, match_id, status, requested_at
+         FROM venue_booking_requests
+         WHERE venue_id = $1`,
+        [venueId],
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 确认场地预订（DB 直连方式）
+   */
+  async confirmVenueBookingRequest(requestId: number): Promise<boolean> {
+    try {
+      const result = await this.dataSource.query(
+        `UPDATE venue_booking_requests
+         SET status = 'confirmed', updated_at = NOW()
+         WHERE id = $1
+         RETURNING id`,
+        [requestId],
+      );
+      return result.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 查询已确认状态的比赛
+   */
+  async getConfirmedMatches(): Promise<Array<{
+    id: number;
+    status: string;
+    venue_id: number;
+    required_players: number;
+  }>> {
+    return this.dataSource.query(
+      `SELECT id, status, venue_id, required_players
+       FROM matches
+       WHERE status IN ('confirmed', 'in_progress')`,
+    );
+  }
+
+  /**
+   * 查询消息历史记录
+   */
+  async getMessageHistory(matchId: number): Promise<Array<{
+    id: number;
+    sender_id: number;
+    content: string;
+    created_at: Date;
+  }>> {
+    try {
+      return this.dataSource.query(
+        `SELECT id, sender_id, content, created_at
+         FROM match_messages
+         WHERE match_id = $1
+         ORDER BY created_at`,
+        [matchId],
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 查询意向的多选场地/赛制信息
+   */
+  async getIntentionMultiSelectInfo(intentionId: number): Promise<{
+    venueCount: number;
+    formatCount: number;
+  }> {
+    const venueResult = await this.dataSource.query(
+      `SELECT COUNT(*) as cnt FROM intention_venues WHERE intention_id = $1`,
+      [intentionId],
+    );
+    const formatResult = await this.dataSource.query(
+      `SELECT COUNT(*) as cnt FROM intention_formats WHERE intention_id = $1`,
+      [intentionId],
+    );
+    return {
+      venueCount: Number(venueResult[0]?.cnt || 0),
+      formatCount: Number(formatResult[0]?.cnt || 0),
+    };
+  }
 }
