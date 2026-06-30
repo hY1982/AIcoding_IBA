@@ -178,6 +178,7 @@ function createMockIntention(overrides: Partial<Intention> = {}): Intention {
     submittedAt,
     updatedAt: now,
     expiresAt,
+    excludedUntil: null,
     intentionVenues: [],
     intentionFormats: [],
     computeDerivedTimes: jest.fn(),

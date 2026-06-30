@@ -75,7 +75,7 @@ export class MatchPoolService {
    *    - 新分身 startTime <= poolEnd → 加入当前池，更新 poolEnd
    *    - 新分身 startTime > poolEnd → 当前池关闭，开启新池
    */
-  buildPools(avatars: IntentionAvatar[]): PoolingResult {
+  buildPools(avatars: IntentionAvatar[], minPoolSize: number = 6): PoolingResult {
     // 1. 按 (venueId, formatId) 分组
     const groupMap = new Map<string, IntentionAvatar[]>();
     for (const avatar of avatars) {
@@ -118,7 +118,15 @@ export class MatchPoolService {
           poolEnd = Math.min(poolEnd, avatarEnd);
         } else {
           // 时间不重叠，关闭当前池，开启新池
-          pools.push(this.createPool(venueId, formatId, currentPool));
+          if (currentPool.length >= minPoolSize) {
+            pools.push(this.createPool(venueId, formatId, currentPool));
+          } else {
+            discardedAvatars += currentPool.length;
+            this.logger.debug(
+              `池内人数不足，废弃: venueId=${venueId}, formatId=${formatId}, ` +
+                `avatars=${currentPool.length}, minPoolSize=${minPoolSize}`,
+            );
+          }
           currentPool = [avatar];
           poolEnd = avatarEnd;
         }
@@ -126,12 +134,21 @@ export class MatchPoolService {
 
       // 关闭最后一个池
       if (currentPool.length > 0) {
-        pools.push(this.createPool(venueId, formatId, currentPool));
+        if (currentPool.length >= minPoolSize) {
+          pools.push(this.createPool(venueId, formatId, currentPool));
+        } else {
+          discardedAvatars += currentPool.length;
+          this.logger.debug(
+            `池内人数不足，废弃: venueId=${venueId}, formatId=${formatId}, ` +
+              `avatars=${currentPool.length}, minPoolSize=${minPoolSize}`,
+          );
+        }
       }
     }
 
     this.logger.log(
-      `池化完成: ${avatars.length} 个分身 → ${pools.length} 个比赛池`,
+      `池化完成: ${avatars.length} 个分身 → ${pools.length} 个比赛池, ` +
+        `discarded=${discardedAvatars}`,
     );
 
     return { pools, discardedAvatars };

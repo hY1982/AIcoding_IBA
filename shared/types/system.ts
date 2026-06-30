@@ -60,8 +60,9 @@ export interface GroupChatExpiryDays {
  * 用于 Module 2.6（匹配引擎服务 v2.2）
  */
 export interface PoolingParams {
-  max_ability_spread: number;
-  min_pool_size: number;
+  maxAbilitySpread: number;
+  minPoolSize: number;
+  timeAlignmentMinutes: number;
 }
 
 /**
@@ -175,8 +176,9 @@ export function isPoolingParams(value: unknown): value is PoolingParams {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
-    typeof v.max_ability_spread === 'number' && v.max_ability_spread > 0 &&
-    typeof v.min_pool_size === 'number' && v.min_pool_size > 0
+    typeof v.maxAbilitySpread === 'number' && v.maxAbilitySpread > 0 &&
+    typeof v.minPoolSize === 'number' && v.minPoolSize > 0 &&
+    typeof v.timeAlignmentMinutes === 'number' && v.timeAlignmentMinutes > 0
   );
 }
 

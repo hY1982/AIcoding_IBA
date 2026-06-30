@@ -104,6 +104,7 @@ function createMockMatch(overrides: Partial<Match> = {}): Match {
     regionCode: 'shenzhen_futian',
     confirmDeadline: null,
     venueConfirmDeadline: null,
+    cancelledReason: null,
     createdAt: now,
     updatedAt: now,
     matchPlayers: Promise.resolve([]),
@@ -525,6 +526,59 @@ describe('MatchConfirmationService', () => {
       await expect(service.declineParticipation(1, 100)).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  // ==================== CLOSE MATCH ====================
+
+  describe('closeMatch', () => {
+    it('should close a pending_players match with insufficient_players reason', async () => {
+      const matchId = 1;
+      const mockMatch = createMockMatch({ id: matchId, status: 'pending_players' });
+      const mockPlayer = createMockMatchPlayer({ matchId, playerId: 100, status: 'confirmed', depositPaid: true, depositOrderNo: 'order_123' });
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = {
+          createQueryBuilder: jest.fn().mockReturnValue(createMockQueryBuilder([mockMatch])),
+          find: jest.fn().mockImplementation((entity: any) => {
+            if (entity === MatchPlayer) return Promise.resolve([mockPlayer]);
+            return Promise.resolve([]);
+          }),
+          findOne: jest.fn().mockResolvedValue(null),
+          count: jest.fn().mockResolvedValue(0),
+          update: jest.fn().mockResolvedValue({ affected: 1 }),
+        };
+        return cb(manager);
+      });
+
+      const result = await service.closeMatch(matchId, 'insufficient_players');
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('比赛已关闭: insufficient_players');
+    });
+
+    it('should throw NotFoundException when match does not exist', async () => {
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = {
+          createQueryBuilder: jest.fn().mockReturnValue(createMockQueryBuilder([])),
+        };
+        return cb(manager);
+      });
+
+      await expect(service.closeMatch(999, 'time_expired')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw ConflictException when match is already confirmed', async () => {
+      const mockMatch = createMockMatch({ id: 1, status: 'confirmed' });
+
+      dataSource.transaction.mockImplementation(async (cb: any) => {
+        const manager = {
+          createQueryBuilder: jest.fn().mockReturnValue(createMockQueryBuilder([mockMatch])),
+        };
+        return cb(manager);
+      });
+
+      await expect(service.closeMatch(1, 'venue_unavailable')).rejects.toThrow(ConflictException);
     });
   });
 

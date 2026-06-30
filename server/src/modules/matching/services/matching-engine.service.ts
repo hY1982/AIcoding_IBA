@@ -6,7 +6,7 @@ import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { Format } from '@modules/formats/entities/format.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
-import { MatchThresholdParams, isMatchThresholdParams } from '@shared/system';
+import { MatchThresholdParams, isMatchThresholdParams, isPoolingParams } from '@shared/system';
 import { VenueBookingService } from '@modules/venues/services/venue-booking.service';
 import { MatchingResult } from '../interfaces/matching-result.interface';
 import { MatchPoolService } from './match-pool.service';
@@ -93,6 +93,7 @@ export class MatchingEngineService {
         intentionsScanned: 0,
         groupsProcessed: 0,
         matchesCreated: 0,
+        reusedCount: 0,
         matchesFailed: 0,
         expiredCount: 0,
         durationMs: Date.now() - startTime,
@@ -107,7 +108,7 @@ export class MatchingEngineService {
     const avatars = this.matchPoolService.buildAvatars(avatarSources);
 
     // 5. 【池化】按 (venueId, formatId) 分组，组内滑动窗口合并时间重叠分身
-    const poolingResult = this.matchPoolService.buildPools(avatars);
+    const poolingResult = this.matchPoolService.buildPools(avatars, poolingParams.minPoolSize);
 
     let matchesCreated = 0;
     let matchesFailed = 0;
@@ -194,6 +195,7 @@ export class MatchingEngineService {
       intentionsScanned: intentions.length,
       groupsProcessed,
       matchesCreated,
+      reusedCount,
       matchesFailed,
       expiredCount,
       durationMs,
@@ -233,28 +235,14 @@ export class MatchingEngineService {
       paramKey: 'pooling_params',
     });
 
-    if (!param || typeof param.paramValue !== 'object' || param.paramValue === null) {
+    if (!param || !isPoolingParams(param.paramValue)) {
       this.logger.warn(
         '系统参数 pooling_params 不存在或格式错误，使用默认值',
       );
       return DEFAULT_POOLING_PARAMS;
     }
 
-    const value = param.paramValue as Record<string, unknown>;
-    return {
-      maxAbilitySpread:
-        typeof value.maxAbilitySpread === 'number'
-          ? value.maxAbilitySpread
-          : DEFAULT_POOLING_PARAMS.maxAbilitySpread,
-      minPoolSize:
-        typeof value.minPoolSize === 'number'
-          ? value.minPoolSize
-          : DEFAULT_POOLING_PARAMS.minPoolSize,
-      timeAlignmentMinutes:
-        typeof value.timeAlignmentMinutes === 'number'
-          ? value.timeAlignmentMinutes
-          : DEFAULT_POOLING_PARAMS.timeAlignmentMinutes,
-    };
+    return param.paramValue;
   }
 
   // ==================== Intention Fetching ====================
@@ -384,49 +372,50 @@ export class MatchingEngineService {
     segment: MatchSegment,
     format: Format,
   ): Promise<number | null> {
-    const match = this.matchRepo.create({
-      venueId: segment.pool.venueId,
-      formatId: segment.pool.formatId,
-      startTime: segment.matchStartTime,
-      endTime: segment.matchEndTime,
-      status: 'pending_players',
-      teamCount: format.teamCountMin,
-      playersPerTeam: format.teamSize,
-      requiredPlayers: format.teamCountMin * format.teamSize,
-      confirmedPlayers: 0,
-      confirmDeadline: segment.confirmDeadline,
-      depositAmount: '50.00',
-      regionCode: null, // 可从 venue 获取
+    return this.dataSource.transaction(async (manager) => {
+      const match = manager.create(Match, {
+        venueId: segment.pool.venueId,
+        formatId: segment.pool.formatId,
+        startTime: segment.matchStartTime,
+        endTime: segment.matchEndTime,
+        status: 'pending_players',
+        teamCount: format.teamCountMin,
+        playersPerTeam: format.teamSize,
+        requiredPlayers: format.teamCountMin * format.teamSize,
+        confirmedPlayers: 0,
+        confirmDeadline: segment.confirmDeadline,
+        depositAmount: '50.00',
+        regionCode: null, // 可从 venue 获取
+      });
+
+      const savedMatch = await manager.save(Match, match);
+
+      // 创建 MatchPlayer（去重后的意向）
+      const dedupedAvatars = this.matchPoolService.deduplicateAvatars(segment.avatars);
+
+      for (const avatar of dedupedAvatars) {
+        await manager
+          .createQueryBuilder()
+          .insert()
+          .into(MatchPlayer)
+          .values({
+            matchId: savedMatch.id,
+            playerId: avatar.playerId,
+            intentionId: avatar.intentionId,
+            status: 'invited',
+          })
+          .orIgnore()
+          .execute();
+      }
+
+      this.logger.log(
+        `候选比赛创建: matchId=${savedMatch.id}, venueId=${segment.pool.venueId}, ` +
+          `formatId=${segment.pool.formatId}, players=${dedupedAvatars.length}, ` +
+          `startTime=${segment.matchStartTime.toISOString()}`,
+      );
+
+      return savedMatch.id;
     });
-
-    const savedMatch = await this.matchRepo.save(match);
-
-    // 创建 MatchPlayer（去重后的意向）
-    const dedupedAvatars = this.matchPoolService.deduplicateAvatars(segment.avatars);
-
-    for (const avatar of dedupedAvatars) {
-      await this.dataSource
-        .getRepository(MatchPlayer)
-        .createQueryBuilder()
-        .insert()
-        .into(MatchPlayer)
-        .values({
-          matchId: savedMatch.id,
-          playerId: avatar.playerId,
-          intentionId: avatar.intentionId,
-          status: 'invited',
-        })
-        .orIgnore()
-        .execute();
-    }
-
-    this.logger.log(
-      `候选比赛创建: matchId=${savedMatch.id}, venueId=${segment.pool.venueId}, ` +
-        `formatId=${segment.pool.formatId}, players=${dedupedAvatars.length}, ` +
-        `startTime=${segment.matchStartTime.toISOString()}`,
-    );
-
-    return savedMatch.id;
   }
 
   // ==================== Expired Intentions ====================

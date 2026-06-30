@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual } from 'typeorm';
+import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
 import { VenueTimeSlot } from '../entities/venue-time-slot.entity';
 import { VenueUnavailableSlot } from '../entities/venue-unavailable-slot.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
@@ -211,7 +211,7 @@ export class VenueBookingService {
     // 查询所有 pending 且未被屏蔽（或屏蔽已过期）的意向
     const intentions = await manager.find(Intention, {
       where: [
-        { status: 'pending', excludedUntil: undefined },
+        { status: 'pending', excludedUntil: IsNull() },
         { status: 'pending', excludedUntil: LessThanOrEqual(new Date()) },
       ],
       relations: ['intentionVenues'],

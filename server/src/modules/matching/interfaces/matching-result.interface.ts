@@ -11,6 +11,9 @@ export interface MatchingResult {
   /** 成功创建的比赛数 */
   matchesCreated: number;
 
+  /** 复用的已有候选比赛数 */
+  reusedCount: number;
+
   /** 匹配失败的分组数 */
   matchesFailed: number;
 

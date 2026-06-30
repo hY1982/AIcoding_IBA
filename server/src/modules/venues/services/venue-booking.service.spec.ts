@@ -367,6 +367,145 @@ describe('VenueBookingService', () => {
     });
   });
 
+  // ==================== EXCLUDE AVATARS ====================
+
+  describe('excludeAvatars', () => {
+    const venueId = 1;
+    const slotStart = new Date('2026-06-15T14:00:00');
+    const slotEnd = new Date('2026-06-15T16:00:00');
+
+    it('should exclude intentions with overlapping time windows', async () => {
+      const mockIntention = {
+        id: 1,
+        status: 'pending',
+        excludedUntil: null,
+        startTime: new Date('2026-06-15T13:30:00'),
+        acceptableWaitMinutes: 60,
+        intentionVenues: [{ venueId: 1 }],
+      };
+
+      const mockManager = {
+        find: jest.fn().mockResolvedValue([mockIntention]),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+
+      const result = await service.excludeAvatars(mockManager as any, venueId, slotStart, slotEnd);
+
+      expect(result).toBe(1);
+      expect(mockManager.update).toHaveBeenCalledWith(
+        expect.anything(),
+        { id: 1 },
+        { excludedUntil: slotEnd },
+      );
+    });
+
+    it('should not exclude intentions without the target venue', async () => {
+      const mockIntention = {
+        id: 1,
+        status: 'pending',
+        excludedUntil: null,
+        startTime: new Date('2026-06-15T13:30:00'),
+        acceptableWaitMinutes: 60,
+        intentionVenues: [{ venueId: 2 }], // different venue
+      };
+
+      const mockManager = {
+        find: jest.fn().mockResolvedValue([mockIntention]),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+
+      const result = await service.excludeAvatars(mockManager as any, venueId, slotStart, slotEnd);
+
+      expect(result).toBe(0);
+      expect(mockManager.update).not.toHaveBeenCalled();
+    });
+
+    it('should not exclude intentions with non-overlapping time windows', async () => {
+      const mockIntention = {
+        id: 1,
+        status: 'pending',
+        excludedUntil: null,
+        startTime: new Date('2026-06-15T10:00:00'),
+        acceptableWaitMinutes: 30,
+        intentionVenues: [{ venueId: 1 }],
+      };
+
+      const mockManager = {
+        find: jest.fn().mockResolvedValue([mockIntention]),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+
+      const result = await service.excludeAvatars(mockManager as any, venueId, slotStart, slotEnd);
+
+      expect(result).toBe(0);
+      expect(mockManager.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==================== RELEASE EXCLUDED AVATARS ====================
+
+  describe('releaseExcludedAvatars', () => {
+    const venueId = 1;
+    const slotStart = new Date('2026-06-15T14:00:00');
+    const slotEnd = new Date('2026-06-15T16:00:00');
+
+    it('should release intentions when no other booked slots conflict', async () => {
+      const mockIntention = {
+        id: 1,
+        status: 'pending',
+        excludedUntil: slotEnd,
+        startTime: new Date('2026-06-15T13:30:00'),
+        acceptableWaitMinutes: 60,
+        intentionVenues: [{ venueId: 1 }],
+      };
+
+      const mockManager = {
+        find: jest.fn().mockResolvedValue([mockIntention]),
+        createQueryBuilder: jest.fn().mockReturnValue(createMockQueryBuilder([])),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+
+      const result = await service.releaseExcludedAvatars(mockManager as any, venueId, slotStart, slotEnd);
+
+      expect(result).toBe(1);
+      expect(mockManager.update).toHaveBeenCalledWith(
+        expect.anything(),
+        { id: 1 },
+        { excludedUntil: null },
+      );
+    });
+
+    it('should not release intentions when other booked slots still conflict', async () => {
+      const mockIntention = {
+        id: 1,
+        status: 'pending',
+        excludedUntil: slotEnd,
+        startTime: new Date('2026-06-15T13:30:00'),
+        acceptableWaitMinutes: 60,
+        intentionVenues: [{ venueId: 1 }],
+      };
+
+      const conflictingSlot = {
+        id: 2,
+        venueId: 1,
+        startTime: '13:00:00',
+        endTime: '15:00:00',
+        isBooked: true,
+      };
+
+      const mockManager = {
+        find: jest.fn().mockResolvedValue([mockIntention]),
+        createQueryBuilder: jest.fn().mockReturnValue(createMockQueryBuilder([conflictingSlot])),
+        update: jest.fn().mockResolvedValue({ affected: 1 }),
+      };
+
+      const result = await service.releaseExcludedAvatars(mockManager as any, venueId, slotStart, slotEnd);
+
+      expect(result).toBe(0);
+      expect(mockManager.update).not.toHaveBeenCalled();
+    });
+  });
+
   // ==================== CONCURRENCY ====================
 
   describe('concurrency', () => {

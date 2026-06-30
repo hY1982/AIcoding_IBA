@@ -281,15 +281,16 @@ describe('MatchingEngine Integration Tests', () => {
       expect(matches.length).toBeGreaterThanOrEqual(1);
 
       const match = matches[0];
-      expect(match.status).toBe('pending_confirmation');
+      expect(match.status).toBe('pending_players');
       expect(match.requiredPlayers).toBe(9);
 
       const matchPlayers = await matchPlayerRepo.find({ where: { matchId: match.id } });
       expect(matchPlayers.length).toBe(9);
       expect(matchPlayers.every((mp) => mp.status === 'invited')).toBe(true);
 
+      // v2.2: teams are NOT created during matching; they are created after confirmation
       const matchTeams = await matchTeamRepo.find({ where: { matchId: match.id } });
-      expect(matchTeams.length).toBe(3);
+      expect(matchTeams.length).toBe(0);
     });
   });
 
@@ -322,17 +323,8 @@ describe('MatchingEngine Integration Tests', () => {
       const teams = await matchTeamRepo.find({ where: { matchId: match!.id } });
       expect(teams.length).toBe(3);
 
-      // Verify each team has 3 players
-      for (const team of teams) {
-        const teamPlayers = await matchPlayerRepo.find({
-          where: { matchId: match!.id, teamNumber: team.teamNumber },
-        });
-        expect(teamPlayers.length).toBe(3);
-      }
-
-      // Verify team numbers are sequential
-      const teamNumbers = teams.map((t) => t.teamNumber).sort((a, b) => a - b);
-      expect(teamNumbers).toEqual([1, 2, 3]);
+      // v2.2: teams are NOT created during matching; they are created after confirmation
+      expect(teams.length).toBe(0);
     });
   });
 

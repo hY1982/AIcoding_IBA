@@ -630,16 +630,16 @@ export class MatchConfirmationService {
         .where('id = :id', { id: match.id })
         .execute();
 
-      // 2. invited players → expired
+      // 2. invited players → withdrawn
       await manager
         .createQueryBuilder()
         .update(MatchPlayer)
-        .set({ status: 'expired' })
+        .set({ status: 'withdrawn' })
         .where('match_id = :matchId', { matchId })
         .andWhere('status = :status', { status: 'invited' })
         .execute();
 
-      // 3. confirmed players → withdrawn + 退款
+      // 3. confirmed players → withdrawn + 退款 + 意向回退
       const confirmedPlayers = await manager.find(MatchPlayer, {
         where: { matchId, status: 'confirmed', depositPaid: true },
       });
@@ -651,17 +651,33 @@ export class MatchConfirmationService {
           { status: 'withdrawn' },
         );
 
+        // 意向回退保护：检查意向是否已在其他比赛 confirmed
+        if (player.intentionId) {
+          const intention = await manager.findOne(Intention, {
+            where: { id: player.intentionId },
+          });
+          if (intention && intention.status !== 'confirmed') {
+            await manager.update(
+              Intention,
+              { id: player.intentionId },
+              { status: 'pending' },
+            );
+          }
+        }
+
+        // Saga 补偿：退款
         if (player.depositOrderNo) {
           await this.compensatePayment(player.depositOrderNo, match.depositAmount);
         }
       }
 
-      // 4. 释放场地（若已预订）
+      // 4. 释放场地（若已预订）并解除屏蔽
       await this.venueBookingService.releaseSlot(manager, matchId);
+      await this.venueBookingService.releaseExcludedAvatars(manager, match.venueId, match.startTime, match.endTime);
 
       this.logger.log(
         `Match closed: matchId=${matchId}, reason=${reason}, ` +
-          `expiredInvited=${await manager.count(MatchPlayer, { where: { matchId, status: 'expired' } })}, ` +
+          `withdrawnInvited=${await manager.count(MatchPlayer, { where: { matchId, status: 'withdrawn' } })}, ` +
           `withdrawnConfirmed=${confirmedPlayers.length}`,
       );
 

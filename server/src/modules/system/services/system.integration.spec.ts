@@ -1,5 +1,6 @@
 import { DataSource, Repository } from 'typeorm';
 import { MatchingEngineService } from '@modules/matching/services/matching-engine.service';
+import { MatchPoolService } from '@modules/matching/services/match-pool.service';
 import { VenueBookingService } from '@modules/venues/services/venue-booking.service';
 import { SystemParam } from '../entities/system-param.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
@@ -77,6 +78,7 @@ describe('System Integration Tests', () => {
       systemParamRepo,
       dataSource,
       mockVenueBookingService,
+      new MatchPoolService(),
     );
   });
 
@@ -117,13 +119,12 @@ describe('System Integration Tests', () => {
         description: 'High threshold',
       });
 
-      // Verify matching engine loads the params
-      const threshold1 = matchingService.calculateDynamicThreshold(10, {
-        base_threshold: 100.0,
-        min_threshold: 5.0,
-        intention_count_factor: 0.5,
-      });
-      expect(threshold1).toBe(95.0);
+      // v2.2: calculateDynamicThreshold was removed; verify param loading directly
+      const thresholdParams = await systemParamRepo.findOneBy({ paramKey: 'match_threshold_params' });
+      expect(thresholdParams).toBeDefined();
+      expect(isMatchThresholdParams(thresholdParams!.paramValue)).toBe(true);
+      const params1 = thresholdParams!.paramValue as { base_threshold: number };
+      expect(params1.base_threshold).toBe(100.0);
 
       // Update params
       await systemParamRepo.update(
@@ -141,15 +142,8 @@ describe('System Integration Tests', () => {
       const updated = await systemParamRepo.findOneBy({ paramKey: 'match_threshold_params' });
       expect(updated).toBeDefined();
       expect(isMatchThresholdParams(updated!.paramValue)).toBe(true);
-      const params = updated!.paramValue as { base_threshold: number };
-      expect(params.base_threshold).toBe(20.0);
-
-      const threshold2 = matchingService.calculateDynamicThreshold(10, {
-        base_threshold: 20.0,
-        min_threshold: 5.0,
-        intention_count_factor: 0.5,
-      });
-      expect(threshold2).toBe(15.0);
+      const params2 = updated!.paramValue as { base_threshold: number };
+      expect(params2.base_threshold).toBe(20.0);
     });
   });
 
