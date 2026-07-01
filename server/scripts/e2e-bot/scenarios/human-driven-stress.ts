@@ -324,16 +324,15 @@ class IntentionScheduler {
     const eligiblePlayers = players.filter((b) => b.playerId && b.accessToken);
     const nowMs = Date.now();
 
-    // 意向时间范围: 提交完成后的 now + 1h15m ~ now + 8h
-    // 预留 45min 提交时间 + 40min 等待窗口 + 缓冲，确保意向不会过早过期
-    const bufferMs = 45 * 60 * 1000; // 45min buffer for submission overhead
-    const earliestMs = nowMs + bufferMs + 75 * 60 * 1000; // now + 45min + 1h15m = now + 2h
-    const latestMs = nowMs + bufferMs + 8 * 60 * 60 * 1000;  // now + 45min + 8h
+    // 意向时间范围: now + 2.5h ~ now + 4h
+    // 确保即使提交时间推移了1小时，意向的startTime仍然大于提交时的now + 1h
+    const earliestMs = nowMs + 150 * 60 * 1000; // now + 2.5h
+    const latestMs = nowMs + 4 * 60 * 60 * 1000;  // now + 4h
 
-    this.submissions = eligiblePlayers.map((bot) => {
+    this.submissions = eligiblePlayers.map((bot, index) => {
       const { payload, isMultiSelect } = generateRandomIntention(earliestMs, latestMs, venues, formats);
-      // 随机提交时间: 0 ~ windowMs
-      const scheduledMs = nowMs + Math.floor(Math.random() * this.windowMs);
+      // 均匀分布在40分钟内提交
+      const scheduledMs = nowMs + Math.floor((index / eligiblePlayers.length) * 40 * 60 * 1000);
       return { bot, params: payload, scheduledMs, isMultiSelect };
     });
 
@@ -358,42 +357,80 @@ class IntentionScheduler {
     let failed = 0;
     let multiSelectCount = 0;
     let singleSelectCount = 0;
+    let reLoginCount = 0;
 
     const nowMs = Date.now();
+    const BATCH_SIZE = 50; // 每批并发50个
 
-    for (const sub of this.submissions) {
-      const waitMs = sub.scheduledMs - nowMs;
+    // 按 scheduledMs 分批并发提交
+    for (let i = 0; i < this.submissions.length; i += BATCH_SIZE) {
+      const batch = this.submissions.slice(i, i + BATCH_SIZE);
+      
+      // 等待批次中最早的 scheduledMs
+      const earliestScheduled = Math.min(...batch.map(s => s.scheduledMs));
+      const waitMs = earliestScheduled - Date.now();
       if (waitMs > 0) {
         await sleep(waitMs);
       }
 
-      total++;
-      if (sub.isMultiSelect) multiSelectCount++;
-      else singleSelectCount++;
+      // 并发执行整批
+      const results = await Promise.all(batch.map(async (sub) => {
+        total++;
+        if (sub.isMultiSelect) multiSelectCount++;
+        else singleSelectCount++;
 
-      const api = this.apiClient.clone();
-      api.setTokens(sub.bot.accessToken!, sub.bot.refreshToken!);
+        const api = this.apiClient.clone();
+        api.setTokens(sub.bot.accessToken!, sub.bot.refreshToken!);
 
-      const result = await safeBotRun(sub.bot, '意向', `提交-${sub.bot.nickname}`, async () => {
-        const intention = await api.createIntention(sub.params);
-        sub.bot.intentionId = intention?.id;
-        sub.bot.intentionStartTime = sub.params.startTime;
-        return intention;
-      }, this.metrics);
+        let result = await safeBotRun(sub.bot, '意向', `提交-${sub.bot.nickname}`, async () => {
+          const intention = await api.createIntention(sub.params);
+          sub.bot.intentionId = intention?.id;
+          sub.bot.intentionStartTime = sub.params.startTime;
+          return intention;
+        }, this.metrics);
 
-      if (result.success) {
-        success++;
-        if (total % 100 === 0 || total === this.submissions.length) {
-          this.report.addSuccess('意向提交', `${sub.bot.nickname} id=${sub.bot.intentionId} start=${new Date(sub.params.startTime).toLocaleTimeString('zh-CN', TZ_OPTS)} dur=${sub.params.durationMinutes}min multi=${sub.isMultiSelect}`, result.durationMs);
+        // 如果失败原因是"请先登录"，尝试重新登录后重试一次
+        if (!result.success && result.error?.message?.includes('请先登录')) {
+          const loginResult = await safeBotRun(sub.bot, '登录', `重登录-${sub.bot.nickname}`, async () => {
+            const loginData = await api.login({ phone: sub.bot.phone, password: sub.bot.password });
+            sub.bot.accessToken = api.getAccessToken();
+            sub.bot.refreshToken = api.getRefreshToken();
+            return loginData;
+          }, this.metrics);
+
+          if (loginResult.success) {
+            reLoginCount++;
+            result = await safeBotRun(sub.bot, '意向', `提交-${sub.bot.nickname}`, async () => {
+              const intention = await api.createIntention(sub.params);
+              sub.bot.intentionId = intention?.id;
+              sub.bot.intentionStartTime = sub.params.startTime;
+              return intention;
+            }, this.metrics);
+          }
         }
-      } else {
-        failed++;
-        const errMsg = result.error?.message || '未知错误';
-        if (total % 50 === 0 || total === this.submissions.length) {
-          console.log(`  ${RED}❌ 意向失败 | ${sub.bot.nickname} | ${errMsg}${RESET}`);
+
+        return { result, sub };
+      }));
+
+      // 处理结果
+      for (const { result, sub } of results) {
+        if (result.success) {
+          success++;
+        } else {
+          failed++;
+          const errMsg = result.error?.message || '未知错误';
+          this.report.addFailure('意向提交', `${sub.bot.nickname} ${errMsg}`, result.durationMs);
         }
-        this.report.addFailure('意向提交', `${sub.bot.nickname} ${errMsg}`, result.durationMs);
       }
+
+      // 每批打印进度
+      if (total % 100 === 0 || total === this.submissions.length) {
+        this.report.printInfo('提交进度', `${total}/${this.submissions.length} 完成，成功=${success}，失败=${failed}`);
+      }
+    }
+
+    if (reLoginCount > 0) {
+      this.report.printInfo('Token 刷新', `${reLoginCount} 个 bot 重新登录后成功提交`);
     }
 
     return { total, success, failed, multiSelectCount, singleSelectCount };
@@ -647,12 +684,7 @@ export async function runHumanDrivenStressScenario(
         const venueId = result.result.id;
 
         const slots = [
-          { slotDate: todayStr, startTime: '08:00', endTime: '10:00' },
-          { slotDate: todayStr, startTime: '10:00', endTime: '12:00' },
-          { slotDate: todayStr, startTime: '12:00', endTime: '14:00' },
-          { slotDate: todayStr, startTime: '14:00', endTime: '16:00' },
-          { slotDate: todayStr, startTime: '16:00', endTime: '18:00' },
-          { slotDate: todayStr, startTime: '18:00', endTime: '20:00' },
+          { slotDate: todayStr, startTime: '08:00', endTime: '22:00' },
         ];
 
         const slotResult = await safeBotRun(vm, '时段', `发布-V${venueId}`, async () => {
@@ -698,23 +730,27 @@ export async function runHumanDrivenStressScenario(
     console.log(`  ${YELLOW}你可以在 ${INTENTION_SUBMISSION_WINDOW_MS / 60000} 分钟内通过 Mobile App 提交意向${RESET}`);
     console.log(`  ${YELLOW}真人账号: 手机号=${HUMAN_PHONE}, 密码=${HUMAN_PASSWORD}${RESET}\n`);
 
-    const submissionResult = await scheduler.executeSubmissions();
-    report.printInfo('提交结果', `总计=${submissionResult.total}, 成功=${submissionResult.success}, 失败=${submissionResult.failed}`);
-    report.addSuccess('意向提交汇总', `成功=${submissionResult.success}/${submissionResult.total}, 多选=${submissionResult.multiSelectCount}`);
-
-    report.endPhase();
-
     // ═══════════════════════════════════════════════════════════
-    // Phase 5: 匹配监控（每 5 分钟自动触发，持续 40 分钟）
+    // Phase 4+5: 40 分钟动态意向提交 + 匹配监控并行
     // ═══════════════════════════════════════════════════════════
-    report.startPhase('Phase 5: 匹配监控（每 5 分钟）');
+    report.startPhase('Phase 4+5: 40 分钟动态意向提交 + 匹配监控');
 
-    // 在意向提交完成后启动 40 分钟计时器
+    // 启动 40 分钟计时器（在意向提交开始时）
     orchestrator.start();
-    report.printInfo('计时器启动', `40 分钟匹配监控开始`);
+    report.printInfo('计时器启动', `40 分钟测试开始`);
 
     const matchingMonitor = new MatchingMonitor(appContext, dbTools, metrics, report);
-    await matchingMonitor.start(DEFAULT_REGION, TEST_DURATION_MS);
+
+    // 并行执行：意向提交 + 匹配监控
+    const [submissionResult] = await Promise.all([
+      // 意向提交
+      scheduler.executeSubmissions(),
+      // 匹配监控（在后台运行 40 分钟）
+      matchingMonitor.start(DEFAULT_REGION, TEST_DURATION_MS),
+    ]);
+
+    report.printInfo('提交结果', `总计=${submissionResult.total}, 成功=${submissionResult.success}, 失败=${submissionResult.failed}`);
+    report.addSuccess('意向提交汇总', `成功=${submissionResult.success}/${submissionResult.total}, 多选=${submissionResult.multiSelectCount}`);
 
     report.printInfo('匹配监控', `已完成，每 ${MATCHING_INTERVAL_MS / 60000} 分钟执行一次`);
 

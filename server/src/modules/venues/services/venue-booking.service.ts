@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
 import { VenueTimeSlot } from '../entities/venue-time-slot.entity';
 import { VenueUnavailableSlot } from '../entities/venue-unavailable-slot.entity';
+import { Venue } from '../entities/venue.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
 
 /**
@@ -32,6 +33,8 @@ export class VenueBookingService {
     private readonly slotRepo: Repository<VenueTimeSlot>,
     @InjectRepository(VenueUnavailableSlot)
     private readonly unavailableSlotRepo: Repository<VenueUnavailableSlot>,
+    @InjectRepository(Venue)
+    private readonly venueRepo: Repository<Venue>,
   ) {}
 
   /**
@@ -168,6 +171,7 @@ export class VenueBookingService {
       .createQueryBuilder('slot')
       .where('slot.venue_id = :venueId', { venueId })
       .andWhere('slot.slot_date = :slotDate', { slotDate })
+      .andWhere('slot.is_booked = true')
       .getMany();
 
     const hasBookedConflict = bookedSlots.some((slot) =>
@@ -196,10 +200,41 @@ export class VenueBookingService {
       .where('slot.venue_id = :venueId', { venueId })
       .andWhere('slot.slot_date = :slotDate', { slotDate })
       .andWhere('slot.is_booked = false')
+      .orderBy('slot.start_time', 'ASC')
       .getMany();
 
-    // 请求时段必须被至少一个可用时段完全包含
-    const isContained = availableSlots.some((slot) =>
+    // 合并连续的可用时段，然后检查请求时段是否被完全覆盖
+    if (availableSlots.length === 0) {
+      // 无可用时段记录时，回退到场地默认营业时间
+      const venue = await this.venueRepo.findOne({
+        where: { id: venueId },
+        select: ['openTime', 'closeTime'],
+      });
+      const openTime = venue?.openTime ?? '08:00:00';
+      const closeTime = venue?.closeTime ?? '22:00:00';
+      return startTime >= openTime && endTime <= closeTime;
+    }
+
+    // 按开始时间排序并合并连续时段
+    const sortedSlots = [...availableSlots].sort((a, b) => 
+      a.startTime.localeCompare(b.startTime)
+    );
+    
+    const mergedSlots: typeof sortedSlots = [];
+    for (const slot of sortedSlots) {
+      if (mergedSlots.length === 0 || slot.startTime >= mergedSlots[mergedSlots.length - 1].endTime) {
+        mergedSlots.push(slot);
+      } else {
+        // 连续或重叠，扩展结束时间
+        const last = mergedSlots[mergedSlots.length - 1];
+        if (slot.endTime > last.endTime) {
+          last.endTime = slot.endTime;
+        }
+      }
+    }
+
+    // 请求时段必须被至少一个合并后的可用时段完全包含
+    const isContained = mergedSlots.some((slot) =>
       slot.startTime <= startTime && slot.endTime >= endTime,
     );
 
