@@ -105,6 +105,7 @@ function createMockMatch(overrides: Partial<Match> = {}): Match {
     confirmDeadline: null,
     venueConfirmDeadline: null,
     cancelledReason: null,
+    minPlayers: 6,
     createdAt: now,
     updatedAt: now,
     matchPlayers: Promise.resolve([]),

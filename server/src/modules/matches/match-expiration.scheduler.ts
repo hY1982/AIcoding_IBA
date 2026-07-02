@@ -121,16 +121,24 @@ export class MatchExpirationScheduler implements OnModuleDestroy {
   /**
    * 候选比赛球员确认超时。
    *
-   * 查找 status='pending_players' AND confirmDeadline < now() 的比赛，
+   * 查找满足以下条件的比赛：
+   * 1. status='pending_players' AND confirmDeadline < now()（正常超时）
+   * 2. status='pending_players' AND startTime - 1.5h < now()（最低人数兜底窗口）
+   *
    * 使用 SKIP LOCKED 避免与其他实例竞争。
-   * 对每个比赛调用 finalizeMatch() 将其标记为 expired。
+   * 对每个比赛调用 finalizeMatch() 处理：
+   * - 满员 → pending_venue
+   * - 达到最低人数（在兜底窗口内）→ pending_venue
+   * - 未达到最低人数 → expired
    */
   private async expirePlayerConfirmationMatches(): Promise<number> {
     const rows: { id: string }[] = await this.dataSource.query(
       `SELECT id FROM matches
        WHERE status = 'pending_players'
-         AND confirm_deadline IS NOT NULL
-         AND confirm_deadline < NOW()
+         AND (
+           (confirm_deadline IS NOT NULL AND confirm_deadline < NOW())
+           OR (start_time IS NOT NULL AND start_time - INTERVAL '1.5 hours' < NOW())
+         )
        ORDER BY id
        LIMIT $1
        FOR UPDATE SKIP LOCKED`,

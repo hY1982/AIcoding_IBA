@@ -48,6 +48,7 @@ export interface BotContext {
 
   // 场地创建后填充
   venueId?: number;
+  venueIds?: number[];  // 场地管理员管理的多个场地
   timeSlotIds?: number[];
 
   // 意向提交后填充

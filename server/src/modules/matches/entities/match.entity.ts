@@ -162,6 +162,20 @@ export class Match {
   venueConfirmDeadline!: Date | null;
 
   /**
+   * v2.2: 最低人数要求（兜底机制）。
+   * 当比赛距离开始时间前1.5小时，如果还未满员，
+   * 只要确认人数达到最低人数要求就判定比赛匹配成功。
+   * 例如：3v3最低6人(2队)，4v4最低8人(2队)，5v5最低10人(2队)
+   */
+  @Column({
+    name: 'min_players',
+    type: 'int',
+    nullable: false,
+    default: 0,
+  })
+  minPlayers!: number;
+
+  /**
    * Deposit amount per player. Stored as decimal in DB, exposed as string
    * in API to avoid floating-point precision issues.
    * Use transformer to convert between string (TS) and numeric (DB).

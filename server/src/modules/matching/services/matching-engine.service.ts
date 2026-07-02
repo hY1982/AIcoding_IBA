@@ -397,9 +397,10 @@ export class MatchingEngineService {
         startTime: segment.matchStartTime,
         endTime: segment.matchEndTime,
         status: 'pending_players',
-        teamCount: format.teamCountMin,
+        teamCount: format.teamCountMax,  // 满员时队伍数
         playersPerTeam: format.teamSize,
-        requiredPlayers: format.teamCountMin * format.teamSize,
+        requiredPlayers: format.teamCountMax * format.teamSize,  // 满员人数
+        minPlayers: format.teamCountMin * format.teamSize,  // 最低人数（兜底）
         confirmedPlayers: 0,
         confirmDeadline: segment.confirmDeadline,
         depositAmount: '50.00',

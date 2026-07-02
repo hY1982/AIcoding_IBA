@@ -683,6 +683,12 @@ export async function runHumanDrivenStressScenario(
       if (result.success && result.result) {
         const venueId = result.result.id;
 
+        // 将 venueId 关联到管理员，用于后续场地确认
+        if (!vm.venueIds) {
+          vm.venueIds = [];
+        }
+        vm.venueIds.push(venueId);
+
         const slots = [
           { slotDate: todayStr, startTime: '08:00', endTime: '22:00' },
         ];
@@ -1065,18 +1071,49 @@ export async function runHumanDrivenStressScenario(
       console.log(`  ${YELLOW}  允许真人登录检查场地状态${RESET}\n`);
     }
 
-    // 查询场地预订请求并自动确认
+    // 查询场地预订请求并自动确认（通过 HTTP API 调用真实业务链路）
     for (const venue of stressVenues) {
       const bookingRequests = await dbTools.getVenueBookingRequests(venue.venueId);
       if (bookingRequests.length > 0) {
         report.printInfo('场地预订请求', `venueId=${venue.venueId} 有 ${bookingRequests.length} 条请求`);
 
+        // 获取对应场地的管理员 token（当前只有一个管理员，管理所有场地）
+        const vm = venueManagers[0];
+
         for (const req of bookingRequests) {
-          const confirmed = await dbTools.confirmVenueBookingRequest(req.id);
-          if (confirmed) {
-            report.addSuccess('场地确认', `requestId=${req.id} matchId=${req.match_id} → confirmed`);
+          let confirmed = false;
+          let errorMsg = '';
+
+          if (vm && vm.accessToken) {
+            // 使用 HTTP API 调用真实业务链路
+            const api = apiClient.clone();
+            api.setTokens(vm.accessToken!, vm.refreshToken!);
+
+            const start = performance.now();
+            try {
+              const result = await api.confirmVenueBooking(venue.venueId, req.id);
+              const durationMs = Math.round(performance.now() - start);
+
+              if (result && result.success) {
+                confirmed = true;
+                report.addSuccess('场地确认', `requestId=${req.id} matchId=${req.match_id} → confirmed`, durationMs);
+              } else {
+                errorMsg = result?.message || 'API 返回失败';
+                report.addFailure('场地确认', `requestId=${req.id} ${errorMsg}`, durationMs);
+              }
+            } catch (err: any) {
+              const durationMs = Math.round(performance.now() - start);
+              errorMsg = err.message || 'API 调用异常';
+              report.addFailure('场地确认', `requestId=${req.id} ${errorMsg}`, durationMs);
+            }
           } else {
-            report.addFailure('场地确认', `requestId=${req.id} 确认失败`);
+            // 无管理员 token fallback：直接 DB 更新（仅用于测试兼容性）
+            confirmed = await dbTools.confirmVenueBookingRequest(req.id);
+            if (confirmed) {
+              report.addSuccess('场地确认(DB)', `requestId=${req.id} matchId=${req.match_id} → confirmed (fallback)`);
+            } else {
+              report.addFailure('场地确认', `requestId=${req.id} 确认失败 (无管理员token且DB更新失败)`);
+            }
           }
         }
       } else {

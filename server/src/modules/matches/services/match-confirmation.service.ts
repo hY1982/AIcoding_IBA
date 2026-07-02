@@ -1015,17 +1015,37 @@ export class MatchConfirmationService {
       });
 
       const requiredPlayers = match.requiredPlayers;
+      const minPlayers = match.minPlayers || Math.floor(requiredPlayers / 2);
       let newStatus: MatchStatus;
       let groupChatId: string | undefined;
 
-      if (confirmedCount >= requiredPlayers) {
-        // v2.0: 满员后进入场地确认阶段（不直接 confirmed）
+      // v2.2: 支持最低人数兜底机制
+      // 1. 满员 → 触发场地确认
+      // 2. 达到最低人数（且已过1.5小时兜底窗口）→ 触发场地确认
+      // 3. 未达到最低人数 → 比赛过期
+      const now = new Date();
+      const matchStartTime = new Date(match.startTime);
+      const timeUntilMatch = matchStartTime.getTime() - now.getTime();
+      const minPlayersWindowMs = 1.5 * 60 * 60 * 1000; // 1.5小时
+      const isMinPlayersWindow = timeUntilMatch <= minPlayersWindowMs;
+
+      const isFull = confirmedCount >= requiredPlayers;
+      const isMinPlayersMet = confirmedCount >= minPlayers && isMinPlayersWindow;
+
+      if (isFull || isMinPlayersMet) {
+        // 满员或达到最低人数（在兜底窗口内）→ 触发场地确认
         await this.triggerVenueConfirmation(manager, match);
         newStatus = 'pending_venue';
 
-        this.logger.log(
-          `Match full → pending_venue: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${requiredPlayers}`,
-        );
+        if (isFull) {
+          this.logger.log(
+            `Match full → pending_venue: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${requiredPlayers}`,
+          );
+        } else {
+          this.logger.log(
+            `Match minPlayers met → pending_venue: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${requiredPlayers}, minPlayers=${minPlayers}`,
+          );
+        }
       } else {
         newStatus = 'expired';
 
