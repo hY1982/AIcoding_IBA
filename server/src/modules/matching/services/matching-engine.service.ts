@@ -266,10 +266,19 @@ export class MatchingEngineService {
   // ==================== Intention Fetching ====================
 
   /**
-   * 查询 pending 意向（排除已被屏蔽的）
+   * 查询 pending 意向（排除已被屏蔽的、已参与 pending_players 比赛的）
+   * 
+   * v2.2 修复：排除已参与 pending_players 状态比赛的意向，防止重复匹配
    */
   private async fetchPendingIntentions(regionCode?: string): Promise<Intention[]> {
     const now = new Date();
+    
+    // 子查询：查找已参与 pending_players 比赛的意向ID
+    const subQuery = this.intentionRepo.createQueryBuilder('i2')
+      .select('i2.id')
+      .innerJoin('match_players', 'mp', 'mp.intention_id = i2.id')
+      .innerJoin('matches', 'm', 'm.id = mp.match_id AND m.status = :pendingStatus', { pendingStatus: 'pending_players' });
+    
     const qb = this.intentionRepo.createQueryBuilder('intention')
       .leftJoinAndSelect('intention.intentionVenues', 'iv')
       .leftJoinAndSelect('intention.intentionFormats', 'if')
@@ -281,6 +290,11 @@ export class MatchingEngineService {
       .andWhere(
         '(intention.excluded_until IS NULL OR intention.excluded_until <= :now)',
         { now },
+      )
+      // 排除已参与 pending_players 比赛的意向
+      .andWhere(
+        'intention.id NOT IN (' + subQuery.getQuery() + ')',
+        { pendingStatus: 'pending_players' }
       )
       .orderBy('intention.submitted_at', 'ASC');
 
@@ -295,6 +309,11 @@ export class MatchingEngineService {
 
   /**
    * 已有比赛复用：将新兼容意向加入 pending_players 的候选比赛
+   * 
+   * v2.2 修复：
+   * 1. 排除已参与其他 pending_players 比赛的意向
+   * 2. 每个意向只能复用到一个比赛
+   * 3. 添加日志记录复用情况
    */
   private async reuseExistingMatches(
     intentions: Intention[],
@@ -308,9 +327,30 @@ export class MatchingEngineService {
     });
 
     let reusedCount = 0;
+    // 跟踪已复用的意向ID，防止一个意向复用到多个比赛
+    const reusedIntentionIds = new Set<number>();
 
     for (const match of existingMatches) {
       for (const intention of intentions) {
+        // 如果意向已复用到其他比赛，跳过
+        if (reusedIntentionIds.has(intention.id)) {
+          continue;
+        }
+
+        // 检查意向是否已参与该比赛（防止重复邀请）
+        const existingMatchPlayer = await this.dataSource
+          .getRepository(MatchPlayer)
+          .findOne({
+            where: {
+              matchId: match.id,
+              intentionId: intention.id,
+            },
+          });
+        
+        if (existingMatchPlayer) {
+          continue;
+        }
+
         // 检查意向是否有分身与比赛参数兼容
         const hasVenue = intention.intentionVenues?.some(
           (iv) => iv.venueId === match.venueId,
@@ -346,7 +386,13 @@ export class MatchingEngineService {
             .orIgnore()
             .execute();
 
+          // 标记意向已复用
+          reusedIntentionIds.add(intention.id);
           reusedCount++;
+          
+          this.logger.log(
+            `意向复用成功: intentionId=${intention.id}, matchId=${match.id}, playerId=${intention.playerId}`,
+          );
         } catch (error) {
           this.logger.warn(
             `复用意向失败: intentionId=${intention.id}, matchId=${match.id}, error=${(error as Error).message}`,

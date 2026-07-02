@@ -151,7 +151,12 @@ export class MatchConfirmationService {
 
     this.assertCanConfirm(matchSnapshot, matchPlayerSnapshot);
 
-    if (matchSnapshot.confirmedPlayers >= matchSnapshot.requiredPlayers) {
+    // 使用实际查询代替 confirmedPlayers 字段，避免并发不一致
+    const actualConfirmedCount = await this.matchPlayerRepo.count({
+      where: { matchId, status: 'confirmed' },
+    });
+
+    if (actualConfirmedCount >= matchSnapshot.requiredPlayers) {
       throw new ConflictException('比赛已满员');
     }
 
@@ -174,7 +179,7 @@ export class MatchConfirmationService {
       throw new BadRequestException(`支付失败: ${paymentResult.errorMessage}`);
     }
 
-    // Step 3: 【Saga Step 2】事务内状态变更（悲观锁）
+    // Step 3: 【Saga Step 2】事务内状态变更（悲观锁 + 乐观锁）
     try {
       return await this.dataSource.transaction(async (manager) => {
         // 悲观锁读取最新状态
@@ -198,8 +203,13 @@ export class MatchConfirmationService {
           );
         }
 
+        // 使用实际查询代替 confirmedPlayers 字段，确保数据一致性
+        const currentConfirmedCount = await manager.count(MatchPlayer, {
+          where: { matchId, status: 'confirmed' },
+        });
+
         // 再次检查满员（可能在支付期间其他球员已确认）
-        if (match.confirmedPlayers >= match.requiredPlayers) {
+        if (currentConfirmedCount >= match.requiredPlayers) {
           await this.compensatePayment(orderNo, depositAmount);
           throw new ConflictException('比赛已满员，已自动退款');
         }
@@ -231,14 +241,39 @@ export class MatchConfirmationService {
           throw new ConflictException('球员状态已被修改，已自动退款');
         }
 
-        // b. Match.confirmedPlayers++
-        const newConfirmedCount = match.confirmedPlayers + 1;
-        await manager
+        // b. 使用实际查询计算新的 confirmedPlayers 计数
+        const newConfirmedCount = currentConfirmedCount + 1;
+        
+        // 使用乐观锁更新 Match，确保并发安全
+        const matchUpdateResult = await manager
           .createQueryBuilder()
           .update(Match)
-          .set({ confirmedPlayers: newConfirmedCount })
+          .set({ 
+            confirmedPlayers: newConfirmedCount,
+            version: match.version + 1,
+          })
           .where('id = :id', { id: matchId })
+          .andWhere('version = :version', { version: match.version })
           .execute();
+
+        // 如果乐观锁失败，说明有其他并发操作修改了 Match
+        if (matchUpdateResult.affected === 0) {
+          // 回滚 MatchPlayer 的更新
+          await manager
+            .createQueryBuilder()
+            .update(MatchPlayer)
+            .set({
+              status: 'invited',
+              depositPaid: false,
+              confirmedAt: null,
+            })
+            .where('match_id = :matchId', { matchId })
+            .andWhere('player_id = :playerId', { playerId })
+            .execute();
+          
+          await this.compensatePayment(orderNo, depositAmount);
+          throw new ConflictException('比赛状态已被修改，请重试');
+        }
 
         // c. 释放该球员在其他候选比赛中的邀请
         await this.withdrawFromOtherMatches(manager, playerId, matchId);
