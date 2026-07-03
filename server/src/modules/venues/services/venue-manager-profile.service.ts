@@ -51,8 +51,9 @@ export class VenueManagerProfileService {
     }
 
     // 查询关联的场地列表
+    // 注意：venues.manager_id 存储的是 user_id，不是 venue_manager.id
     const venues = await this.venueRepo.find({
-      where: { managerId: venueManager.id },
+      where: { managerId: venueManager.userId },
       order: { createdAt: 'DESC' },
     });
 
@@ -95,8 +96,9 @@ export class VenueManagerProfileService {
     this.logger.log(`场地方资料更新成功: id=${venueManagerId}`);
 
     // 重新查询关联的场地列表
+    // 注意：venues.manager_id 存储的是 user_id，不是 venue_manager.id
     const venues = await this.venueRepo.find({
-      where: { managerId: venueManager.id },
+      where: { managerId: venueManager.userId },
       order: { createdAt: 'DESC' },
     });
 
