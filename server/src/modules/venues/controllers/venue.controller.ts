@@ -257,7 +257,8 @@ export class VenueController {
     if (!profile) {
       throw new NotFoundException('场地方资料不存在');
     }
-    return this.venueService.create(profile.id, dto);
+    // 使用 userId 作为 manager_id，确保与权限校验一致
+    return this.venueService.create(req.user.userId, dto);
   }
 
   /**
@@ -307,7 +308,8 @@ export class VenueController {
     if (!profile) {
       throw new NotFoundException('场地方资料不存在');
     }
-    return this.venueService.findByManagerId(profile.id);
+    // 使用 userId 查询场地列表
+    return this.venueService.findByManagerId(req.user.userId);
   }
 
   /**
@@ -358,7 +360,8 @@ export class VenueController {
     if (!profile) {
       throw new NotFoundException('场地方资料不存在');
     }
-    return this.venueService.update(id, profile.id, dto);
+    // 使用 userId 更新场地
+    return this.venueService.update(id, req.user.userId, dto);
   }
 
   /**
@@ -382,7 +385,8 @@ export class VenueController {
     if (!profile) {
       throw new NotFoundException('场地方资料不存在');
     }
-    return this.venueService.remove(id, profile.id);
+    // 使用 userId 删除场地
+    return this.venueService.remove(id, req.user.userId);
   }
 
   /**
@@ -457,9 +461,10 @@ export class VenueController {
       throw new NotFoundException('场地方资料不存在');
     }
 
+    // 使用 userId 创建不可预订时段
     return this.unavailableSlotService.createUnavailableSlots(
       id,
-      profile.id,
+      req.user.userId,
       dto.slots,
     ) as unknown as VenueTimeSlot[];
   }
@@ -522,7 +527,8 @@ export class VenueController {
       throw new NotFoundException('场地方资料不存在');
     }
 
-    return this.unavailableSlotService.deleteUnavailableSlot(slotId, id, profile.id);
+    // 使用 userId 删除不可预订时段
+    return this.unavailableSlotService.deleteUnavailableSlot(slotId, id, req.user.userId);
   }
 
   /**
@@ -557,6 +563,7 @@ export class VenueController {
     // 先验证场地存在，所有权由 Service.createTimeSlots 验证
     await this.venueService.findById(id);
 
-    return this.venueService.createTimeSlots(id, profile.id, dto.slots);
+    // 使用 userId 创建时段
+    return this.venueService.createTimeSlots(id, req.user.userId, dto.slots);
   }
 }

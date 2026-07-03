@@ -241,8 +241,11 @@ export class VenueService {
   ): Promise<VenueTimeSlotType[]> {
     await this.assertVenueOwnership(venueId, managerId);
 
-    // 校验时段重叠：同一日期内，startTime < otherEndTime 且 endTime > otherStartTime
+    // 校验传入的时段列表内部是否存在重叠
     this.validateTimeSlotOverlap(dtos);
+
+    // 校验与数据库中已存在的时段是否重叠
+    await this.validateTimeSlotOverlapWithExisting(venueId, dtos);
 
     const slots = await this.dataSource.transaction(async (manager) => {
       const entities = dtos.map((dto) =>
@@ -331,6 +334,42 @@ export class VenueService {
 
     if (dto.courtCount !== undefined && dto.courtCount < 1) {
       throw new BadRequestException('球场数量必须至少为1');
+    }
+  }
+
+  /**
+   * 校验时段列表与数据库中已存在的时段是否重叠
+   *
+   * 查询同一 venue 同一日期的所有已存在时段，检测是否有时间交集。
+   */
+  private async validateTimeSlotOverlapWithExisting(
+    venueId: number,
+    dtos: CreateTimeSlotDto[],
+  ): Promise<void> {
+    // 按日期分组查询
+    const dates = [...new Set(dtos.map((dto) => dto.slotDate))];
+
+    for (const slotDate of dates) {
+      const existingSlots = await this.slotRepo.find({
+        where: { venueId, slotDate },
+        order: { startTime: 'ASC' },
+      });
+
+      const newSlotsForDate = dtos.filter((dto) => dto.slotDate === slotDate);
+
+      for (const newSlot of newSlotsForDate) {
+        for (const existing of existingSlots) {
+          // 重叠条件：新区间的 start < 已有区间的 end 且 新区间的 end > 已有区间的 start
+          if (
+            newSlot.startTime < existing.endTime &&
+            newSlot.endTime > existing.startTime
+          ) {
+            throw new BadRequestException(
+              `时段重叠: ${slotDate} 新时段 ${newSlot.startTime}-${newSlot.endTime} 与已存在时段 ${existing.startTime}-${existing.endTime} 冲突`,
+            );
+          }
+        }
+      }
     }
   }
 
