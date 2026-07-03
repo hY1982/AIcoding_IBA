@@ -24,6 +24,7 @@ import { JwtAuthGuard } from '@modules/auth/guards/jwt-auth.guard';
 import { MatchConfirmationService } from '../services/match-confirmation.service';
 import { VenueBookingRequest } from '@modules/venues/entities/venue-booking-request.entity';
 import { VenueManagerProfileService } from '@modules/venues/services/venue-manager-profile.service';
+import { VenueService } from '@modules/venues/services/venue.service';
 import { RejectBookingDto } from '../dto/reject-booking.dto';
 
 interface RequestWithUser extends Request {
@@ -54,6 +55,7 @@ export class VenueBookingController {
     @InjectRepository(VenueBookingRequest)
     private readonly bookingRequestRepo: Repository<VenueBookingRequest>,
     private readonly venueManagerProfileService: VenueManagerProfileService,
+    private readonly venueService: VenueService,
   ) {}
 
   /**
@@ -137,8 +139,7 @@ export class VenueBookingController {
    * 校验当前用户为场地管理员且拥有目标场地。
    *
    * 1. 检查 userType === 'venue_manager'
-   * 2. 查询场地管理员 Profile
-   * 3. 检查目标场地是否在该管理员的场地列表中
+   * 2. 直接查询 venue 表验证 managerId === userId
    */
   private async assertVenueManagerOwnsVenue(
     req: RequestWithUser,
@@ -148,15 +149,9 @@ export class VenueBookingController {
       throw new ForbiddenException('无权操作：仅场地方可管理场地预订');
     }
 
-    const profile = await this.venueManagerProfileService.findByUserId(
-      req.user.userId,
-    );
-    if (!profile) {
-      throw new NotFoundException('场地方资料不存在');
-    }
-
-    const ownsVenue = profile.venues.some((v) => v.id === venueId);
-    if (!ownsVenue) {
+    // 直接查询 venue 表验证归属权，避免 profile.venues 可能为空的问题
+    const venue = await this.venueService.findById(venueId);
+    if (Number(venue.managerId) !== Number(req.user.userId)) {
       throw new ForbiddenException(
         `无权操作场地 venueId=${venueId}：您不是该场地的管理员`,
       );

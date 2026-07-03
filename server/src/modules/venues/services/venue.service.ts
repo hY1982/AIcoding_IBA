@@ -424,7 +424,7 @@ export class VenueService {
       throw new NotFoundException(`场地不存在: venueId=${venueId}`);
     }
 
-    if (venue.managerId !== managerId) {
+    if (Number(venue.managerId) !== Number(managerId)) {
       throw new ForbiddenException('无权操作该场地');
     }
 
