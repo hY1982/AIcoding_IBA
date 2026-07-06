@@ -445,7 +445,7 @@ export class MatchingEngineService {
         status: 'pending_players',
         teamCount: format.teamCountMax,  // 满员时队伍数
         playersPerTeam: format.teamSize,
-        requiredPlayers: format.teamCountMax * format.teamSize,  // 满员人数
+        requiredPlayers: format.teamCountMin * format.teamSize,  // 开赛所需最少人数（teamCountMin队）
         minPlayers: format.teamCountMin * format.teamSize,  // 最低人数（兜底）
         confirmedPlayers: 0,
         confirmDeadline: segment.confirmDeadline,
