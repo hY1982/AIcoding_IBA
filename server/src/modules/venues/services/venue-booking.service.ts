@@ -64,12 +64,13 @@ export class VenueBookingService {
     endTime: string,
     matchId: number,
   ): Promise<boolean> {
-    // Step 1: 悲观锁锁定场地当日所有时段记录
+    // Step 1: 悲观锁锁定场地当日所有已预订时段记录
     const existingSlots = await manager
       .createQueryBuilder(VenueTimeSlot, 'slot')
       .setLock('pessimistic_write')
       .where('slot.venue_id = :venueId', { venueId })
       .andWhere('slot.slot_date = :slotDate', { slotDate })
+      .andWhere('slot.is_booked = :isBooked', { isBooked: true })
       .getMany();
 
     // Step 2: 检查已预订时段是否重叠

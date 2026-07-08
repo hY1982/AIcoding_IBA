@@ -215,7 +215,7 @@ export class MatchPoolService {
     const segments: MatchSegment[] = [];
 
     if (segmentCount === 1) {
-      // 单段：直接使用整个池
+      // 单段：直接使用整个池，不限制人数（v2.3: 先到先得模式，邀请所有符合条件的意向）
       const timeParams = this.calculateMatchTimeParams(sorted, params);
       segments.push({
         pool,
@@ -248,6 +248,7 @@ export class MatchPoolService {
         // 计算比赛时间参数
         const timeParams = this.calculateMatchTimeParams(segmentAvatars, params);
 
+        // v2.3: 不限制每段人数，邀请所有符合条件的意向（先到先得模式）
         segments.push({
           pool,
           avatars: segmentAvatars,
@@ -359,8 +360,13 @@ export class MatchPoolService {
     );
     const durationMinutes = Math.max(avgDuration, 120);
 
-    const matchEndTime = new Date(
+    // 结束时间对齐到整点或半小时（30分钟粒度）
+    const rawEndTime = new Date(
       matchStartTime.getTime() + durationMinutes * 60000,
+    );
+    const matchEndTime = this.alignTimeToGranularity(
+      rawEndTime,
+      params.timeAlignmentMinutes,
     );
 
     // 确认截止时间 = 开始时间 - 1小时

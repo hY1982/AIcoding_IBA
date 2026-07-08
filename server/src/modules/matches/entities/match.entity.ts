@@ -113,6 +113,17 @@ export class Match {
   requiredPlayers!: number;
 
   /**
+   * v2.2: 最多可参与人数 = teamCountMax * playersPerTeam。
+   * 用于限制比赛总人数上限，防止邀请过多球员。
+   */
+  @Column({
+    name: 'max_players',
+    type: 'int',
+    nullable: false,
+  })
+  maxPlayers!: number;
+
+  /**
    * Denormalized counter: number of players with status = 'confirmed'.
    * Must be kept in sync with match_players table via transactions.
    * Do not modify directly; use MatchConfirmationService methods.

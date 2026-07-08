@@ -119,7 +119,7 @@ export class MatchConfirmationService {
    * 球员确认参赛 — v2.0 Saga支付模式。
    *
    * Flow:
-   * 1. 【验证】悲观锁 Match → 校验 pending_players 且 confirmedPlayers < requiredPlayers
+   * 1. 【验证】悲观锁 Match → 校验 pending_players 且 confirmedPlayers < maxPlayers
    * 2. 【Saga Step 1】事务外支付（调用 PaymentProvider）
    * 3. 【Saga Step 2】事务内：
    *    a. MatchPlayer → confirmed, depositPaid=true
@@ -156,7 +156,8 @@ export class MatchConfirmationService {
       where: { matchId, status: 'confirmed' },
     });
 
-    if (actualConfirmedCount >= matchSnapshot.requiredPlayers) {
+    // v2.2: 满员判断使用 maxPlayers（上限），而非 requiredPlayers（最低开赛人数）
+    if (actualConfirmedCount >= matchSnapshot.maxPlayers) {
       throw new ConflictException('比赛已满员');
     }
 
@@ -209,7 +210,8 @@ export class MatchConfirmationService {
         });
 
         // 再次检查满员（可能在支付期间其他球员已确认）
-        if (currentConfirmedCount >= match.requiredPlayers) {
+        // v2.3: 满员判断使用 maxPlayers（上限），而非 requiredPlayers（最低开赛人数）
+        if (currentConfirmedCount >= match.maxPlayers) {
           await this.compensatePayment(orderNo, depositAmount);
           throw new ConflictException('比赛已满员，已自动退款');
         }
@@ -288,7 +290,8 @@ export class MatchConfirmationService {
         }
 
         // 检查满员 → 触发场地确认
-        const isFull = newConfirmedCount >= match.requiredPlayers;
+        // v2.3: 满员判断使用 maxPlayers（上限），实现先到先得模式
+        const isFull = newConfirmedCount >= match.maxPlayers;
         if (isFull) {
           await this.triggerVenueConfirmation(manager, match);
         }
@@ -933,7 +936,8 @@ export class MatchConfirmationService {
           }
 
           // 再次检查满员（可能在回调期间其他球员已确认）
-          if (match.confirmedPlayers >= match.requiredPlayers) {
+          // v2.3: 满员判断使用 maxPlayers（上限），实现先到先得模式
+          if (match.confirmedPlayers >= match.maxPlayers) {
             this.logger.warn(
               `Payment callback skipped: match ${match.id} already full`,
             );
@@ -964,7 +968,8 @@ export class MatchConfirmationService {
           }
 
           // 检查满员 → 触发场地确认
-          if (newCount >= match.requiredPlayers) {
+          // v2.3: 满员判断使用 maxPlayers（上限），实现先到先得模式
+          if (newCount >= match.maxPlayers) {
             await this.triggerVenueConfirmation(manager, match);
           }
         }
@@ -1054,27 +1059,35 @@ export class MatchConfirmationService {
       let newStatus: MatchStatus;
       let groupChatId: string | undefined;
 
-      // v2.2: 支持最低人数兜底机制
-      // 1. 满员 → 触发场地确认
-      // 2. 达到最低人数（且已过1.5小时兜底窗口）→ 触发场地确认
-      // 3. 未达到最低人数 → 比赛过期
+      // v2.3: 支持先到先得模式
+      // 1. 满员（maxPlayers）→ 触发场地确认
+      // 2. 确认时间到期且满足最低人数（requiredPlayers）→ 触发场地确认
+      // 3. 达到最低人数（minPlayers）且已过1.5小时兜底窗口 → 触发场地确认
+      // 4. 未达到最低人数 → 比赛过期
       const now = new Date();
       const matchStartTime = new Date(match.startTime);
       const timeUntilMatch = matchStartTime.getTime() - now.getTime();
       const minPlayersWindowMs = 1.5 * 60 * 60 * 1000; // 1.5小时
       const isMinPlayersWindow = timeUntilMatch <= minPlayersWindowMs;
+      const confirmDeadline = match.confirmDeadline;
+      const isConfirmDeadlinePassed = confirmDeadline ? now >= confirmDeadline : true;
 
-      const isFull = confirmedCount >= requiredPlayers;
+      const isFull = confirmedCount >= match.maxPlayers;
+      const isRequiredMetAtDeadline = confirmedCount >= requiredPlayers && isConfirmDeadlinePassed;
       const isMinPlayersMet = confirmedCount >= minPlayers && isMinPlayersWindow;
 
-      if (isFull || isMinPlayersMet) {
-        // 满员或达到最低人数（在兜底窗口内）→ 触发场地确认
+      if (isFull || isRequiredMetAtDeadline || isMinPlayersMet) {
+        // 满员或确认时间到期且满足最低人数或兜底窗口 → 触发场地确认
         await this.triggerVenueConfirmation(manager, match);
         newStatus = 'pending_venue';
 
         if (isFull) {
           this.logger.log(
-            `Match full → pending_venue: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${requiredPlayers}`,
+            `Match full → pending_venue: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${match.maxPlayers}`,
+          );
+        } else if (isRequiredMetAtDeadline) {
+          this.logger.log(
+            `Match confirm deadline met → pending_venue: matchId=${matchId}, confirmedPlayers=${confirmedCount}/${requiredPlayers}`,
           );
         } else {
           this.logger.log(
