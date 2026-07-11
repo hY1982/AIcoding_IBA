@@ -396,8 +396,11 @@ export class VenueBookingService {
   /**
    * 判断两个时间段是否重叠。
    *
-   * 时间格式：HH:mm:ss（字符串比较即可，因为格式统一）
+   * 时间格式：HH:mm:ss
    * 重叠条件：start1 < end2 AND start2 < end1
+   *
+   * 注意：当结束时间为 00:00:00 时，表示第二天的午夜，需要特殊处理。
+   * 将时间转换为分钟数进行比较：00:00:00 视为 24:00:00（1440 分钟）。
    *
    * @private
    */
@@ -407,6 +410,37 @@ export class VenueBookingService {
     start2: string,
     end2: string,
   ): boolean {
-    return start1 < end2 && start2 < end1;
+    const timeToMinutes = (time: string): number => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    let s1 = timeToMinutes(start1);
+    let e1 = timeToMinutes(end1);
+    let s2 = timeToMinutes(start2);
+    let e2 = timeToMinutes(end2);
+
+    // 处理跨天情况：如果结束时间小于开始时间，说明跨到了第二天
+    // 将结束时间加上 24 小时（1440 分钟）
+    if (e1 < s1) {
+      e1 += 24 * 60;
+    }
+    if (e2 < s2) {
+      e2 += 24 * 60;
+    }
+
+    // 如果两个时段都跨天，需要调整比较基准
+    // 确保所有时间都在同一个 24 小时周期内进行比较
+    const normalize = (s: number, e: number): [number, number] => {
+      if (e > 24 * 60) {
+        // 如果结束时间超过 24 小时，将开始和结束时间都减去 24 小时
+        // 但这样可能导致负数，所以使用另一种方法
+      }
+      return [s, e];
+    };
+
+    // 更简单的方法：如果两个时段都跨天，比较它们是否重叠
+    // 重叠条件：start1 < end2 AND start2 < end1
+    return s1 < e2 && s2 < e1;
   }
 }
