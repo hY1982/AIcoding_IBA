@@ -49,6 +49,7 @@ export const DB_TABLES_TO_TRUNCATE = [
   'match_teams',
   'match_players',
   'mock_orders',
+  'venue_booking_requests',
   'matches',
   'intention_venues',
   'intention_formats',
