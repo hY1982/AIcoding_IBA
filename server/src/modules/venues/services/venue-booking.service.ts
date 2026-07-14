@@ -180,6 +180,27 @@ export class VenueBookingService {
     startTime: string,
     endTime: string,
   ): Promise<boolean> {
+    // 获取场地营业时间（用于后续检查）
+    const venue = await this.venueRepo.findOne({
+      where: { id: venueId },
+      select: ['openTime', 'closeTime'],
+    });
+    const openTime = venue?.openTime ?? '08:00:00';
+    const closeTime = venue?.closeTime ?? '22:00:00';
+
+    // 首先检查请求时段是否在营业时间内
+    // 注意：跨天时段（endTime < startTime）需要特殊处理
+    const isWithinBusinessHours = this.isWithinBusinessHours(
+      startTime, endTime, openTime, closeTime,
+    );
+    if (!isWithinBusinessHours) {
+      this.logger.warn(
+        `Request time outside business hours: venue=${venueId}, ` +
+          `time=${startTime}-${endTime}, businessHours=${openTime}-${closeTime}`,
+      );
+      return false;
+    }
+
     // 检查已预订时段：请求时段与已预订时段重叠则不可用
     const bookedSlots = await this.slotRepo
       .createQueryBuilder('slot')
@@ -220,12 +241,6 @@ export class VenueBookingService {
     // 合并连续的可用时段，然后检查请求时段是否被完全覆盖
     if (availableSlots.length === 0) {
       // 无可用时段记录时，回退到场地默认营业时间
-      const venue = await this.venueRepo.findOne({
-        where: { id: venueId },
-        select: ['openTime', 'closeTime'],
-      });
-      const openTime = venue?.openTime ?? '08:00:00';
-      const closeTime = venue?.closeTime ?? '22:00:00';
       return startTime >= openTime && endTime <= closeTime;
     }
 
@@ -455,6 +470,36 @@ export class VenueBookingService {
     // 更简单的方法：如果两个时段都跨天，比较它们是否重叠
     // 重叠条件：start1 < end2 AND start2 < end1
     return s1 < e2 && s2 < e1;
+  }
+
+  /**
+   * 检查请求时段是否在营业时间内。
+   *
+   * 规则：
+   * - 开始时间必须 >= 营业时间开始时间
+   * - 结束时间必须 <= 营业时间结束时间
+   * - 不允许跨天（结束时间 < 开始时间视为跨天，直接拒绝）
+   *
+   * @param startTime - 请求开始时间 HH:mm:ss
+   * @param endTime - 请求结束时间 HH:mm:ss
+   * @param openTime - 营业时间开始 HH:mm:ss
+   * @param closeTime - 营业时间结束 HH:mm:ss
+   * @returns true 在营业时间内，false 超出营业时间
+   */
+  private isWithinBusinessHours(
+    startTime: string,
+    endTime: string,
+    openTime: string,
+    closeTime: string,
+  ): boolean {
+    // 不允许跨天时段
+    if (endTime < startTime) {
+      return false;
+    }
+
+    // 开始时间必须 >= 营业时间开始时间
+    // 结束时间必须 <= 营业时间结束时间
+    return startTime >= openTime && endTime <= closeTime;
   }
 
   /**
