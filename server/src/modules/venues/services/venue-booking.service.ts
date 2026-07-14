@@ -1,10 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
 import { VenueTimeSlot } from '../entities/venue-time-slot.entity';
 import { VenueUnavailableSlot } from '../entities/venue-unavailable-slot.entity';
 import { Venue } from '../entities/venue.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
+import { Match } from '@modules/matches/entities/match.entity';
+import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 
 /**
  * VenueBookingService — v2.0 场地预订服务。
@@ -123,6 +125,17 @@ export class VenueBookingService {
       `Slot booked: venue=${venueId}, date=${slotDate}, ` +
         `time=${startTime}-${endTime}, matchId=${matchId}`,
     );
+
+    // Step 5: 扫描并取消冲突的 pending_venue 比赛
+    await this.cancelConflictingPendingVenueMatches(
+      manager,
+      venueId,
+      slotDate,
+      startTime,
+      endTime,
+      matchId,
+    );
+
     return true;
   }
 
@@ -442,5 +455,111 @@ export class VenueBookingService {
     // 更简单的方法：如果两个时段都跨天，比较它们是否重叠
     // 重叠条件：start1 < end2 AND start2 < end1
     return s1 < e2 && s2 < e1;
+  }
+
+  /**
+   * 扫描并取消冲突的 pending_venue 比赛。
+   *
+   * 当某个场地的某个时间段被预定后，扫描同一个场地还在等待确认的所有比赛，
+   * 如果时间冲突，取消这些比赛，意向分身退回宇宙中，等待下一次匹配。
+   *
+   * @param manager - EntityManager（必须在事务内调用）
+   * @param venueId - 场地 ID
+   * @param slotDate - 日期 YYYY-MM-DD
+   * @param startTime - 开始时间 HH:mm:ss
+   * @param endTime - 结束时间 HH:mm:ss
+   * @param matchId - 当前已预订的比赛 ID（排除自己）
+   */
+  private async cancelConflictingPendingVenueMatches(
+    manager: EntityManager,
+    venueId: number,
+    slotDate: string,
+    startTime: string,
+    endTime: string,
+    matchId: number,
+  ): Promise<void> {
+    // 查找同一个场地所有 pending_venue 状态的比赛（排除当前比赛）
+    const pendingVenueMatches = await manager
+      .createQueryBuilder(Match, 'match')
+      .where('match.venue_id = :venueId', { venueId })
+      .andWhere('match.status = :status', { status: 'pending_venue' })
+      .andWhere('match.id != :matchId', { matchId })
+      .getMany();
+
+    if (pendingVenueMatches.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `Scanning ${pendingVenueMatches.length} pending_venue matches for venue=${venueId} ` +
+        `after booking matchId=${matchId}`,
+    );
+
+    for (const pendingMatch of pendingVenueMatches) {
+      // 将比赛时间转换为 slotDate 和 startTime/endTime 格式
+      const matchSlotDate = pendingMatch.startTime.toLocaleDateString('en-CA', {
+        timeZone: 'Asia/Shanghai',
+      });
+      const matchStartTime = pendingMatch.startTime.toLocaleTimeString('en-GB', {
+        timeZone: 'Asia/Shanghai',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      const matchEndTime = pendingMatch.endTime.toLocaleTimeString('en-GB', {
+        timeZone: 'Asia/Shanghai',
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+
+      // 检查日期是否相同且时间冲突
+      if (matchSlotDate === slotDate &&
+          this.timesOverlap(startTime, endTime, matchStartTime, matchEndTime)) {
+        // 冲突，取消比赛
+        this.logger.warn(
+          `Cancelling conflicting match: matchId=${pendingMatch.id}, ` +
+            `venue=${venueId}, date=${slotDate}, ` +
+            `time=${matchStartTime}-${matchEndTime} ` +
+            `conflicts with booked ${startTime}-${endTime}`,
+        );
+
+        // 取消比赛：Match.status → cancelled
+        await manager
+          .createQueryBuilder()
+          .update(Match)
+          .set({ status: 'cancelled', cancelledReason: 'venue_unavailable' })
+          .where('id = :id', { id: pendingMatch.id })
+          .execute();
+
+        // 释放所有 confirmed 球员 + 意向回退
+        const confirmedPlayers = await manager.find(MatchPlayer, {
+          where: { matchId: pendingMatch.id, status: 'confirmed' },
+        });
+
+        for (const player of confirmedPlayers) {
+          await manager.update(MatchPlayer, { id: player.id }, { status: 'withdrawn' });
+
+          // 意向回退保护：检查意向是否已在其他比赛 confirmed
+          if (player.intentionId) {
+            const intention = await manager.findOne(Intention, {
+              where: { id: player.intentionId },
+            });
+
+            if (intention && intention.status !== 'confirmed') {
+              // 意向未在其他比赛 confirmed → 回退 pending
+              await manager.update(Intention, { id: player.intentionId }, { status: 'pending' });
+            }
+          }
+        }
+
+        this.logger.log(
+          `Cancelled conflicting match: matchId=${pendingMatch.id}, ` +
+            `released ${confirmedPlayers.length} players`,
+        );
+      }
+    }
   }
 }
