@@ -274,6 +274,10 @@ export class UnavailableSlotService {
     let currentTime = openTime;
 
     for (const interval of merged) {
+      // 检测跨天情况：如果 interval.end < interval.start，说明跨到了第二天
+      // 此时不应该继续生成后续时段
+      const isCrossDay = interval.end < interval.start;
+
       if (currentTime < interval.start) {
         // 可预订区间
         displaySlots.push({
@@ -290,10 +294,15 @@ export class UnavailableSlotService {
         reason: interval.reason,
       });
       currentTime = interval.end;
+
+      // 如果跨天，停止生成后续时段
+      if (isCrossDay) {
+        break;
+      }
     }
 
-    // 剩余时间到 closeTime
-    if (currentTime < closeTime) {
+    // 剩余时间到 closeTime（仅在未跨天时）
+    if (currentTime < closeTime && currentTime >= openTime) {
       displaySlots.push({
         startTime: currentTime.slice(0, 5),
         endTime: closeTime.slice(0, 5),
