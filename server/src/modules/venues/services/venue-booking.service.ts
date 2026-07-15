@@ -7,6 +7,7 @@ import { Venue } from '../entities/venue.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
+import { VenueBookingRequest } from '../entities/venue-booking-request.entity';
 import { UnavailableSlotService } from './unavailable-slot.service';
 
 /**
@@ -595,6 +596,15 @@ export class VenueBookingService {
           .update(Match)
           .set({ status: 'cancelled', cancelledReason: 'venue_unavailable' })
           .where('id = :id', { id: pendingMatch.id })
+          .execute();
+
+        // 更新预订请求状态为 rejected
+        await manager
+          .createQueryBuilder()
+          .update(VenueBookingRequest)
+          .set({ status: 'rejected', respondedAt: new Date(), rejectionReason: '场地时段已被其他比赛占用' })
+          .where('match_id = :matchId', { matchId: pendingMatch.id })
+          .andWhere('status = :status', { status: 'pending' })
           .execute();
 
         // 释放所有 confirmed 球员 + 意向回退
