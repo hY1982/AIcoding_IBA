@@ -7,6 +7,7 @@ import { Venue } from '../entities/venue.entity';
 import { Intention } from '@modules/intentions/entities/intention.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
+import { UnavailableSlotService } from './unavailable-slot.service';
 
 /**
  * VenueBookingService — v2.0 场地预订服务。
@@ -37,6 +38,7 @@ export class VenueBookingService {
     private readonly unavailableSlotRepo: Repository<VenueUnavailableSlot>,
     @InjectRepository(Venue)
     private readonly venueRepo: Repository<Venue>,
+    private readonly unavailableSlotService: UnavailableSlotService,
   ) {}
 
   /**
@@ -126,6 +128,9 @@ export class VenueBookingService {
         `time=${startTime}-${endTime}, matchId=${matchId}`,
     );
 
+    // 清除缓存，确保后续查询能获取最新状态
+    this.unavailableSlotService.invalidateCache(venueId, slotDate);
+
     // Step 5: 扫描并取消冲突的 pending_venue 比赛
     await this.cancelConflictingPendingVenueMatches(
       manager,
@@ -152,7 +157,20 @@ export class VenueBookingService {
     manager: EntityManager,
     matchId: number,
   ): Promise<void> {
+    // 先查询要释放的 slot，获取 venueId 和 slotDate 用于清除缓存
+    const slotToRelease = await manager.findOne(VenueTimeSlot, {
+      where: { matchId },
+    });
+
     const result = await manager.delete(VenueTimeSlot, { matchId });
+
+    // 清除缓存
+    if (slotToRelease) {
+      this.unavailableSlotService.invalidateCache(
+        slotToRelease.venueId,
+        slotToRelease.slotDate,
+      );
+    }
 
     this.logger.log(
       `Slot released: matchId=${matchId}, affected=${result.affected ?? 0}`,
