@@ -1113,6 +1113,9 @@ export class MatchConfirmationService {
           .andWhere('status = :status', { status: 'invited' })
           .execute();
 
+        // 释放场地（若已预订）
+        await this.venueBookingService.releaseSlot(manager, matchId);
+
         // 退款已支付保证金的 confirmed 球员（资金安全）
         const confirmedPaidPlayers = await manager.find(MatchPlayer, {
           where: { matchId, status: 'confirmed', depositPaid: true },

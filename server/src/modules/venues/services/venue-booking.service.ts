@@ -618,6 +618,9 @@ export class VenueBookingService {
           }
         }
 
+        // 释放场地（若已预订）
+        await this.releaseSlot(manager, pendingMatch.id);
+
         this.logger.log(
           `Cancelled conflicting match: matchId=${pendingMatch.id}, ` +
             `released ${confirmedPlayers.length} players`,
