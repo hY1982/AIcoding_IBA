@@ -23,11 +23,9 @@ type FilterStatus = IntentionStatus | 'all';
 const STATUS_FILTERS: { key: FilterStatus; label: string }[] = [
   { key: 'all', label: '全部' },
   { key: 'pending', label: '等待匹配' },
-  { key: 'matched', label: '已匹配' },
   { key: 'confirmed', label: '已确认' },
   { key: 'cancelled', label: '已取消' },
   { key: 'expired', label: '已过期' },
-  { key: 'failed', label: '匹配失败' },
 ];
 
 export function MyIntentionsScreen() {

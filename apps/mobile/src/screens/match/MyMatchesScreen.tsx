@@ -23,23 +23,25 @@ type FilterStatus = MatchStatus | 'all';
 
 const STATUS_FILTERS: { key: FilterStatus; label: string }[] = [
   { key: 'all', label: '全部' },
-  { key: 'pending_confirmation', label: '等待确认' },
+  { key: 'pending_players', label: '等待球员确认' },
+  { key: 'pending_venue', label: '等待场地确认' },
   { key: 'confirmed', label: '已确认' },
   { key: 'in_progress', label: '进行中' },
   { key: 'completed', label: '已完成' },
   { key: 'cancelled', label: '已取消' },
-  { key: 'failed', label: '匹配失败' },
+  { key: 'expired', label: '已超时' },
 ];
 
 // Dynamic empty state text per filter
 const EMPTY_STATE_TEXT: Record<FilterStatus, string> = {
   all: '暂无比赛',
-  pending_confirmation: '暂无待确认的比赛',
+  pending_players: '暂无等待球员确认的比赛',
+  pending_venue: '暂无等待场地确认的比赛',
   confirmed: '暂无已确认的比赛',
   in_progress: '暂无进行中的比赛',
   completed: '暂无已完成的比赛',
   cancelled: '暂无已取消的比赛',
-  failed: '暂无匹配失败的比赛',
+  expired: '暂无已超时的比赛',
 };
 
 export function MyMatchesScreen() {

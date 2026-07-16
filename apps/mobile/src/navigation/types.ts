@@ -1,6 +1,6 @@
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { PlayerProfile, PlayerAbility } from '@shared/player';
+import type { PlayerProfile } from '@shared/player';
 import type { VenueManagerProfile } from '@shared/venue-manager';
 import type { VenueDetail } from '@shared/venue';
 
@@ -13,7 +13,7 @@ export type RootStackParamList = {
   VenueManagerRegister: { phone: string; password: string; nickname: string };
   Profile: undefined;
   EditProfile: { profile: PlayerProfile };
-  Ability: { ability: PlayerAbility };
+  Ability: { ability: { baseAbilityScore: number; matchAdjustValue: number; totalAbilityScore: number } };
   VenueManagerProfile: undefined;
   EditVenueManagerProfile: { profile: VenueManagerProfile };
   CreateVenue: undefined;

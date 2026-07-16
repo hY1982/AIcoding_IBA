@@ -52,7 +52,6 @@ export interface MatchPlayerItem {
   nickname: string | null;
   teamNumber: number | null;
   status: MatchPlayerStatus;
-  isReserve: boolean;
 }
 
 /**
@@ -204,7 +203,6 @@ export class MatchQueryService {
       nickname: p.u_nickname ?? null,
       teamNumber: p.mp_team_number != null ? Number(p.mp_team_number) : null,
       status: p.mp_status as MatchPlayerStatus,
-      isReserve: p.mp_is_reserve ?? false,
     }));
 
     return {

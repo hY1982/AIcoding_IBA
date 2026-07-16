@@ -1,4 +1,4 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
 import { VenueTimeSlot } from '../entities/venue-time-slot.entity';
@@ -9,6 +9,7 @@ import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { VenueBookingRequest } from '../entities/venue-booking-request.entity';
 import { UnavailableSlotService } from './unavailable-slot.service';
+import { MatchConfirmationService } from '@modules/matches/services/match-confirmation.service';
 
 /**
  * VenueBookingService — v2.0 场地预订服务。
@@ -40,6 +41,8 @@ export class VenueBookingService {
     @InjectRepository(Venue)
     private readonly venueRepo: Repository<Venue>,
     private readonly unavailableSlotService: UnavailableSlotService,
+    @Inject(forwardRef(() => MatchConfirmationService))
+    private readonly matchConfirmationService: MatchConfirmationService,
   ) {}
 
   /**
@@ -542,24 +545,24 @@ export class VenueBookingService {
     endTime: string,
     matchId: number,
   ): Promise<void> {
-    // 查找同一个场地所有 pending_venue 状态的比赛（排除当前比赛）
-    const pendingVenueMatches = await manager
+    // 查找同一个场地所有 pending_players 和 pending_venue 状态的比赛（排除当前比赛）
+    const pendingMatches = await manager
       .createQueryBuilder(Match, 'match')
       .where('match.venue_id = :venueId', { venueId })
-      .andWhere('match.status = :status', { status: 'pending_venue' })
+      .andWhere('match.status IN (:...statuses)', { statuses: ['pending_players', 'pending_venue'] })
       .andWhere('match.id != :matchId', { matchId })
       .getMany();
 
-    if (pendingVenueMatches.length === 0) {
+    if (pendingMatches.length === 0) {
       return;
     }
 
     this.logger.log(
-      `Scanning ${pendingVenueMatches.length} pending_venue matches for venue=${venueId} ` +
+      `Scanning ${pendingMatches.length} pending matches for venue=${venueId} ` +
         `after booking matchId=${matchId}`,
     );
 
-    for (const pendingMatch of pendingVenueMatches) {
+    for (const pendingMatch of pendingMatches) {
       // 将比赛时间转换为 slotDate 和 startTime/endTime 格式
       const matchSlotDate = pendingMatch.startTime.toLocaleDateString('en-CA', {
         timeZone: 'Asia/Shanghai',
@@ -598,14 +601,20 @@ export class VenueBookingService {
           .where('id = :id', { id: pendingMatch.id })
           .execute();
 
-        // 更新预订请求状态为 rejected
-        await manager
-          .createQueryBuilder()
-          .update(VenueBookingRequest)
-          .set({ status: 'rejected', respondedAt: new Date(), rejectionReason: '场地时段已被其他比赛占用' })
-          .where('match_id = :matchId', { matchId: pendingMatch.id })
-          .andWhere('status = :status', { status: 'pending' })
-          .execute();
+        // 仅 pending_venue 状态的比赛需要更新 VenueBookingRequest 和释放场地
+        if (pendingMatch.status === 'pending_venue') {
+          // 更新预订请求状态为 rejected
+          await manager
+            .createQueryBuilder()
+            .update(VenueBookingRequest)
+            .set({ status: 'rejected', respondedAt: new Date(), rejectionReason: '场地时段已被其他比赛占用' })
+            .where('match_id = :matchId', { matchId: pendingMatch.id })
+            .andWhere('status = :status', { status: 'pending' })
+            .execute();
+
+          // 释放场地（若已预订）
+          await this.releaseSlot(manager, pendingMatch.id);
+        }
 
         // 释放所有 confirmed 球员 + 意向回退
         const confirmedPlayers = await manager.find(MatchPlayer, {
@@ -628,8 +637,11 @@ export class VenueBookingService {
           }
         }
 
-        // 释放场地（若已预订）
-        await this.releaseSlot(manager, pendingMatch.id);
+        // 发送通知给球员
+        await this.matchConfirmationService.notifyMatchCancelledDueToVenueConflict(
+          pendingMatch,
+          '场地时段已被其他比赛占用',
+        );
 
         this.logger.log(
           `Cancelled conflicting match: matchId=${pendingMatch.id}, ` +

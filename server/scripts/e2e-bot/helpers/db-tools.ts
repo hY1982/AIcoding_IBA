@@ -371,6 +371,17 @@ export class DbTools {
   }
 
   /**
+   * 查询比赛当前状态
+   */
+  async getMatchStatus(matchId: number): Promise<string> {
+    const result = await this.dataSource.query(
+      `SELECT status FROM matches WHERE id = $1`,
+      [matchId],
+    );
+    return result[0]?.status || 'unknown';
+  }
+
+  /**
    * 查询已确认状态的比赛
    */
   async getConfirmedMatches(): Promise<Array<{

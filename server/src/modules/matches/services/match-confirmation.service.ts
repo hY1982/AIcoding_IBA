@@ -1313,6 +1313,45 @@ export class MatchConfirmationService {
     }
   }
 
+  /**
+   * 通知球员比赛因场地冲突被取消。
+   *
+   * 调用场景：cancelConflictingPendingVenueMatches 中冲突比赛被取消时。
+   */
+  async notifyMatchCancelledDueToVenueConflict(
+    match: Match,
+    reason: string,
+  ): Promise<void> {
+    const allPlayers = await this.matchPlayerRepo.find({
+      where: { matchId: match.id },
+      select: ['playerId', 'status'],
+    });
+
+    const playerIds = allPlayers.map((p) => p.playerId);
+    const playerIdToUserId = await this.resolvePlayerIdsToUserIdMap(playerIds);
+
+    for (const player of allPlayers) {
+      const userId = playerIdToUserId.get(player.playerId);
+      if (!userId) continue;
+
+      const content =
+        player.status === 'confirmed'
+          ? `您确认参赛的比赛因${reason}已被取消，保证金将原路退回。`
+          : `您受邀参赛的比赛因${reason}已被取消。`;
+
+      await this.createNotificationWithRetry(() =>
+        this.notificationService.createNotification({
+          userId,
+          type: 'match_cancelled',
+          title: '比赛因场地冲突已取消',
+          content,
+          data: { matchId: match.id },
+          regionCode: match.regionCode ?? undefined,
+        }),
+      );
+    }
+  }
+
   private async createNotificationWithRetry<T>(
     operation: () => Promise<T>,
   ): Promise<T | undefined> {

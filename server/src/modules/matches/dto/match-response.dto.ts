@@ -33,9 +33,6 @@ export class MatchPlayerResponse {
 
   @ApiProperty({ enum: MATCH_PLAYER_STATUSES, description: '参赛状态', example: 'invited' })
   status!: MatchPlayerStatus;
-
-  @ApiProperty({ description: '是否替补', example: false })
-  isReserve!: boolean;
 }
 
 // ==================== 列表项响应 ====================
@@ -62,7 +59,7 @@ export class MatchListResponseDto {
   @ApiProperty({ description: '结束时间 ISO8601', example: '2026-06-15T16:00:00.000Z' })
   endTime!: Date;
 
-  @ApiProperty({ enum: MATCH_STATUSES, description: '比赛状态', example: 'pending_confirmation' })
+  @ApiProperty({ enum: MATCH_STATUSES, description: '比赛状态', example: 'pending_players' })
   status!: MatchStatus;
 
   @ApiProperty({ description: '队伍数量', example: 3 })
@@ -147,7 +144,7 @@ export class ConfirmParticipationResponseDto {
   @ApiProperty({ enum: MATCH_PLAYER_STATUSES, description: '球员参赛状态', example: 'confirmed' })
   status!: MatchPlayerStatus;
 
-  @ApiProperty({ enum: MATCH_STATUSES, description: '比赛状态', example: 'pending_confirmation' })
+  @ApiProperty({ enum: MATCH_STATUSES, description: '比赛状态', example: 'pending_players' })
   matchStatus!: MatchStatus;
 
   @ApiProperty({ description: '提示信息', example: '确认参赛成功，等待其他球员确认' })

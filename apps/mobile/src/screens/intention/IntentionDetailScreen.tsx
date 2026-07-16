@@ -81,7 +81,7 @@ export function IntentionDetailScreen() {
   };
 
   const handleReEdit = () => {
-    navigation.navigate('CreateIntention', { intentionId });
+    (navigation as any).navigate('CreateIntention', { intentionId });
   };
 
   const handleDelete = () => {
@@ -158,12 +158,12 @@ export function IntentionDetailScreen() {
         </View>
       </View>
 
-      {/* Match Info */}
-      {intention.matchId && (
+      {/* Match Info - v2.0: 意向不再1:1绑定比赛，移除matchId显示 */}
+      {/* {intention.matchId && (
         <View style={styles.card}>
           <Text style={styles.matchInfo}>关联比赛 #{intention.matchId}</Text>
         </View>
-      )}
+      )} */}
 
       {/* Time Info */}
       <View style={styles.card}>

@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { PlayerProfile, PlayerAbility, PlayerAttributes } from '@shared/player';
+import type { PlayerProfile, PlayerAttributes } from '@shared/player';
 import type { ApiResponse } from '@shared/common';
 
 export class PlayerServiceError extends Error {
@@ -20,8 +20,7 @@ function extractErrorMessage(error: unknown): string {
 }
 
 export type UpdateProfileDto = Partial<PlayerAttributes> &
-  Partial<Pick<PlayerAbility, 'baseAbilityScore' | 'matchAdjustValue'>> &
-  Partial<Pick<PlayerProfile, 'birthDate' | 'startPlayingDate'>>;
+  Partial<Pick<PlayerProfile, 'baseAbilityScore' | 'matchAdjustValue' | 'birthDate' | 'startPlayingDate'>>;
 
 class PlayerService {
   async getProfile(): Promise<PlayerProfile> {
@@ -37,16 +36,6 @@ class PlayerService {
   async updateProfile(dto: UpdateProfileDto): Promise<PlayerProfile> {
     try {
       const response = await apiClient.put<ApiResponse<PlayerProfile>>('/players/profile', dto);
-      return response.data.data;
-    } catch (error) {
-      const userMessage = extractErrorMessage(error);
-      throw new PlayerServiceError(userMessage);
-    }
-  }
-
-  async getAbility(): Promise<PlayerAbility> {
-    try {
-      const response = await apiClient.get<ApiResponse<PlayerAbility>>('/players/ability');
       return response.data.data;
     } catch (error) {
       const userMessage = extractErrorMessage(error);

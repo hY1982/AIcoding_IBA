@@ -128,10 +128,13 @@ function generateRandomIntention(
   venues: StressVenueInfo[],
   formats: Array<{ id: number; name: string; team_size: number }>,
 ): { payload: CreateIntentionPayload; isMultiSelect: boolean } {
-  // startTime: 在合法范围内，30 分钟增量
-  const slotCount = Math.floor((latestMs - earliestMs) / (30 * 60 * 1000));
+  // startTime: 在合法范围内，30 分钟增量，对齐到整点/半点
+  const SLOT_MS = 30 * 60 * 1000;
+  const alignedEarliestMs = Math.ceil(earliestMs / SLOT_MS) * SLOT_MS;
+  const alignedLatestMs = Math.floor(latestMs / SLOT_MS) * SLOT_MS;
+  const slotCount = Math.floor((alignedLatestMs - alignedEarliestMs) / SLOT_MS);
   const slotIndex = randomInt(0, Math.max(0, slotCount));
-  const startMs = earliestMs + slotIndex * 30 * 60 * 1000;
+  const startMs = alignedEarliestMs + slotIndex * SLOT_MS;
   const startTime = new Date(startMs).toISOString();
 
   // durationMinutes: 120/180/240/300/360
@@ -1019,7 +1022,12 @@ export async function runHumanDrivenStressScenario(
             } catch (err: any) {
               const durationMs = Math.round(performance.now() - start);
               metrics.record('比赛确认', 'error', durationMs, err.message);
-              report.addFailure(`确认参赛`, `${bot!.nickname} ${err.message}`, durationMs);
+              // v2.2: "已满员"和"pending_venue"是预期业务行为，不算失败
+              if (err.message.includes('已满员') || err.message.includes('pending_venue')) {
+                report.addSuccess(`满员拦截`, `${bot!.nickname} ${err.message}`, durationMs);
+              } else {
+                report.addFailure(`确认参赛`, `${bot!.nickname} ${err.message}`, durationMs);
+              }
             }
           }),
         );
@@ -1143,6 +1151,13 @@ export async function runHumanDrivenStressScenario(
       for (const matchId of matchIds.slice(0, 3)) { // 最多测试前 3 场比赛
         report.printDivider();
         report.printInfo('比赛', `matchId=${matchId}`);
+
+        // v2.2: 检查比赛当前状态，已取消/过期的比赛跳过消息测试
+        const matchStatus = await dbTools.getMatchStatus(matchId);
+        if (matchStatus === 'cancelled' || matchStatus === 'expired') {
+          report.addSkip('群聊消息', `matchId=${matchId} 状态为 ${matchStatus}，跳过消息测试`);
+          continue;
+        }
 
         const matchPlayerIds = (await dbTools.getMatchPlayers(matchId)).map((mp) => Number(mp.player_id));
         const matchBots = matchPlayerIds

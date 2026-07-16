@@ -211,7 +211,6 @@ export function MatchDetailScreen() {
                 {MATCH_PLAYER_STATUS_LABELS[player.status]}
               </Text>
             </View>
-            {player.isReserve && <Text style={styles.reserveTag}>替补</Text>}
           </View>
         ))}
       </View>
@@ -402,11 +401,6 @@ const styles = StyleSheet.create({
   playerStatusText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '600',
-  },
-  reserveTag: {
-    fontSize: 11,
-    color: '#f39c12',
     fontWeight: '600',
   },
   errorMsgText: {

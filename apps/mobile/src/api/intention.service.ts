@@ -18,7 +18,6 @@ export interface IntentionResponse {
   acceptableWaitMinutes: number;
   endTime: string;
   status: IntentionStatus;
-  matchId: number | null;
   regionCode: string | null;
   submittedAt: string;
   updatedAt: string;

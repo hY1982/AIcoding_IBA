@@ -4,6 +4,7 @@ export const NOTIFICATION_TYPES = [
   'match_confirmed',
   'match_success',
   'match_failed',
+  'match_cancelled',
   'intention_matched',
   'intention_expired',
   'intention_reminder',

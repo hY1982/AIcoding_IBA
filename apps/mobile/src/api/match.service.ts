@@ -25,10 +25,15 @@ export interface MatchListResponse {
   playersPerTeam: number;
   totalPlayers: number;
   confirmedPlayers: number;
+  requiredPlayers: number;
+  maxPlayers: number;
+  minPlayers: number;
   depositAmount: string;
   regionCode: string | null;
   playerStatus: MatchPlayerStatus;
   teamNumber: number | null;
+  confirmDeadline: string | null;
+  venueConfirmDeadline: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,7 +49,6 @@ export interface MatchPlayerItem {
   nickname: string | null;
   teamNumber: number | null;
   status: MatchPlayerStatus;
-  isReserve: boolean;
 }
 
 export interface MatchDetailResponse extends MatchListResponse {
