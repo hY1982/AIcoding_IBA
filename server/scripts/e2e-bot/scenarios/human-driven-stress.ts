@@ -215,6 +215,8 @@ class TestOrchestrator {
 class MatchingMonitor {
   private records: MatchingRecord[] = [];
   private intervalId?: NodeJS.Timeout;
+  private consecutiveEmptyScans = 0;
+  private readonly MAX_EMPTY_SCANS = 3; // 连续3次空转后提前结束
 
   constructor(
     private appContext: any,
@@ -233,6 +235,13 @@ class MatchingMonitor {
 
     // 使用循环而非 setInterval，确保每次执行完成后再等待
     while (Date.now() - startTime < totalDurationMs) {
+      // 检查是否已连续空转达到上限
+      if (this.consecutiveEmptyScans >= this.MAX_EMPTY_SCANS) {
+        console.log(`  ${YELLOW}匹配监控提前结束: 连续${this.MAX_EMPTY_SCANS}次无pending意向${RESET}`);
+        this.report.printInfo('匹配监控', `提前结束: 连续${this.MAX_EMPTY_SCANS}次无pending意向`);
+        break;
+      }
+
       const nextExecutionTime = startTime + executionCount * this.intervalMs;
       const waitMs = nextExecutionTime - Date.now();
 
@@ -264,6 +273,13 @@ class MatchingMonitor {
       const created = matchResult?.matchesCreated ?? 0;
       const failed = matchResult?.matchesFailed ?? 0;
       const expired = matchResult?.expiredCount ?? 0;
+
+      // 空转检测
+      if (scanned === 0) {
+        this.consecutiveEmptyScans++;
+      } else {
+        this.consecutiveEmptyScans = 0;
+      }
 
       this.metrics.record('匹配引擎', 'success', durationMs);
 
@@ -648,9 +664,11 @@ export async function runHumanDrivenStressScenario(
     const venueNames = [
       `${(vm as any)?._venueName || '飞跃篮球馆'}-A`,
       `${(vm as any)?._venueName || '飞跃篮球馆'}-B`,
+      `${(vm as any)?._venueName || '飞跃篮球馆'}-C`,
+      `${(vm as any)?._venueName || '飞跃篮球馆'}-D`,
     ];
 
-    for (let vi = 0; vi < 2; vi++) {
+    for (let vi = 0; vi < 4; vi++) {
       if (!vm.accessToken) {
         report.addFailure('场地创建', '场地经理未登录');
         break;
@@ -692,8 +710,15 @@ export async function runHumanDrivenStressScenario(
         }
         vm.venueIds.push(venueId);
 
+        // 每个场地分配不同的时段，减少时段冲突
+        const slotConfigs = [
+          { startTime: '08:00', endTime: '12:00' },
+          { startTime: '12:00', endTime: '16:00' },
+          { startTime: '16:00', endTime: '20:00' },
+          { startTime: '20:00', endTime: '24:00' },
+        ];
         const slots = [
-          { slotDate: todayStr, startTime: '08:00', endTime: '22:00' },
+          { slotDate: todayStr, startTime: slotConfigs[vi].startTime, endTime: slotConfigs[vi].endTime },
         ];
 
         const slotResult = await safeBotRun(vm, '时段', `发布-V${venueId}`, async () => {
@@ -776,6 +801,9 @@ export async function runHumanDrivenStressScenario(
 
     const pendingMatches = await dbTools.getPendingConfirmationMatches();
     const matchIds = pendingMatches.map((m) => Number(m.id));
+
+    // 记录初始匹配创建的比赛数量，用于报告区分初始匹配和调度匹配
+    report.setInitialMatchesCreated(matchIds.length);
     report.printInfo('比赛数量', `${matchIds.length} 场比赛已创建`);
 
     // 6.1 账号密码对照表

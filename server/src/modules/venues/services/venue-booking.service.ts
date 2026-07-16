@@ -1,4 +1,4 @@
-import { Injectable, Logger, InternalServerErrorException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, LessThanOrEqual, MoreThanOrEqual, IsNull } from 'typeorm';
 import { VenueTimeSlot } from '../entities/venue-time-slot.entity';
@@ -9,7 +9,7 @@ import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { VenueBookingRequest } from '../entities/venue-booking-request.entity';
 import { UnavailableSlotService } from './unavailable-slot.service';
-import { MatchConfirmationService } from '@modules/matches/services/match-confirmation.service';
+import { NotificationService } from '@modules/notifications/services/notification.service';
 
 /**
  * VenueBookingService — v2.0 场地预订服务。
@@ -41,8 +41,7 @@ export class VenueBookingService {
     @InjectRepository(Venue)
     private readonly venueRepo: Repository<Venue>,
     private readonly unavailableSlotService: UnavailableSlotService,
-    @Inject(forwardRef(() => MatchConfirmationService))
-    private readonly matchConfirmationService: MatchConfirmationService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -638,10 +637,47 @@ export class VenueBookingService {
         }
 
         // 发送通知给球员
-        await this.matchConfirmationService.notifyMatchCancelledDueToVenueConflict(
-          pendingMatch,
-          '场地时段已被其他比赛占用',
-        );
+        const allPlayers = await manager.find(MatchPlayer, {
+          where: { matchId: pendingMatch.id },
+          select: ['playerId', 'status'],
+        });
+
+        const playerIds = allPlayers.map((p) => p.playerId);
+        if (playerIds.length > 0) {
+          const rows = await manager.query(
+            `SELECT id, user_id FROM players WHERE id = ANY($1)`,
+            [playerIds],
+          );
+          const playerIdToUserId = new Map<number, number>();
+          for (const row of rows) {
+            playerIdToUserId.set(Number(row.id), Number(row.user_id));
+          }
+
+          for (const player of allPlayers) {
+            const userId = playerIdToUserId.get(player.playerId);
+            if (!userId) continue;
+
+            const content =
+              player.status === 'confirmed'
+                ? '您确认参赛的比赛因场地时段已被其他比赛占用已被取消，保证金将原路退回。'
+                : '您受邀参赛的比赛因场地时段已被其他比赛占用已被取消。';
+
+            try {
+              await this.notificationService.createNotification({
+                userId,
+                type: 'match_cancelled',
+                title: '比赛因场地冲突已取消',
+                content,
+                data: { matchId: pendingMatch.id },
+                regionCode: pendingMatch.regionCode ?? undefined,
+              });
+            } catch (notifyErr) {
+              this.logger.warn(
+                `Failed to notify player ${player.playerId} about cancelled match: ${notifyErr instanceof Error ? notifyErr.message : 'unknown error'}`,
+              );
+            }
+          }
+        }
 
         this.logger.log(
           `Cancelled conflicting match: matchId=${pendingMatch.id}, ` +

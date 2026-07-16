@@ -94,6 +94,7 @@ export interface EnhancedReport {
     min: number;
   };
   matchingFrequency: MatchingFrequencyRecord[];
+  initialMatchesCreated?: number; // 初始匹配创建的比赛数量
   phases: Array<{
     name: string;
     passed: number;
@@ -129,6 +130,7 @@ export class ReportGenerator {
     singleSelectSuccessRate?: string;
   };
   private performanceMetrics = { p50: 0, p95: 0, p99: 0, avg: 0, max: 0, min: 0 };
+  private initialMatchesCreated = 0; // 初始匹配创建的比赛数量（用于区分调度匹配）
 
   // ─── Phase 管理 ───
 
@@ -227,6 +229,10 @@ export class ReportGenerator {
     this.matchingFrequency.push(record);
   }
 
+  setInitialMatchesCreated(count: number): void {
+    this.initialMatchesCreated = count;
+  }
+
   setFailureAnalysis(analysis: FailureAnalysis[]): void {
     this.failureAnalysis = analysis;
   }
@@ -309,6 +315,7 @@ export class ReportGenerator {
       failureAnalysis: this.failureAnalysis,
       performanceMetrics: this.performanceMetrics,
       matchingFrequency: this.matchingFrequency,
+      initialMatchesCreated: this.initialMatchesCreated,
       phases: this.phases.map((p) => ({
         name: p.name,
         passed: p.results.filter((r) => r.status === 'PASS').length,
@@ -397,6 +404,9 @@ export class ReportGenerator {
     // 匹配频率
     if (report.matchingFrequency.length > 0) {
       console.log(`\n  ${BOLD}匹配执行频率 (${report.matchingFrequency.length} 次):${RESET}`);
+      if (report.initialMatchesCreated && report.initialMatchesCreated > 0) {
+        console.log(`    初始匹配创建: ${report.initialMatchesCreated} 场比赛`);
+      }
       for (const mf of report.matchingFrequency) {
         console.log(`    ${mf.timestamp}: 扫描=${mf.intentionsScanned}, 创建=${mf.matchesCreated}, 失败=${mf.matchesFailed}, 过期=${mf.expiredCount}, 耗时=${mf.durationMs}ms`);
       }

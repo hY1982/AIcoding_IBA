@@ -12,9 +12,13 @@ import { VenueBookingService } from './services/venue-booking.service';
 import { VenueManagerProfileService } from './services/venue-manager-profile.service';
 import { VenueManagerProfileController } from './controllers/venue-manager-profile.controller';
 import { VenueController } from './controllers/venue.controller';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Venue, VenueTimeSlot, VenueUnavailableSlot, VenueBookingRequest, VenueManager, User])],
+  imports: [
+    TypeOrmModule.forFeature([Venue, VenueTimeSlot, VenueUnavailableSlot, VenueBookingRequest, VenueManager, User]),
+    NotificationsModule,
+  ],
   providers: [VenueService, UnavailableSlotService, VenueBookingService, VenueManagerProfileService],
   controllers: [VenueManagerProfileController, VenueController],
   exports: [VenueService, UnavailableSlotService, VenueBookingService, VenueManagerProfileService, TypeOrmModule],
