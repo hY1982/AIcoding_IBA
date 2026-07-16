@@ -110,6 +110,11 @@ export class MatchingEngineService {
     // 5. 【池化】按 (venueId, formatId) 分组，组内滑动窗口合并时间重叠分身
     const poolingResult = this.matchPoolService.buildPools(avatars, poolingParams.minPoolSize);
 
+    this.logger.log(
+      `池化结果: avatars=${avatars.length}, pools=${poolingResult.pools.length}, ` +
+        `discarded=${poolingResult.discardedAvatars}, minPoolSize=${poolingParams.minPoolSize}`,
+    );
+
     let matchesCreated = 0;
     let matchesFailed = 0;
     let groupsProcessed = 0;
@@ -134,6 +139,11 @@ export class MatchingEngineService {
           pool,
           format,
           poolingParams,
+        );
+
+        this.logger.log(
+          `分段结果: venueId=${pool.venueId}, formatId=${pool.formatId}, ` +
+            `segments=${segmentResult.segments.length}, discarded=${segmentResult.discardedAvatars}`,
         );
 
         if (segmentResult.segments.length === 0) {
@@ -165,6 +175,11 @@ export class MatchingEngineService {
             minute: '2-digit',
             second: '2-digit',
           });
+
+          this.logger.log(
+            `检查场地可用性: venueId=${pool.venueId}, slotDate=${slotDate}, ` +
+              `time=${startTimeStr}-${endTimeStr}, players=${segment.avatars.length}`,
+          );
 
           const available = await this.venueBookingService.checkAvailability(
             pool.venueId,

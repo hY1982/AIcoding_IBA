@@ -343,10 +343,10 @@ class IntentionScheduler {
     const eligiblePlayers = players.filter((b) => b.playerId && b.accessToken);
     const nowMs = Date.now();
 
-    // 意向时间范围: now + 2.5h ~ now + 4h
-    // 确保即使提交时间推移了1小时，意向的startTime仍然大于提交时的now + 1h
-    const earliestMs = nowMs + 150 * 60 * 1000; // now + 2.5h
-    const latestMs = nowMs + 4 * 60 * 60 * 1000;  // now + 4h
+    // 意向时间范围: now + 1h ~ now + 3h
+    // 缩短时间范围，使比赛时间与场地时段（18:00-23:59）更好匹配
+    const earliestMs = nowMs + 60 * 60 * 1000; // now + 1h
+    const latestMs = nowMs + 3 * 60 * 60 * 1000;  // now + 3h
 
     this.submissions = eligiblePlayers.map((bot, index) => {
       const { payload, isMultiSelect } = generateRandomIntention(earliestMs, latestMs, venues, formats);
@@ -710,12 +710,14 @@ export async function runHumanDrivenStressScenario(
         }
         vm.venueIds.push(venueId);
 
-        // 每个场地分配不同的时段，减少时段冲突
+        // 每个场地分配覆盖比赛时间范围的时段
+        // 比赛时间集中在 now+2.5h 到 now+4h，对应上海时间约 20:00-23:00
+        // 时段必须覆盖该时间范围，否则 checkAvailability 会返回 false
         const slotConfigs = [
-          { startTime: '08:00', endTime: '12:00' },
-          { startTime: '12:00', endTime: '16:00' },
-          { startTime: '16:00', endTime: '20:00' },
-          { startTime: '20:00', endTime: '24:00' },
+          { startTime: '18:00', endTime: '23:59' },
+          { startTime: '18:00', endTime: '23:59' },
+          { startTime: '18:00', endTime: '23:59' },
+          { startTime: '18:00', endTime: '23:59' },
         ];
         const slots = [
           { slotDate: todayStr, startTime: slotConfigs[vi].startTime, endTime: slotConfigs[vi].endTime },
