@@ -279,38 +279,49 @@ export function VenueDetailScreen() {
                 {slots.length === 0 ? (
                   <Text style={styles.emptySlotsText}>加载中...</Text>
                 ) : (
-                  slots.map((slot, index) => (
-                    <View
-                      key={`${date}-${index}`}
-                      style={[
-                        styles.slotRow,
-                        slot.status === 'available' && styles.slotRowAvailable,
-                        slot.status === 'unavailable' && styles.slotRowUnavailable,
-                        slot.status === 'booked' && styles.slotRowBooked,
-                      ]}
-                    >
-                      <Text style={styles.slotTime}>
-                        {slot.startTime} - {slot.endTime}
-                      </Text>
-                      <View style={styles.slotStatus}>
-                        {slot.status === 'available' && (
-                          <Text style={styles.slotAvailable} accessibilityLabel="时段-可预订">
-                            可预订
-                          </Text>
-                        )}
-                        {slot.status === 'unavailable' && (
-                          <Text style={styles.slotUnavailable} accessibilityLabel="时段-不可预订">
-                            {slot.reason || '不可预订'}
-                          </Text>
-                        )}
-                        {slot.status === 'booked' && (
-                          <Text style={styles.slotBooked} accessibilityLabel="时段-已占用">
-                            已占用
-                          </Text>
-                        )}
-                      </View>
-                    </View>
-                  ))
+                  slots.map((slot, index) => {
+                    const isBooked = slot.status === 'booked';
+                    const SlotWrapper = isBooked ? TouchableOpacity : View;
+                    return (
+                      <SlotWrapper
+                        key={`${date}-${index}`}
+                        style={[
+                          styles.slotRow,
+                          slot.status === 'available' && styles.slotRowAvailable,
+                          slot.status === 'unavailable' && styles.slotRowUnavailable,
+                          slot.status === 'booked' && styles.slotRowBooked,
+                        ]}
+                        {...(isBooked && slot.matchId
+                          ? {
+                              onPress: () =>
+                                navigation.navigate('MatchDetail', { matchId: slot.matchId! }),
+                              accessibilityLabel: `时段-已占用-点击查看比赛`,
+                            }
+                          : { accessibilityLabel: `时段-${slot.status}` })}
+                      >
+                        <Text style={styles.slotTime}>
+                          {slot.startTime} - {slot.endTime}
+                        </Text>
+                        <View style={styles.slotStatus}>
+                          {slot.status === 'available' && (
+                            <Text style={styles.slotAvailable} accessibilityLabel="时段-可预订">
+                              可预订
+                            </Text>
+                          )}
+                          {slot.status === 'unavailable' && (
+                            <Text style={styles.slotUnavailable} accessibilityLabel="时段-不可预订">
+                              {slot.reason || '不可预订'}
+                            </Text>
+                          )}
+                          {slot.status === 'booked' && (
+                            <Text style={styles.slotBooked} accessibilityLabel="时段-已占用">
+                              已占用{slot.matchId ? '（点击查看）' : ''}
+                            </Text>
+                          )}
+                        </View>
+                      </SlotWrapper>
+                    );
+                  })
                 )}
               </View>
             );

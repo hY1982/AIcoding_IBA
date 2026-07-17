@@ -34,6 +34,7 @@ export interface MatchListResponse {
   teamNumber: number | null;
   confirmDeadline: string | null;
   venueConfirmDeadline: string | null;
+  cancelledReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -77,6 +78,7 @@ export interface MatchMessage {
   id: number;
   matchId: number;
   senderId: number;
+  senderNickname: string | null;
   content: string;
   messageType: MessageType;
   createdAt: string;

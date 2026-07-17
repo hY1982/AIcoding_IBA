@@ -92,6 +92,9 @@ export function ChatScreen() {
           style={[styles.messageRow, isMine ? styles.myMessageRow : styles.otherMessageRow]}
           accessibilityLabel={isMine ? `我的消息-${item.content}` : `他人消息-${item.content}`}
         >
+          {!isMine && item.senderNickname && (
+            <Text style={styles.senderNickname}>{item.senderNickname}</Text>
+          )}
           <View style={[styles.messageBubble, isMine ? styles.myBubble : styles.otherBubble]}>
             <Text style={[styles.messageText, isMine ? styles.myMessageText : styles.otherMessageText]}>
               {item.content}
@@ -357,5 +360,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  senderNickname: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+    paddingHorizontal: 4,
   },
 });

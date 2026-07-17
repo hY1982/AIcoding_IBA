@@ -12,6 +12,7 @@ import { MatchMessage } from '../entities/match-message.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { Player } from '@modules/players/entities/player.entity';
+import { User } from '@modules/users/entities/user.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { SendMessageDto } from '../dto/send-message.dto';
 import { QueryMessageDto } from '../dto/query-message.dto';
@@ -28,6 +29,7 @@ export interface MessageSentEvent {
   id: number;
   matchId: number;
   senderId: number | null;
+  senderNickname: string | null;
   content: string;
   messageType: string;
   createdAt: Date;
@@ -84,6 +86,8 @@ export class MessageService {
     private readonly matchPlayerRepo: Repository<MatchPlayer>,
     @InjectRepository(Player)
     private readonly playerRepo: Repository<Player>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     @InjectRepository(SystemParam)
     private readonly systemParamRepo: Repository<SystemParam>,
     private readonly eventEmitter: EventEmitter,
@@ -160,8 +164,11 @@ export class MessageService {
 
     const saved = await this.messageRepo.save(message);
 
+    // 加载发送者昵称用于事件广播
+    const senderNickname = await this.getSenderNickname(senderId);
+
     // Emit domain event for real-time push
-    this.emitMessageSent(saved);
+    this.emitMessageSent(saved, senderNickname);
 
     this.logger.log(
       `Message sent: id=${saved.id}, matchId=${matchId}, senderId=${senderId}, type=${messageType}`,
@@ -256,12 +263,25 @@ export class MessageService {
 
     const qb = this.messageRepo
       .createQueryBuilder('message')
+      .leftJoin('users', 'u', 'u.id = message.sender_id')
+      .addSelect('u.nickname', 'sender_nickname')
       .where('message.match_id = :matchId', { matchId })
       .orderBy('message.created_at', 'DESC')
       .skip(skip)
       .take(pageSize);
 
-    const [list, total] = await qb.getManyAndCount();
+    // 使用 getMany() + getCount() 替代 getManyAndCount()
+    // 避免 TypeORM 在 COUNT 子查询中处理 orderBy 时 databaseName undefined 的 bug
+    const [list, total] = await Promise.all([
+      qb.getMany(),
+      qb.getCount(),
+    ]);
+
+    // 动态填充 senderNickname
+    for (const msg of list) {
+      const raw = msg as any;
+      msg.senderNickname = raw.sender_nickname ?? null;
+    }
 
     return { page, pageSize, total, list };
   }
@@ -362,15 +382,28 @@ export class MessageService {
    * Consumers (e.g., ChatGateway in Phase 4) listen to this event
    * to broadcast the message to connected WebSocket clients.
    */
-  private emitMessageSent(message: MatchMessage): void {
+  private emitMessageSent(message: MatchMessage, senderNickname?: string | null): void {
     const event: MessageSentEvent = {
       id: message.id,
       matchId: message.matchId,
       senderId: message.senderId,
+      senderNickname: senderNickname ?? null,
       content: message.content,
       messageType: message.messageType,
       createdAt: message.createdAt,
     };
     this.eventEmitter.emit('message:sent', event);
+  }
+
+  /**
+   * 获取发送者昵称
+   */
+  private async getSenderNickname(userId: number | null): Promise<string | null> {
+    if (!userId) return null;
+    const user = await this.userRepo.findOne({
+      where: { id: userId },
+      select: ['nickname'],
+    });
+    return user?.nickname ?? null;
   }
 }

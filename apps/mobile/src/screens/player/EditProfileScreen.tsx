@@ -45,6 +45,7 @@ export function EditProfileScreen() {
   const [jumpingReach, setJumpingReach] = useState(
     profile.jumpingReach !== undefined ? String(profile.jumpingReach) : '',
   );
+  const [realName, setRealName] = useState(profile.realName || '');
   const [positions, setPositions] = useState<BasketballPosition[]>(
     profile.positions.map((p) => p.position),
   );
@@ -129,6 +130,7 @@ export function EditProfileScreen() {
         wingspan: wingspan ? Number(wingspan) : undefined,
         standingReach: standingReach ? Number(standingReach) : undefined,
         jumpingReach: jumpingReach ? Number(jumpingReach) : undefined,
+        realName: realName || undefined,
         positions,
       });
       setSuccessMessage('资料更新成功');
@@ -149,6 +151,15 @@ export function EditProfileScreen() {
       error={globalError}
       success={successMessage}
     >
+      <ValidatedTextInput
+        label="真实姓名"
+        value={realName}
+        onChangeText={(text) => {
+          setRealName(text);
+        }}
+        placeholder="请输入真实姓名"
+        accessibilityLabel="真实姓名输入框"
+      />
       <ValidatedTextInput
         label="生日"
         value={birthDate}

@@ -230,6 +230,7 @@ export class UnavailableSlotService {
       end: string;
       type: 'unavailable' | 'booked';
       reason?: string;
+      matchId?: number;
     }
 
     const blockedIntervals: BlockedInterval[] = [];
@@ -246,6 +247,7 @@ export class UnavailableSlotService {
         start: slot.startTime,
         end: slot.endTime,
         type: 'booked',
+        matchId: slot.matchId ?? undefined,
       });
     }
 
@@ -265,6 +267,9 @@ export class UnavailableSlotService {
         if (interval.type === 'booked') {
           last.type = 'booked';
           last.reason = undefined; // booked 不显示 reason
+          if (interval.matchId !== undefined) {
+            last.matchId = interval.matchId;
+          }
         }
       }
     }
@@ -292,6 +297,7 @@ export class UnavailableSlotService {
         endTime: interval.end.slice(0, 5),
         status: interval.type,
         reason: interval.reason,
+        matchId: interval.matchId,
       });
       currentTime = interval.end;
 

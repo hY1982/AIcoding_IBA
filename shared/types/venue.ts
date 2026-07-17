@@ -80,6 +80,7 @@ export interface VenueDisplaySlot {
   endTime: string;   // HH:mm
   status: 'available' | 'unavailable' | 'booked';
   reason?: string;   // unavailable/booked 时显示原因
+  matchId?: number;  // booked 时关联的比赛ID
 }
 
 // 场地可预订时段

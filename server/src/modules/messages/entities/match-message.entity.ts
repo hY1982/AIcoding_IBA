@@ -46,6 +46,11 @@ export class MatchMessage {
   @JoinColumn({ name: 'sender_id' })
   sender!: User | null;
 
+  /**
+   * 发送者昵称（非数据库字段，查询时动态填充）
+   */
+  senderNickname!: string | null;
+
   @Column({
     type: 'text',
     nullable: false,

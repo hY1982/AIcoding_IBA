@@ -28,6 +28,7 @@ export interface MatchListResponse {
   regionCode: string | null;
   playerStatus: MatchPlayerStatus;
   teamNumber: number | null;
+  cancelledReason: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -137,6 +138,7 @@ export class MatchQueryService {
       regionCode: raw.match_region_code ?? null,
       playerStatus: (raw.mp_status as MatchPlayerStatus) ?? 'invited',
       teamNumber: raw.mp_team_number != null ? Number(raw.mp_team_number) : null,
+      cancelledReason: raw.match_cancelled_reason ?? null,
       createdAt: raw.match_created_at,
       updatedAt: raw.match_updated_at,
     }));
@@ -222,6 +224,7 @@ export class MatchQueryService {
       regionCode: rawMatch.match_region_code ?? null,
       playerStatus: matchPlayer.status,
       teamNumber: matchPlayer.teamNumber,
+      cancelledReason: rawMatch.match_cancelled_reason ?? null,
       createdAt: rawMatch.match_created_at,
       updatedAt: rawMatch.match_updated_at,
       teams: teamItems,

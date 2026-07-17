@@ -177,6 +177,14 @@ export function MatchDetailScreen() {
             {match.confirmedPlayers}/{match.totalPlayers} 已确认
           </Text>
         </View>
+        {match.status === 'cancelled' && match.cancelledReason && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>取消原因</Text>
+            <Text style={[styles.infoValue, styles.cancelledReason]}>
+              {match.cancelledReason}
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Team Assignments */}
@@ -446,5 +454,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  cancelledReason: {
+    color: '#e74c3c',
   },
 });

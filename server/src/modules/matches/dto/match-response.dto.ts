@@ -90,6 +90,9 @@ export class MatchListResponseDto {
   @ApiProperty({ description: '当前球员的队伍编号', nullable: true, example: 1 })
   teamNumber!: number | null;
 
+  @ApiProperty({ description: '取消原因', nullable: true, example: 'insufficient_players' })
+  cancelledReason!: string | null;
+
   @ApiProperty({ description: '创建时间', example: '2026-06-14T10:00:00.000Z' })
   createdAt!: Date;
 

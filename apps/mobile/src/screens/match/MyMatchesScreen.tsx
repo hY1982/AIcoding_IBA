@@ -200,6 +200,12 @@ export function MyMatchesScreen() {
           </Text>
         </View>
       </View>
+      {item.status === 'cancelled' && item.cancelledReason && (
+        <View style={styles.cardBody}>
+          <Text style={styles.infoLabel}>取消原因：</Text>
+          <Text style={styles.cancelledReason}>{item.cancelledReason}</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -403,5 +409,10 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 13,
     color: '#999',
+  },
+  cancelledReason: {
+    fontSize: 13,
+    color: '#e74c3c',
+    flex: 1,
   },
 });

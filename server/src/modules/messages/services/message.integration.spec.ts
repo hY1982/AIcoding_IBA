@@ -85,6 +85,7 @@ describe('Message Integration Tests', () => {
       matchRepo,
       matchPlayerRepo,
       playerRepo,
+      userRepo,
       systemParamRepo,
       eventEmitter,
     );

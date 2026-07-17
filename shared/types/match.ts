@@ -173,6 +173,7 @@ export interface MatchMessage {
   id: number;
   matchId: number;
   senderId: number;
+  senderNickname: string | null;
   content: string;
   messageType: MessageType;
   createdAt: string;

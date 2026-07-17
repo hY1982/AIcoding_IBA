@@ -5,12 +5,13 @@ import { MatchMessage } from './entities/match-message.entity';
 import { Match } from '@modules/matches/entities/match.entity';
 import { MatchPlayer } from '@modules/matches/entities/match-player.entity';
 import { Player } from '@modules/players/entities/player.entity';
+import { User } from '@modules/users/entities/user.entity';
 import { SystemParam } from '@modules/system/entities/system-param.entity';
 import { MessageService } from './services/message.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MatchMessage, Match, MatchPlayer, Player, SystemParam]),
+    TypeOrmModule.forFeature([MatchMessage, Match, MatchPlayer, Player, User, SystemParam]),
   ],
   providers: [
     MessageService,

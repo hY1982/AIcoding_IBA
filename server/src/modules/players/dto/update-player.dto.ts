@@ -7,6 +7,8 @@ import {
   IsOptional,
   IsEnum,
   ArrayMaxSize,
+  IsString,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreatePlayerDto } from './create-player.dto';
@@ -32,6 +34,14 @@ export class UpdatePlayerDto extends PartialType(CreatePlayerDto) {
   @IsOptional()
   @ArrayMaxSize(3)
   positions?: BasketballPosition[];
+
+  /**
+   * 真实姓名（用于更新用户表）
+   */
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  realName?: string;
 
   // ===== MVP 基础属性（显式重定义以保留 @Type 装饰器） =====
 

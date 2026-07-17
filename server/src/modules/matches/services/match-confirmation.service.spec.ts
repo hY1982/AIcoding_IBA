@@ -97,6 +97,7 @@ function createMockMatch(overrides: Partial<Match> = {}): Match {
     teamCount: 3,
     playersPerTeam: 3,
     requiredPlayers: 9,
+    maxPlayers: 9,
     confirmedPlayers: 0,
     version: 1,
     depositAmount: '50.00',

@@ -235,6 +235,16 @@ export class PlayerService {
         (updateData as any).startPlayingDate = dto.startPlayingDate + '-01';
       }
 
+      // 如果 realName 变更，同步更新用户表
+      if (dto.realName !== undefined && existingPlayer.userId) {
+        await manager
+          .createQueryBuilder()
+          .update(User)
+          .set({ realName: dto.realName })
+          .where('id = :userId', { userId: existingPlayer.userId })
+          .execute();
+      }
+
       // 清理 undefined 字段，避免覆盖现有值
       Object.keys(updateData).forEach((key) => {
         if (updateData[key as keyof Player] === undefined) {

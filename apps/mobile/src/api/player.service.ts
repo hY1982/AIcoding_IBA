@@ -20,7 +20,7 @@ function extractErrorMessage(error: unknown): string {
 }
 
 export type UpdateProfileDto = Partial<PlayerAttributes> &
-  Partial<Pick<PlayerProfile, 'baseAbilityScore' | 'matchAdjustValue' | 'birthDate' | 'startPlayingDate'>>;
+  Partial<Pick<PlayerProfile, 'baseAbilityScore' | 'matchAdjustValue' | 'birthDate' | 'startPlayingDate' | 'realName'>>;
 
 class PlayerService {
   async getProfile(): Promise<PlayerProfile> {

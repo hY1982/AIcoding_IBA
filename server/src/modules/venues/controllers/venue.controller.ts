@@ -74,6 +74,9 @@ class VenueDisplaySlotResponse implements VenueDisplaySlot {
 
   @ApiProperty({ required: false, description: '状态原因（如维护、包场、非营业时间）' })
   reason?: string;
+
+  @ApiProperty({ required: false, description: '关联比赛ID（booked状态时）' })
+  matchId?: number;
 }
 
 class VenueTimeSlotResponse implements VenueTimeSlot {
