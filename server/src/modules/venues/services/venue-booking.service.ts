@@ -250,45 +250,15 @@ export class VenueBookingService {
     if (hasUnavailableConflict) return false;
 
     // v2.2: 检查请求时段是否被包含在可用时段内
-    // 查询该场地当日所有未预订的可用时段
-    const availableSlots = await this.slotRepo
-      .createQueryBuilder('slot')
-      .where('slot.venue_id = :venueId', { venueId })
-      .andWhere('slot.slot_date = :slotDate', { slotDate })
-      .andWhere('slot.is_booked = false')
-      .orderBy('slot.start_time', 'ASC')
-      .getMany();
-
-    // 合并连续的可用时段，然后检查请求时段是否被完全覆盖
-    if (availableSlots.length === 0) {
-      // 无可用时段记录时，回退到场地默认营业时间
-      return startTime >= openTime && endTime <= closeTime;
-    }
-
-    // 按开始时间排序并合并连续时段
-    const sortedSlots = [...availableSlots].sort((a, b) => 
-      a.startTime.localeCompare(b.startTime)
-    );
-    
-    const mergedSlots: typeof sortedSlots = [];
-    for (const slot of sortedSlots) {
-      if (mergedSlots.length === 0 || slot.startTime >= mergedSlots[mergedSlots.length - 1].endTime) {
-        mergedSlots.push(slot);
-      } else {
-        // 连续或重叠，扩展结束时间
-        const last = mergedSlots[mergedSlots.length - 1];
-        if (slot.endTime > last.endTime) {
-          last.endTime = slot.endTime;
-        }
-      }
-    }
-
-    // 请求时段必须被至少一个合并后的可用时段完全包含
-    const isContained = mergedSlots.some((slot) =>
-      slot.startTime <= startTime && slot.endTime >= endTime,
-    );
-
-    return isContained;
+    //
+    // 业务逻辑：场地默认可用时段 = 营业时段 - 已预订时段 - 不可用时段
+    // 人工发布的 availableSlots（is_booked=false）仅用于维护、包场等例外设置，
+    // 不应限制正常营业时段内的预订。请求时段只需满足：
+    // 1. 在营业时段内（Step 1 已检查）
+    // 2. 不与已预订时段冲突（Step 2 已检查）
+    // 3. 不与不可用时段冲突（Step 3 已检查）
+    // 因此，经过 Step 1-3 后，时段即视为可用，无需再检查人工发布的 availableSlots。
+    return true;
   }
 
   /**

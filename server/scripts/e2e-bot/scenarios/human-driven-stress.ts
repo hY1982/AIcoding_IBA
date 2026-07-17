@@ -50,7 +50,6 @@ const RESET = '\x1b[0m';
 interface StressVenueInfo {
   venueId: number;
   venueName: string;
-  timeSlotIds: number[];
 }
 
 interface IntentionSubmission {
@@ -655,11 +654,10 @@ export async function runHumanDrivenStressScenario(
     // ═══════════════════════════════════════════════════════════
     // Phase 2: 场地创建 + 时段发布
     // ═══════════════════════════════════════════════════════════
-    report.startPhase('Phase 2: 场地创建 + 时段发布');
+    report.startPhase('Phase 2: 场地创建');
 
     const stressVenues: StressVenueInfo[] = [];
     const vm = venueManagers[0];
-    const todayStr = getShanghaiDateStr();
 
     const venueNames = [
       `${(vm as any)?._venueName || '飞跃篮球馆'}-A`,
@@ -710,29 +708,8 @@ export async function runHumanDrivenStressScenario(
         }
         vm.venueIds.push(venueId);
 
-        // 每个场地分配覆盖比赛时间范围的时段
-        // 比赛时间集中在 now+2.5h 到 now+4h，对应上海时间约 20:00-23:00
-        // 时段必须覆盖该时间范围，否则 checkAvailability 会返回 false
-        const slotConfigs = [
-          { startTime: '18:00', endTime: '23:59' },
-          { startTime: '18:00', endTime: '23:59' },
-          { startTime: '18:00', endTime: '23:59' },
-          { startTime: '18:00', endTime: '23:59' },
-        ];
-        const slots = [
-          { slotDate: todayStr, startTime: slotConfigs[vi].startTime, endTime: slotConfigs[vi].endTime },
-        ];
-
-        const slotResult = await safeBotRun(vm, '时段', `发布-V${venueId}`, async () => {
-          return api.createTimeSlots(venueId, slots);
-        }, metrics);
-
-        const timeSlotIds = slotResult.success && Array.isArray(slotResult.result)
-          ? slotResult.result.map((s: any) => s.id)
-          : [];
-
-        stressVenues.push({ venueId, venueName, timeSlotIds });
-        report.addSuccess('场地创建', `${venueName} venueId=${venueId} ${timeSlotIds.length} 时段`, result.durationMs);
+        stressVenues.push({ venueId, venueName });
+        report.addSuccess('场地创建', `${venueName} venueId=${venueId}`, result.durationMs);
       }
     }
 
