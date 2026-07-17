@@ -342,10 +342,10 @@ class IntentionScheduler {
     const eligiblePlayers = players.filter((b) => b.playerId && b.accessToken);
     const nowMs = Date.now();
 
-    // 意向时间范围: now + 1h ~ now + 3h
-    // 缩短时间范围，使比赛时间与场地时段（18:00-23:59）更好匹配
-    const earliestMs = nowMs + 60 * 60 * 1000; // now + 1h
-    const latestMs = nowMs + 3 * 60 * 60 * 1000;  // now + 3h
+    // 意向时间范围: now + 2h ~ now + 4h
+    // 确保比赛开始时间至少提前1小时，同时给40分钟提交延迟留出缓冲
+    const earliestMs = nowMs + 2 * 60 * 60 * 1000; // now + 2h
+    const latestMs = nowMs + 4 * 60 * 60 * 1000;  // now + 4h
 
     this.submissions = eligiblePlayers.map((bot, index) => {
       const { payload, isMultiSelect } = generateRandomIntention(earliestMs, latestMs, venues, formats);
