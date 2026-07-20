@@ -1,5 +1,6 @@
 /**
  * Phase 9: 通知验证（DB 直连 — 通知模块无 HTTP Controller）
+ * 支持多比赛覆盖
  */
 
 import { DataSource } from 'typeorm';
@@ -22,6 +23,8 @@ export async function runNotificationPhase(
     report.endPhase();
     return;
   }
+
+  report.printInfo('可用比赛', `${matchIds.length} 场比赛将参与通知验证`);
 
   // ─── 9.1 通知记录存在性检查 ───
   report.printInfo('步骤 9.1', '查询通知记录');
@@ -77,24 +80,25 @@ export async function runNotificationPhase(
     report.addFailure('读取状态查询', err.message);
   }
 
-  // ─── 9.4 通知与比赛关联 ───
-  report.printInfo('步骤 9.4', '通知关联检查');
+  // ─── 9.4 通知与可用比赛关联（遍历所有可用比赛）───
+  report.printInfo('步骤 9.4', '通知关联检查（多比赛）');
 
-  const matchId = matchIds[0];
-  try {
-    const matchNotifs = await dataSource.query(
-      `SELECT COUNT(*) as cnt FROM notifications
-       WHERE data::text LIKE $1`,
-      [`%${matchId}%`],
-    );
-    const cnt = Number(matchNotifs[0]?.cnt || 0);
-    if (cnt > 0) {
-      report.addSuccess('比赛关联通知', `matchId=${matchId} 关联了 ${cnt} 条通知`);
-    } else {
-      report.addSkip('比赛关联通知', `matchId=${matchId} 无关联通知（可能通知不含 match_id 字段）`);
+  for (const matchId of matchIds) {
+    try {
+      const matchNotifs = await dataSource.query(
+        `SELECT COUNT(*) as cnt FROM notifications
+         WHERE data::text LIKE $1`,
+        [`%${matchId}%`],
+      );
+      const cnt = Number(matchNotifs[0]?.cnt || 0);
+      if (cnt > 0) {
+        report.addSuccess('比赛关联通知', `matchId=${matchId} 关联了 ${cnt} 条通知`);
+      } else {
+        report.addSkip('比赛关联通知', `matchId=${matchId} 无关联通知（可能通知不含 match_id 字段）`);
+      }
+    } catch (err: any) {
+      report.addSkip('比赛关联通知', `matchId=${matchId} 查询失败: ${err.message}`);
     }
-  } catch (err: any) {
-    report.addSkip('比赛关联通知', `查询失败: ${err.message}`);
   }
 
   // ─── 9.5 标记已读模拟（直连 DB UPDATE）───
@@ -154,7 +158,7 @@ export async function runNotificationPhase(
     );
     const unread = Number(verifyResult[0]?.unread || 0);
     if (unread === 0) {
-      report.addSuccess('已读验证', '所有通知均已读 ✅');
+      report.addSuccess('已读验证', '所有通知均已读');
     } else {
       report.addFailure('已读验证', `仍有 ${unread} 条未读通知`);
     }

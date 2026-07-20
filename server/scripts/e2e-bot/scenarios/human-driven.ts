@@ -296,51 +296,75 @@ export async function runHumanDrivenScenario(
       );
 
       // ═══════════════════════════════════════════════════════════
-      // Phase 7: 群聊消息
+      // 筛选成功预定场地的比赛（仅对 confirmed/in_progress/completed 执行后续测试）
       // ═══════════════════════════════════════════════════════════
-      await runMessagingPhase(
-        players, human, matchingResult.matchIds, apiClient, metrics, report, interactive, dbTools,
-      );
-
-      // ═══════════════════════════════════════════════════════════
-      // ⏸️  真人操作时间：提交反馈
-      // ═══════════════════════════════════════════════════════════
-      // 先将比赛推进到 completed 状态
+      const confirmedMatchIds: number[] = [];
       for (const matchId of matchingResult.matchIds) {
-        await dbTools.setMatchCompleted(matchId);
+        const status = await dbTools.getMatchStatus(matchId);
+        if (['confirmed', 'in_progress', 'completed'].includes(status)) {
+          confirmedMatchIds.push(matchId);
+        }
       }
+      report.printInfo('可用比赛', `${confirmedMatchIds.length}/${matchingResult.matchIds.length} 场已确认场地`);
 
-      await interactive.pauseForHuman(' 提交赛后反馈（Mobile App）', [
-        {
-          step: 1,
-          description: '比赛已结束，在 Mobile App 查看比赛详情',
-          example: '首页 → 我的比赛 → 详情',
-        },
-        {
-          step: 2,
-          description: '（可选）在群聊中发送消息',
-          example: '比赛详情页 → 群聊',
-        },
-        {
-          step: 3,
-          description: '查看是否收到比赛相关通知',
-          example: '通知中心',
-        },
-      ]);
+      if (confirmedMatchIds.length === 0) {
+        report.printWarning('无可用比赛', '所有比赛场地预订失败，跳过群聊/反馈/通知测试');
+      } else {
+        // ═══════════════════════════════════════════════════════════
+        // Phase 7: 群聊消息（仅对可用比赛）
+        // ═══════════════════════════════════════════════════════════
+        await runMessagingPhase(
+          players, human, confirmedMatchIds, apiClient, metrics, report, interactive, dbTools,
+        );
 
-      // ═══════════════════════════════════════════════════════════
-      // Phase 8: Bot 提交反馈
-      // ═══════════════════════════════════════════════════════════
-      await runFeedbackPhase(
-        players, human, matchingResult.matchIds, apiClient, metrics, report, interactive, dbTools,
-      );
+        // ═══════════════════════════════════════════════════════════
+        // ⏸️  真人操作时间：提交反馈
+        // ═══════════════════════════════════════════════════════════
+        // 先将可用比赛推进到 completed 状态
+        for (const matchId of confirmedMatchIds) {
+          await dbTools.setMatchCompleted(matchId);
+        }
 
-      // ═══════════════════════════════════════════════════════════
-      // Phase 9: 通知验证
-      // ═══════════════════════════════════════════════════════════
-      await runNotificationPhase(
-        players, human, matchingResult.matchIds, dataSource, metrics, report,
-      );
+        await interactive.pauseForHuman(' 提交赛后反馈（Mobile App）', [
+          {
+            step: 1,
+            description: '比赛已结束，在 Mobile App 查看比赛详情',
+            example: '首页 → 我的比赛 → 详情',
+          },
+          {
+            step: 2,
+            description: '（可选）在群聊中发送消息',
+            example: '比赛详情页 → 群聊',
+          },
+          {
+            step: 3,
+            description: '查看是否收到比赛相关通知',
+            example: '通知中心',
+          },
+        ]);
+
+        // ═══════════════════════════════════════════════════════════
+        // Phase 8: Bot 提交反馈（仅对可用比赛）
+        // ═══════════════════════════════════════════════════════════
+        await runFeedbackPhase(
+          players, human, confirmedMatchIds, apiClient, metrics, report, interactive, dbTools,
+        );
+
+        // ═══════════════════════════════════════════════════════════
+        // Phase 9: 通知验证（仅对可用比赛）
+        // ═══════════════════════════════════════════════════════════
+        await runNotificationPhase(
+          players, human, confirmedMatchIds, dataSource, metrics, report,
+        );
+
+        // ═══════════════════════════════════════════════════════════
+        // Phase 10: 能力值专项验证（仅对可用比赛）
+        // ═══════════════════════════════════════════════════════════
+        const { runAbilityVerificationPhase } = await import('./phase-10-ability-verification');
+        await runAbilityVerificationPhase(
+          confirmedMatchIds, dataSource, metrics, report, dbTools,
+        );
+      }
     }
 
     // ═══════════════════════════════════════════════════════════

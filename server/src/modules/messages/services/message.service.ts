@@ -261,26 +261,35 @@ export class MessageService {
     const pageSize = query.pageSize ?? 20;
     const skip = (page - 1) * pageSize;
 
-    const qb = this.messageRepo
-      .createQueryBuilder('message')
-      .leftJoin('users', 'u', 'u.id = message.sender_id')
-      .addSelect('u.nickname', 'sender_nickname')
-      .where('message.match_id = :matchId', { matchId })
-      .orderBy('message.created_at', 'DESC')
-      .skip(skip)
-      .take(pageSize);
-
-    // 使用 getMany() + getCount() 替代 getManyAndCount()
-    // 避免 TypeORM 在 COUNT 子查询中处理 orderBy 时 databaseName undefined 的 bug
+    // 步骤1: 查询消息列表（不含 join，避免 TypeORM databaseName undefined bug）
     const [list, total] = await Promise.all([
-      qb.getMany(),
-      qb.getCount(),
+      this.messageRepo.find({
+        where: { matchId },
+        order: { createdAt: 'DESC' },
+        skip,
+        take: pageSize,
+      }),
+      this.messageRepo.count({ where: { matchId } }),
     ]);
 
-    // 动态填充 senderNickname
+    // 步骤2: 收集所有 senderId，批量查询昵称
+    const senderIds = Array.from(new Set(list.map((m) => m.senderId).filter((id): id is number => !!id)));
+    const senderNicknames = new Map<number, string>();
+    if (senderIds.length > 0) {
+      const users = await this.userRepo.find({
+        where: senderIds.map((id) => ({ id })),
+        select: ['id', 'nickname'],
+      });
+      for (const user of users) {
+        if (user.nickname) {
+          senderNicknames.set(user.id, user.nickname);
+        }
+      }
+    }
+
+    // 步骤3: 填充 senderNickname
     for (const msg of list) {
-      const raw = msg as any;
-      msg.senderNickname = raw.sender_nickname ?? null;
+      msg.senderNickname = msg.senderId ? senderNicknames.get(msg.senderId) ?? null : null;
     }
 
     return { page, pageSize, total, list };

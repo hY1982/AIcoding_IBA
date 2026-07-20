@@ -15,7 +15,7 @@ import { DataSource } from 'typeorm';
 import { DB_TABLES_TO_TRUNCATE } from '../config';
 
 export class DbTools {
-  constructor(private dataSource: DataSource) {}
+  constructor(readonly dataSource: DataSource) {}
 
   /**
    * 检查数据库连接
@@ -417,6 +417,126 @@ export class DbTools {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * 查询比赛的 group_chat_id
+   */
+  async getMatchGroupChatId(matchId: number): Promise<string | null> {
+    const result = await this.dataSource.query(
+      `SELECT group_chat_id FROM matches WHERE id = $1`,
+      [matchId],
+    );
+    return result[0]?.group_chat_id || null;
+  }
+
+  /**
+   * 查询球员能力值（base + adjust + total）
+   */
+  async getPlayerAbilityScores(playerId: number): Promise<{
+    baseAbilityScore: number;
+    matchAdjustValue: number;
+    totalAbilityScore: number;
+  } | null> {
+    const result = await this.dataSource.query(
+      `SELECT base_ability_score, match_adjust_value, total_ability_score
+       FROM players WHERE id = $1`,
+      [playerId],
+    );
+    if (result.length === 0) return null;
+    return {
+      baseAbilityScore: Number(result[0].base_ability_score),
+      matchAdjustValue: Number(result[0].match_adjust_value),
+      totalAbilityScore: Number(result[0].total_ability_score),
+    };
+  }
+
+  /**
+   * 查询比赛的反馈记录
+   */
+  async getFeedbackRecords(matchId: number): Promise<Array<{
+    id: number;
+    match_id: number;
+    player_id: number;
+    overall_rating: number;
+    overall_reason: string;
+  }>> {
+    return this.dataSource.query(
+      `SELECT id, match_id, player_id, overall_rating, overall_reason
+       FROM feedbacks WHERE match_id = $1`,
+      [matchId],
+    );
+  }
+
+  /**
+   * 查询反馈的评分详情
+   */
+  async getFeedbackPlayerRatings(feedbackId: number): Promise<Array<{
+    rated_player_id: number;
+    level_match: string;
+    sportsmanship: string;
+    action_cleanliness: string;
+    is_punctual: boolean;
+  }>> {
+    return this.dataSource.query(
+      `SELECT rated_player_id, level_match, sportsmanship, action_cleanliness, is_punctual
+       FROM feedback_player_ratings WHERE feedback_id = $1`,
+      [feedbackId],
+    );
+  }
+
+  /**
+   * 查询所有 confirmed/in_progress/completed 比赛的球员能力值变化
+   */
+  async getConfirmedMatchPlayerAbilities(): Promise<Array<{
+    match_id: number;
+    player_id: number;
+    nickname: string;
+    base_ability_score: number;
+    match_adjust_value: number;
+    total_ability_score: number;
+  }>> {
+    return this.dataSource.query(`
+      SELECT m.id AS match_id, p.id AS player_id, u.nickname,
+             p.base_ability_score, p.match_adjust_value, p.total_ability_score
+      FROM matches m
+      JOIN match_players mp ON mp.match_id = m.id
+      JOIN players p ON p.id = mp.player_id
+      JOIN users u ON u.id = p.user_id
+      WHERE m.status IN ('confirmed', 'in_progress', 'completed')
+      ORDER BY m.id, p.id
+    `);
+  }
+
+  /**
+   * 查询消息表中某比赛的最新消息（用于验证消息实时到达）
+   */
+  async getLatestMessages(matchId: number, limit = 10): Promise<Array<{
+    id: number;
+    sender_id: number;
+    content: string;
+    message_type: string;
+    created_at: Date;
+  }>> {
+    return this.dataSource.query(
+      `SELECT id, sender_id, content, message_type, created_at
+       FROM match_messages
+       WHERE match_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [matchId, limit],
+    );
+  }
+
+  /**
+   * 查询消息总数（用于验证分页 total）
+   */
+  async getMessageCount(matchId: number): Promise<number> {
+    const result = await this.dataSource.query(
+      `SELECT COUNT(*) as cnt FROM match_messages WHERE match_id = $1`,
+      [matchId],
+    );
+    return Number(result[0]?.cnt || 0);
   }
 
   /**
