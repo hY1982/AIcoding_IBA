@@ -16,6 +16,30 @@ const CYAN = '\x1b[36m';
 const BOLD = '\x1b[1m';
 const RESET = '\x1b[0m';
 
+export interface ConfirmedMatchPlayerInfo {
+  playerId: number;
+  nickname: string;
+  age: number;
+  basketballAge: number;
+  height: number;
+  baseAbilityScore: number;
+  position: string | null;
+  teamNumber: number;
+  status: string;
+  depositPaid: boolean;
+}
+
+export interface ConfirmedMatchReport {
+  matchId: number;
+  venueName: string;
+  venueId: number;
+  startTime: string;
+  endTime: string;
+  formatName: string;
+  status: string;
+  players: ConfirmedMatchPlayerInfo[];
+}
+
 export interface TestResult {
   label: string;
   status: 'PASS' | 'FAIL' | 'SKIP';
@@ -95,6 +119,7 @@ export interface EnhancedReport {
   };
   matchingFrequency: MatchingFrequencyRecord[];
   initialMatchesCreated?: number; // 初始匹配创建的比赛数量
+  confirmedMatchesReport?: ConfirmedMatchReport[]; // 成功预定场地的比赛详情报告
   phases: Array<{
     name: string;
     passed: number;
@@ -131,6 +156,7 @@ export class ReportGenerator {
   };
   private performanceMetrics = { p50: 0, p95: 0, p99: 0, avg: 0, max: 0, min: 0 };
   private initialMatchesCreated = 0; // 初始匹配创建的比赛数量（用于区分调度匹配）
+  private confirmedMatchesReport: ConfirmedMatchReport[] = []; // 成功预定场地的比赛详情报告
 
   // ─── Phase 管理 ───
 
@@ -233,6 +259,10 @@ export class ReportGenerator {
     this.initialMatchesCreated = count;
   }
 
+  setConfirmedMatchesReport(report: ConfirmedMatchReport[]): void {
+    this.confirmedMatchesReport = report;
+  }
+
   setFailureAnalysis(analysis: FailureAnalysis[]): void {
     this.failureAnalysis = analysis;
   }
@@ -316,6 +346,7 @@ export class ReportGenerator {
       performanceMetrics: this.performanceMetrics,
       matchingFrequency: this.matchingFrequency,
       initialMatchesCreated: this.initialMatchesCreated,
+      confirmedMatchesReport: this.confirmedMatchesReport,
       phases: this.phases.map((p) => ({
         name: p.name,
         passed: p.results.filter((r) => r.status === 'PASS').length,

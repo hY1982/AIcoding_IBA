@@ -204,10 +204,10 @@ async function main() {
   if (scenario.id === 'humanDrivenStress') {
     console.log('');
     console.log(`${CYAN}${BOLD}╔══════════════════════════════════════════════════════════╗${RESET}`);
-    console.log(`${CYAN}${BOLD}║  🏀 篮球匹配平台 — 200 人大规模压力测试                 ║${RESET}`);
+    console.log(`${CYAN}${BOLD}║  🏀 篮球匹配平台 — 500 人大规模压力测试                 ║${RESET}`);
     console.log(`${CYAN}${BOLD}╚══════════════════════════════════════════════════════════╝${RESET}`);
     console.log('');
-    console.log(`  ${GREEN}200 Bot + 随机意向(今天 8:00-20:00) + 自动匹配 + 富表格展示${RESET}`);
+    console.log(`  ${GREEN}500 Bot + 随机意向(今天 8:00-20:00) + 自动匹配 + 富表格展示${RESET}`);
     console.log(`  模式: ${cliArgs.auto ? YELLOW + '自动模式' + RESET : GREEN + '交互模式' + RESET}`);
     console.log('');
 

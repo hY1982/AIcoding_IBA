@@ -1144,10 +1144,106 @@ export async function runHumanDrivenStressScenario(
     report.endPhase();
 
     // ═══════════════════════════════════════════════════════════
-    // Phase 9: 群聊消息测试
+    // Phase 8.5: 成功预定场地的比赛详情报告
     // ═══════════════════════════════════════════════════════════
-    if (matchIds.length > 0) {
-      report.startPhase('Phase 9: 群聊消息测试');
+    report.startPhase('Phase 8.5: 成功预定场地的比赛详情报告');
+
+    const confirmedMatchesDetails = await dbTools.getConfirmedMatchesWithDetails();
+    report.printInfo('成功预定比赛', `${confirmedMatchesDetails.length} 场`);
+
+    if (confirmedMatchesDetails.length > 0) {
+      const confirmedMatchesReport: import('../report-generator').ConfirmedMatchReport[] = [];
+
+      for (const match of confirmedMatchesDetails) {
+        report.printDivider();
+        report.printInfo('比赛', `matchId=${match.matchId} | ${match.venueName} | ${match.formatName}`);
+
+        const playersInfo = await dbTools.getConfirmedMatchPlayersFullInfo(match.matchId);
+
+        // 构建参赛球员对比表
+        const playerColumns: TableColumn[] = [
+          { header: 'PlayerId', key: 'playerId', align: 'right' },
+          { header: 'Nickname', key: 'nickname' },
+          { header: 'Age', key: 'age', align: 'right' },
+          { header: 'BKAge', key: 'basketballAge', align: 'right' },
+          { header: 'Height', key: 'height', align: 'right' },
+          { header: 'Ability', key: 'baseAbilityScore', align: 'right' },
+          { header: 'Position', key: 'position' },
+          { header: 'Team', key: 'teamNumber', align: 'right' },
+          { header: 'Status', key: 'status' },
+          { header: 'Deposit', key: 'depositPaid' },
+        ];
+
+        const playerRows = playersInfo.map((p) => ({
+          playerId: p.playerId,
+          nickname: p.nickname,
+          age: p.age,
+          basketballAge: p.basketballAge,
+          height: p.height,
+          baseAbilityScore: Number(p.baseAbilityScore)?.toFixed(1) ?? 'N/A',
+          position: p.position ?? '-',
+          teamNumber: p.teamNumber,
+          status: p.status,
+          depositPaid: p.depositPaid ? 'Yes' : 'No',
+        }));
+
+        printTable(playerColumns, playerRows, {
+          title: `Match #${match.matchId} - ${match.venueName} (${playersInfo.length} players)`,
+          colorFn: (row, colKey) => {
+            if (colKey === 'depositPaid') {
+              return row['depositPaid'] === 'Yes' ? GREEN : RED;
+            }
+            if (colKey === 'status') {
+              return row['status'] === 'confirmed' ? GREEN : YELLOW;
+            }
+            return '';
+          },
+        });
+
+        // 添加到报告数据
+        confirmedMatchesReport.push({
+          matchId: match.matchId,
+          venueName: match.venueName,
+          venueId: match.venueId,
+          startTime: match.startTime ? new Date(match.startTime).toISOString() : '',
+          endTime: match.endTime ? new Date(match.endTime).toISOString() : '',
+          formatName: match.formatName,
+          status: match.status,
+          players: playersInfo.map((p) => ({
+            playerId: p.playerId,
+            nickname: p.nickname,
+            age: p.age,
+            basketballAge: p.basketballAge,
+            height: p.height,
+            baseAbilityScore: Number(p.baseAbilityScore) || 0,
+            position: p.position,
+            teamNumber: p.teamNumber,
+            status: p.status,
+            depositPaid: p.depositPaid,
+          })),
+        });
+
+        report.addSuccess(
+          `比赛详情 #${match.matchId}`,
+          `${match.venueName} | ${match.formatName} | ${playersInfo.length} 人 | 状态=${match.status}`,
+        );
+      }
+
+      report.setConfirmedMatchesReport(confirmedMatchesReport);
+      report.addSuccess('成功预定比赛详情报告', `${confirmedMatchesReport.length} 场比赛已记录`);
+    } else {
+      report.addSkip('成功预定比赛详情报告', '无成功预定场地的比赛');
+    }
+
+    report.endPhase();
+
+    // ═══════════════════════════════════════════════════════════
+    // Phase 9: 群聊消息测试（仅针对成功预定场地的比赛）
+    // ═══════════════════════════════════════════════════════════
+    const confirmedMatchIdsForMessaging = await dbTools.getConfirmedMatchIds();
+
+    if (confirmedMatchIdsForMessaging.length > 0) {
+      report.startPhase('Phase 9: 群聊消息测试（成功预定场地比赛）');
 
       const playerBotMap = new Map<number, BotContext>();
       for (const bot of players) {
@@ -1155,16 +1251,9 @@ export async function runHumanDrivenStressScenario(
       }
       if (human.playerId) playerBotMap.set(Number(human.playerId), human);
 
-      for (const matchId of matchIds.slice(0, 3)) { // 最多测试前 3 场比赛
+      for (const matchId of confirmedMatchIdsForMessaging.slice(0, 3)) { // 最多测试前 3 场成功预定场地的比赛
         report.printDivider();
         report.printInfo('比赛', `matchId=${matchId}`);
-
-        // v2.2: 检查比赛当前状态，已取消/过期的比赛跳过消息测试
-        const matchStatus = await dbTools.getMatchStatus(matchId);
-        if (matchStatus === 'cancelled' || matchStatus === 'expired') {
-          report.addSkip('群聊消息', `matchId=${matchId} 状态为 ${matchStatus}，跳过消息测试`);
-          continue;
-        }
 
         const matchPlayerIds = (await dbTools.getMatchPlayers(matchId)).map((mp) => Number(mp.player_id));
         const matchBots = matchPlayerIds
@@ -1233,6 +1322,10 @@ export async function runHumanDrivenStressScenario(
         }
       }
 
+      report.endPhase();
+    } else {
+      report.startPhase('Phase 9: 群聊消息测试');
+      report.addSkip('群聊消息测试', '无成功预定场地的比赛，跳过群聊测试');
       report.endPhase();
     }
 

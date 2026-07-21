@@ -509,6 +509,80 @@ export class DbTools {
   }
 
   /**
+   * 查询成功预定场地的比赛详情（confirmed/in_progress/completed 状态）
+   */
+  async getConfirmedMatchesWithDetails(): Promise<Array<{
+    matchId: number;
+    venueName: string;
+    venueId: number;
+    startTime: Date;
+    endTime: Date;
+    formatName: string;
+    status: string;
+    requiredPlayers: number;
+  }>> {
+    return this.dataSource.query(`
+      SELECT m.id AS "matchId",
+             v.name AS "venueName",
+             v.id AS "venueId",
+             m.start_time AS "startTime",
+             m.end_time AS "endTime",
+             f.name AS "formatName",
+             m.status,
+             m.required_players AS "requiredPlayers"
+      FROM matches m
+      JOIN venues v ON v.id = m.venue_id
+      JOIN formats f ON f.id = m.format_id
+      WHERE m.status IN ('confirmed', 'in_progress', 'completed')
+      ORDER BY m.id
+    `);
+  }
+
+  /**
+   * 查询成功预定场地的比赛的参赛球员完整信息
+   */
+  async getConfirmedMatchPlayersFullInfo(matchId: number): Promise<Array<{
+    playerId: number;
+    nickname: string;
+    age: number;
+    basketballAge: number;
+    height: number;
+    baseAbilityScore: number;
+    position: string | null;
+    teamNumber: number;
+    status: string;
+    depositPaid: boolean;
+  }>> {
+    return this.dataSource.query(`
+      SELECT p.id AS "playerId",
+             u.nickname,
+             p.age,
+             p.basketball_age AS "basketballAge",
+             p.height,
+             p.base_ability_score AS "baseAbilityScore",
+             (SELECT string_agg(pp.position, ',') FROM player_positions pp WHERE pp.player_id = p.id) AS position,
+             mp.team_number AS "teamNumber",
+             mp.status,
+             mp.deposit_paid AS "depositPaid"
+      FROM match_players mp
+      JOIN players p ON p.id = mp.player_id
+      JOIN users u ON u.id = p.user_id
+      WHERE mp.match_id = $1
+      ORDER BY mp.team_number, p.id
+    `, [matchId]);
+  }
+
+  /**
+   * 查询所有 confirmed/in_progress/completed 状态的比赛ID列表
+   */
+  async getConfirmedMatchIds(): Promise<number[]> {
+    const result = await this.dataSource.query(
+      `SELECT id FROM matches WHERE status IN ('confirmed', 'in_progress', 'completed') ORDER BY id`,
+    );
+    return result.map((r: any) => Number(r.id));
+  }
+
+  /**
    * 查询消息表中某比赛的最新消息（用于验证消息实时到达）
    */
   async getLatestMessages(matchId: number, limit = 10): Promise<Array<{
