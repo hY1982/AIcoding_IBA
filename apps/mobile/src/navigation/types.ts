@@ -1,136 +1,239 @@
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { PlayerProfile } from '@shared/player';
 import type { VenueManagerProfile } from '@shared/venue-manager';
 import type { VenueDetail } from '@shared/venue';
 
-export type RootStackParamList = {
-  Home: undefined;
+// ============================================
+// Auth Stack (未登录流程)
+// ============================================
+export type AuthStackParamList = {
   RoleSelect: undefined;
   Login: undefined;
   Register: { userType: 'player' | 'venue_manager' };
   PlayerRegister: { phone: string; password: string; nickname: string };
   VenueManagerRegister: { phone: string; password: string; nickname: string };
-  Profile: undefined;
-  EditProfile: { profile: PlayerProfile };
-  Ability: { ability: { baseAbilityScore: number; matchAdjustValue: number; totalAbilityScore: number } };
-  VenueManagerProfile: undefined;
-  EditVenueManagerProfile: { profile: VenueManagerProfile };
-  CreateVenue: undefined;
+};
+
+// ============================================
+// Player Tab (球员底部导航)
+// ============================================
+export type PlayerTabParamList = {
+  HomeTab: undefined;
+  IntentionsTab: undefined;
+  MatchesTab: undefined;
+  ProfileTab: undefined;
+};
+
+// ============================================
+// Venue Manager Tab (场地方底部导航)
+// ============================================
+export type VenueManagerTabParamList = {
+  HomeTab: undefined;
+  VenuesTab: undefined;
+  ProfileTab: undefined;
+};
+
+// ============================================
+// Home Stack (首页Tab内部Stack)
+// ============================================
+export type HomeStackParamList = {
+  Home: undefined;
   VenueList: undefined;
   VenueDetail: { venueId: number };
+  CreateIntention: { intentionId?: number } | undefined;
+  IntentionDetail: { intentionId: number };
+  MatchDetail: { matchId: number };
+  ConfirmMatch: { matchId: number; depositAmount: string };
+  Chat: { matchId: number; matchTitle?: string };
   EditVenue: { venue: VenueDetail };
   UnavailableSlots: { venueId: number; venueName: string };
-  CreateIntention: { intentionId?: number } | undefined;
+};
+
+// ============================================
+// Intentions Stack (意向Tab内部Stack)
+// ============================================
+export type IntentionsStackParamList = {
   MyIntentions: undefined;
+  CreateIntention: { intentionId?: number } | undefined;
   IntentionDetail: { intentionId: number };
+};
+
+// ============================================
+// Matches Stack (比赛Tab内部Stack)
+// ============================================
+export type MatchesStackParamList = {
   MyMatches: undefined;
   MatchDetail: { matchId: number };
   ConfirmMatch: { matchId: number; depositAmount: string };
   Chat: { matchId: number; matchTitle?: string };
 };
 
-// Navigation prop types for type-safe navigation.navigate()
-export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+// ============================================
+// Profile Stack (我的Tab内部Stack - Player)
+// ============================================
+export type PlayerProfileStackParamList = {
+  Profile: undefined;
+  EditProfile: { profile: PlayerProfile };
+  Ability: {
+    ability: { baseAbilityScore: number; matchAdjustValue: number; totalAbilityScore: number };
+  };
+};
 
-export type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
+// ============================================
+// Venues Stack (场地Tab内部Stack - Venue Manager)
+// ============================================
+export type VenuesStackParamList = {
+  VenueList: undefined;
+  VenueDetail: { venueId: number };
+  CreateVenue: undefined;
+  EditVenue: { venue: VenueDetail };
+  UnavailableSlots: { venueId: number; venueName: string };
+};
+
+// ============================================
+// Venue Manager Profile Stack (我的Tab内部Stack)
+// ============================================
+export type VenueManagerProfileStackParamList = {
+  VenueManagerProfile: undefined;
+  EditVenueManagerProfile: { profile: VenueManagerProfile };
+  CreateVenue: undefined;
+  VenueDetail: { venueId: number };
+};
+
+// ============================================
+// Root Stack (根导航，用于跨导航器跳转)
+// ============================================
+export type RootStackParamList = {
+  Auth:
+    | { screen?: keyof AuthStackParamList; params?: AuthStackParamList[keyof AuthStackParamList] }
+    | undefined;
+  PlayerTabs: undefined;
+  VenueManagerTabs: undefined;
+};
+
+// ============================================
+// Navigation prop types for type-safe navigation.navigate()
+// ============================================
+export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+export type AuthStackNavigationProp = NativeStackNavigationProp<AuthStackParamList>;
+export type PlayerTabNavigationProp = BottomTabNavigationProp<PlayerTabParamList>;
+export type VenueManagerTabNavigationProp = BottomTabNavigationProp<VenueManagerTabParamList>;
+
+export type LoginScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 export type RoleSelectScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  AuthStackParamList,
   'RoleSelect'
 >;
 export type RegisterScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  AuthStackParamList,
   'Register'
 >;
 export type PlayerRegisterScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  AuthStackParamList,
   'PlayerRegister'
 >;
 export type VenueManagerRegisterScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  AuthStackParamList,
   'VenueManagerRegister'
 >;
-export type ProfileScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Profile'>;
+
+export type HomeStackNavigationProp = NativeStackNavigationProp<HomeStackParamList>;
+export type IntentionsStackNavigationProp = NativeStackNavigationProp<IntentionsStackParamList>;
+export type MatchesStackNavigationProp = NativeStackNavigationProp<MatchesStackParamList>;
+export type PlayerProfileStackNavigationProp =
+  NativeStackNavigationProp<PlayerProfileStackParamList>;
+export type VenuesStackNavigationProp = NativeStackNavigationProp<VenuesStackParamList>;
+export type VenueManagerProfileStackNavigationProp =
+  NativeStackNavigationProp<VenueManagerProfileStackParamList>;
+
+export type ProfileScreenNavigationProp = NativeStackNavigationProp<
+  PlayerProfileStackParamList,
+  'Profile'
+>;
 export type EditProfileScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  PlayerProfileStackParamList,
   'EditProfile'
 >;
-export type AbilityScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Ability'>;
+export type AbilityScreenNavigationProp = NativeStackNavigationProp<
+  PlayerProfileStackParamList,
+  'Ability'
+>;
 export type VenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  VenueManagerProfileStackParamList,
   'VenueManagerProfile'
 >;
 export type EditVenueManagerProfileScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  VenueManagerProfileStackParamList,
   'EditVenueManagerProfile'
 >;
 export type CreateVenueScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  VenuesStackParamList,
   'CreateVenue'
 >;
 export type VenueListScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  HomeStackParamList,
   'VenueList'
 >;
 export type VenueDetailScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  HomeStackParamList,
   'VenueDetail'
 >;
 export type EditVenueScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  VenuesStackParamList,
   'EditVenue'
 >;
 export type UnavailableSlotsScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  VenuesStackParamList,
   'UnavailableSlots'
 >;
 export type CreateIntentionScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  HomeStackParamList,
   'CreateIntention'
 >;
 export type MyIntentionsScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  IntentionsStackParamList,
   'MyIntentions'
 >;
 export type IntentionDetailScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  HomeStackParamList,
   'IntentionDetail'
 >;
 export type MyMatchesScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  MatchesStackParamList,
   'MyMatches'
 >;
 export type MatchDetailScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  HomeStackParamList,
   'MatchDetail'
 >;
 export type ConfirmMatchScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
+  HomeStackParamList,
   'ConfirmMatch'
 >;
-export type ChatScreenNavigationProp = NativeStackNavigationProp<
-  RootStackParamList,
-  'Chat'
->;
+export type ChatScreenNavigationProp = NativeStackNavigationProp<HomeStackParamList, 'Chat'>;
 
+// ============================================
 // Route prop types for type-safe route.params
-export type RegisterScreenRouteProp = RouteProp<RootStackParamList, 'Register'>;
-export type PlayerRegisterScreenRouteProp = RouteProp<RootStackParamList, 'PlayerRegister'>;
+// ============================================
+export type RegisterScreenRouteProp = RouteProp<AuthStackParamList, 'Register'>;
+export type PlayerRegisterScreenRouteProp = RouteProp<AuthStackParamList, 'PlayerRegister'>;
 export type VenueManagerRegisterScreenRouteProp = RouteProp<
-  RootStackParamList,
+  AuthStackParamList,
   'VenueManagerRegister'
 >;
-export type EditProfileScreenRouteProp = RouteProp<RootStackParamList, 'EditProfile'>;
-export type AbilityScreenRouteProp = RouteProp<RootStackParamList, 'Ability'>;
+export type EditProfileScreenRouteProp = RouteProp<PlayerProfileStackParamList, 'EditProfile'>;
+export type AbilityScreenRouteProp = RouteProp<PlayerProfileStackParamList, 'Ability'>;
 export type EditVenueManagerProfileScreenRouteProp = RouteProp<
-  RootStackParamList,
+  VenueManagerProfileStackParamList,
   'EditVenueManagerProfile'
 >;
-export type VenueDetailScreenRouteProp = RouteProp<RootStackParamList, 'VenueDetail'>;
-export type EditVenueScreenRouteProp = RouteProp<RootStackParamList, 'EditVenue'>;
-export type UnavailableSlotsScreenRouteProp = RouteProp<RootStackParamList, 'UnavailableSlots'>;
-export type IntentionDetailScreenRouteProp = RouteProp<RootStackParamList, 'IntentionDetail'>;
-export type CreateIntentionScreenRouteProp = RouteProp<RootStackParamList, 'CreateIntention'>;
-export type MatchDetailScreenRouteProp = RouteProp<RootStackParamList, 'MatchDetail'>;
-export type ConfirmMatchScreenRouteProp = RouteProp<RootStackParamList, 'ConfirmMatch'>;
-export type ChatScreenRouteProp = RouteProp<RootStackParamList, 'Chat'>;
+export type VenueDetailScreenRouteProp = RouteProp<HomeStackParamList, 'VenueDetail'>;
+export type EditVenueScreenRouteProp = RouteProp<VenuesStackParamList, 'EditVenue'>;
+export type UnavailableSlotsScreenRouteProp = RouteProp<VenuesStackParamList, 'UnavailableSlots'>;
+export type IntentionDetailScreenRouteProp = RouteProp<HomeStackParamList, 'IntentionDetail'>;
+export type CreateIntentionScreenRouteProp = RouteProp<HomeStackParamList, 'CreateIntention'>;
+export type MatchDetailScreenRouteProp = RouteProp<HomeStackParamList, 'MatchDetail'>;
+export type ConfirmMatchScreenRouteProp = RouteProp<HomeStackParamList, 'ConfirmMatch'>;
+export type ChatScreenRouteProp = RouteProp<HomeStackParamList, 'Chat'>;
