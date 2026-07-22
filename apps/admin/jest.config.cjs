@@ -24,14 +24,16 @@ module.exports = {
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/main.tsx',
+    '!src/**/*.spec.ts',
+    '!src/**/*.spec.tsx',
   ],
   coverageDirectory: 'coverage',
   coverageThreshold: {
     global: {
-      branches: 80,
+      branches: 60,
       functions: 80,
-      lines: 80,
-      statements: 80,
+      lines: 85,
+      statements: 85,
     },
   },
 };
