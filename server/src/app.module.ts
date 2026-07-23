@@ -19,7 +19,9 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AuthModule } from './modules/auth/auth.module';
 import { MatchingModule } from './modules/matching/matching.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { AdminModule } from './modules/admin/admin.module';  // Module 5.7 新增
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { AppController } from './app.controller';
@@ -81,31 +83,34 @@ import { AppService } from './app.service';
     AuthModule,
     MatchingModule,
     PaymentsModule,
+    AdminModule,  // Module 5.7 新增
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // Global ValidationPipe — 在模块级别注册确保 E2E 测试也能生效
+    // Global ValidationPipe
     {
       provide: APP_PIPE,
       useValue: new ValidationPipe({
         whitelist: true,
         transform: true,
         forbidNonWhitelisted: true,
+        validateCustomDecorators: true,
       }),
     },
-    // Global TransformInterceptor — 统一成功响应格式
+    // Global TransformInterceptor
     {
       provide: APP_INTERCEPTOR,
       useClass: TransformInterceptor,
     },
-    // Global HttpExceptionFilter — 统一错误响应格式
+    // Global HttpExceptionFilter
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
-    // Global JwtAuthGuard — 所有端点默认需要 JWT 认证（除标记 @Public 的端点）
+    // Global JwtAuthGuard
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

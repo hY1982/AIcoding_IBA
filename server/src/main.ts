@@ -6,6 +6,8 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import { AppModule } from './app.module';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
+import { RedisService } from './common/services/redis.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -23,6 +25,7 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      validateCustomDecorators: true,
     }),
   );
 
@@ -37,6 +40,17 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
+
+  // 注册 Redis Socket.io Adapter（支持水平扩展）
+  try {
+    const redisService = app.get(RedisService);
+    const redisAdapter = new RedisIoAdapter(app, redisService);
+    await redisAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisAdapter);
+    console.log('[WebSocket] Redis adapter connected');
+  } catch (error) {
+    console.warn('[WebSocket] Redis adapter failed to connect, WebSocket disabled:', (error as Error).message);
+  }
 
   const port = configService.get<number>('PORT') || 3000;
 
