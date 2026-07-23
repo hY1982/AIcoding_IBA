@@ -41,7 +41,7 @@ describe('LoginPage', () => {
     );
 
     expect(screen.getByText('管理后台登录')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('请输入管理员手机号')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('请输入手机号或 admin')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('请输入密码')).toBeInTheDocument();
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
@@ -56,32 +56,12 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button'));
 
     await waitFor(() => {
-      expect(screen.getByText('请输入手机号')).toBeInTheDocument();
+      expect(screen.getByText('请输入手机号或用户名')).toBeInTheDocument();
       expect(screen.getByText('请输入密码')).toBeInTheDocument();
     });
   });
 
-  it('should show validation error for invalid phone', async () => {
-    render(
-      <MemoryRouter>
-        <LoginPage />
-      </MemoryRouter>,
-    );
-
-    fireEvent.change(screen.getByPlaceholderText('请输入管理员手机号'), {
-      target: { value: '123' },
-    });
-    fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
-      target: { value: 'password' },
-    });
-    fireEvent.click(screen.getByRole('button'));
-
-    await waitFor(() => {
-      expect(screen.getByText('请输入有效的手机号')).toBeInTheDocument();
-    });
-  });
-
-  it('should handle successful login', async () => {
+  it('should handle successful login with phone', async () => {
     const mockUser = { id: 1, phone: '13800138000', nickname: 'Admin', userType: 'player', status: 'active' };
     mockApiClient.post.mockResolvedValue({
       data: { data: { user: mockUser, tokens: { accessToken: 'test-token' } } },
@@ -94,7 +74,7 @@ describe('LoginPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('请输入管理员手机号'), {
+    fireEvent.change(screen.getByPlaceholderText('请输入手机号或 admin'), {
       target: { value: '13800138000' },
     });
     fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
@@ -108,6 +88,37 @@ describe('LoginPage', () => {
         password: 'password123',
       });
       expect(mockLogin).toHaveBeenCalledWith('test-token', mockUser);
+      expect(mockNavigate).toHaveBeenCalledWith('/');
+    });
+  });
+
+  it('should handle successful login with admin username', async () => {
+    const mockUser = { id: 0, phone: 'admin', nickname: '超级管理员', userType: 'admin', status: 'active' };
+    mockApiClient.post.mockResolvedValue({
+      data: { data: { user: mockUser, tokens: { accessToken: 'admin-token' } } },
+    } as never);
+    mockApiClient.get.mockResolvedValue({ data: { data: {} } } as never);
+
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('请输入手机号或 admin'), {
+      target: { value: 'admin' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
+      target: { value: 'admin123' },
+    });
+    fireEvent.click(screen.getByRole('button'));
+
+    await waitFor(() => {
+      expect(mockApiClient.post).toHaveBeenCalledWith('/auth/login', {
+        phone: 'admin',
+        password: 'admin123',
+      });
+      expect(mockLogin).toHaveBeenCalledWith('admin-token', mockUser);
       expect(mockNavigate).toHaveBeenCalledWith('/');
     });
   });
@@ -126,7 +137,7 @@ describe('LoginPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('请输入管理员手机号'), {
+    fireEvent.change(screen.getByPlaceholderText('请输入手机号或 admin'), {
       target: { value: '13800138000' },
     });
     fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
@@ -150,7 +161,7 @@ describe('LoginPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('请输入管理员手机号'), {
+    fireEvent.change(screen.getByPlaceholderText('请输入手机号或 admin'), {
       target: { value: '13800138000' },
     });
     fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
@@ -159,7 +170,7 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button'));
 
     await waitFor(() => {
-      expect(screen.getByText('手机号或密码错误')).toBeInTheDocument();
+      expect(screen.getByText('手机号/用户名或密码错误')).toBeInTheDocument();
     });
   });
 
@@ -174,7 +185,7 @@ describe('LoginPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('请输入管理员手机号'), {
+    fireEvent.change(screen.getByPlaceholderText('请输入手机号或 admin'), {
       target: { value: '13800138000' },
     });
     fireEvent.change(screen.getByPlaceholderText('请输入密码'), {
@@ -198,7 +209,7 @@ describe('LoginPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.change(screen.getByPlaceholderText('请输入管理员手机号'), {
+    fireEvent.change(screen.getByPlaceholderText('请输入手机号或 admin'), {
       target: { value: '13800138000' },
     });
     fireEvent.change(screen.getByPlaceholderText('请输入密码'), {

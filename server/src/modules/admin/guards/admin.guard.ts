@@ -15,6 +15,8 @@ import { hashForQuery } from '@common/utils/encrypt.util';
  * 白名单通过环境变量 ADMIN_PHONES 配置，值为逗号分隔的手机号列表。
  * 校验时使用 HMAC-SHA256 hash 匹配（与 users.phone_hash 一致）。
  *
+ * 内置超级管理员：userType === 'admin' 时直接放行，无需白名单校验。
+ *
  * 使用方式：
  * @UseGuards(JwtAuthGuard, AdminGuard) 或 @UseGuards(AdminGuard)
  * （若全局已注册 JwtAuthGuard，则只需 @UseGuards(AdminGuard)）
@@ -42,6 +44,11 @@ export class AdminGuard implements CanActivate {
 
     if (!user) {
       throw new ForbiddenException('请先登录');
+    }
+
+    // 内置超级管理员直接放行
+    if (user.userType === 'admin') {
+      return true;
     }
 
     const phoneHash = hashForQuery(user.phone);

@@ -22,8 +22,8 @@ export const BATCH_SIZE_FEEDBACK = 5;
 export const BATCH_DELAY_MS = 100;
 
 // 压力测试专用配置
-export const STRESS_BATCH_SIZE = 20;      // 注册/意向批大小
-export const STRESS_BATCH_DELAY_MS = 200;  // 批间延迟稍长，避免 DB 过载
+export const STRESS_BATCH_SIZE = 50;      // 注册/意向批大小（增加以支持1000人）
+export const STRESS_BATCH_DELAY_MS = 300;  // 批间延迟稍长，避免 DB 过载
 
 // 40分钟动态测试配置
 export const TEST_DURATION_MS = 40 * 60 * 1000;       // 总测试时长 40 分钟
@@ -34,7 +34,7 @@ export const INTENTION_SUBMISSION_WINDOW_MS = 40 * 60 * 1000; // 意向提交时
 
 // 超时保护
 export const SCENARIO_TIMEOUT_MS = 60_000;
-export const STRESS_TIMEOUT_MS = 120_000;
+export const STRESS_TIMEOUT_MS = 300_000;  // 大规模测试需要更长的超时时间
 export const HUMAN_WAIT_TIMEOUT_MS = 180_000; // 真人操作等待 3 分钟
 
 // 报告输出路径

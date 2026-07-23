@@ -24,8 +24,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   smooth3v3: {
     id: 'smooth3v3',
     name: '3v3 顺利匹配全流程',
-    description: '6 个 bot 球员 + 真人，刚好组成 1 场 3v3 的 2 队。全流程跑通：注册→场地→意向→匹配→确认→消息→反馈',
-    bots: { playerCount: 6, venueManagerCount: 2 },
+    description: '10 个 bot 球员 + 真人，刚好组成 1 场 3v3 的 2 队。全流程跑通：注册→场地→意向→匹配→确认→消息→反馈',
+    bots: { playerCount: 10, venueManagerCount: 1 },
     format: '3v3',
     startTimeHoursAhead: 2,
     durationMinutes: 120,
@@ -37,8 +37,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   shortage5v5: {
     id: 'shortage5v5',
     name: '5v5 人数不足',
-    description: '7 个 bot 球员 + 真人（不足 5v5×2 队=10 人）。测试匹配后确认不足→比赛失败→保证金退回流程',
-    bots: { playerCount: 7, venueManagerCount: 2 },
+    description: '10 个 bot 球员 + 真人（不足 5v5×2 队=10 人）。测试匹配后确认不足→比赛失败→保证金退回流程',
+    bots: { playerCount: 10, venueManagerCount: 1 },
     format: '5v5',
     startTimeHoursAhead: 3,
     durationMinutes: 180,
@@ -50,8 +50,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   peakHour: {
     id: 'peakHour',
     name: '高峰期多场地并发',
-    description: '30 个 bot 球员 + 5 个场地方，多时段多场比赛。验证并发确认和时段预订',
-    bots: { playerCount: 30, venueManagerCount: 5 },
+    description: '100 个 bot 球员 + 3 个场地方，多时段多场比赛。验证并发确认和时段预订',
+    bots: { playerCount: 100, venueManagerCount: 3 },
     format: '3v3',
     startTimeHoursAhead: 2,
     durationMinutes: 120,
@@ -62,9 +62,9 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
 
   fullStress: {
     id: 'fullStress',
-    name: '50 账号全量压力测试',
-    description: '全部 39 个 bot 球员 + 10 个场地方 + 真人。全量流程 + 压力测试（并发注册/突发意向/快速消息）',
-    bots: { playerCount: 39, venueManagerCount: 10 },
+    name: '200 账号全量压力测试',
+    description: '200 个 bot 球员 + 3 个场地方 + 真人。全量流程 + 压力测试（并发注册/突发意向/快速消息）',
+    bots: { playerCount: 200, venueManagerCount: 3 },
     format: 'mixed',
     startTimeHoursAhead: 2,
     durationMinutes: 120,
@@ -76,8 +76,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   humanDriven: {
     id: 'humanDriven',
     name: '真人驱动 E2E 测试',
-    description: '5 个 Bot 后台准备意向 + 真人通过 Mobile App 注册/录入意向/确认比赛。最接近真实使用场景的测试流程',
-    bots: { playerCount: 5, venueManagerCount: 1 },
+    description: '10 个 Bot 后台准备意向 + 真人通过 Mobile App 注册/录入意向/确认比赛。最接近真实使用场景的测试流程',
+    bots: { playerCount: 10, venueManagerCount: 1 },
     format: '3v3',
     startTimeHoursAhead: 3,
     durationMinutes: 120,
@@ -90,8 +90,8 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
   edgeCases: {
     id: 'edgeCases',
     name: '边界与异常场景专项',
-    description: '10 个 bot 球员 + 3 个场地方，专注边界测试：重复注册、错误密码、时间重叠、越界数据、非授权操作、并发冲突',
-    bots: { playerCount: 10, venueManagerCount: 3 },
+    description: '50 个 bot 球员 + 2 个场地方，专注边界测试：重复注册、错误密码、时间重叠、越界数据、非授权操作、并发冲突',
+    bots: { playerCount: 50, venueManagerCount: 2 },
     format: '3v3',
     startTimeHoursAhead: 2,
     durationMinutes: 120,
@@ -102,9 +102,9 @@ export const SCENARIOS: Record<string, ScenarioDefinition> = {
 
   humanDrivenStress: {
     id: 'humanDrivenStress',
-    name: '500 人大规模压力测试',
-    description: '500 bot 球员 + 1 场地经理(4 场地)。随机意向(当前时间 +2~4h)、自动匹配、终端表格展示',
-    bots: { playerCount: 500, venueManagerCount: 1 },
+    name: '1000 人大规模压力测试',
+    description: '1000 bot 球员 + 1 场地经理(3 场地)。随机意向(当前时间 +2~4h)、自动匹配、终端表格展示',
+    bots: { playerCount: 1000, venueManagerCount: 1 },
     format: 'mixed',
     startTimeHoursAhead: 0,   // 场景内部随机生成，不使用此值
     durationMinutes: 120,      // 默认值，实际由随机覆盖

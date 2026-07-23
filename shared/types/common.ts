@@ -34,11 +34,13 @@ export const USER_STATUS_LABELS: Record<UserStatus, string> = {
 };
 
 // 用户类型 — 联合类型 + const 数组（单一来源）
-export const USER_TYPES = ['player', 'venue_manager'] as const;
+// ⚠️ 数据库 enum 当前只包含 'player' | 'venue_manager'，'admin' 为内存内置账号，不写入数据库
+export const USER_TYPES = ['player', 'venue_manager', 'admin'] as const;
 export type UserType = (typeof USER_TYPES)[number];
 export const USER_TYPE_LABELS: Record<UserType, string> = {
   player: '球员',
   venue_manager: '场地方',
+  admin: '管理员',
 };
 
 // JWT Token 对

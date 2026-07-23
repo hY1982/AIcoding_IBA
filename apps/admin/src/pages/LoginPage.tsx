@@ -10,7 +10,9 @@ const { Title } = Typography;
 /**
  * 管理员登录页面
  *
- * 复用后端 /auth/login 接口，登录成功后校验管理员权限。
+ * 支持两种登录方式：
+ * 1. 内置管理员账号：用户名 "admin" / 密码 "admin123"
+ * 2. 手机号登录：复用后端 /auth/login 接口，登录成功后校验管理员权限
  */
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -45,7 +47,7 @@ const LoginPage: React.FC = () => {
       if (axiosError.response?.status === 403) {
         setError('该账号不是管理员，无权访问管理后台');
       } else if (axiosError.response?.status === 401) {
-        setError('手机号或密码错误');
+        setError('手机号/用户名或密码错误');
       } else {
         setError(axiosError.response?.data?.message || '登录失败，请稍后重试');
       }
@@ -87,14 +89,13 @@ const LoginPage: React.FC = () => {
             layout="vertical"
           >
             <Form.Item
-              label="手机号"
+              label="手机号 / 用户名"
               name="phone"
               rules={[
-                { required: true, message: '请输入手机号' },
-                { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号' },
+                { required: true, message: '请输入手机号或用户名' },
               ]}
             >
-              <Input placeholder="请输入管理员手机号" size="large" />
+              <Input placeholder="请输入手机号或 admin" size="large" />
             </Form.Item>
 
             <Form.Item
